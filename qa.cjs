@@ -1,7 +1,7 @@
 const fs=require('fs');
 const path=require('path');
 const root=__dirname;
-const must=['index.html','access.html','member.html','owner.html','status.html','common.js','access.js','member.js','owner.js','_worker.js','vercel.json','wrangler.toml','health.json'];
+const must=['index.html','access.html','member.html','owner.html','status.html','common.js','access.js','member.js','owner.js','_worker.js','vercel.json','wrangler.toml','health.json','postdeploy-smoke.mjs'];
 const fail=[];
 for(const f of must)if(!fs.existsSync(path.join(root,f)))fail.push(`missing ${f}`);
 for(const f of ['vercel.json','health.json','package.json']){try{JSON.parse(fs.readFileSync(path.join(root,f),'utf8'))}catch(e){fail.push(`invalid JSON ${f}: ${e.message}`)}}
@@ -13,6 +13,7 @@ const owner=fs.readFileSync(path.join(root,'owner.js'),'utf8');
 if(!worker.includes("'/__tfa/health'"))fail.push('worker gateway health route missing');
 for(const p of ['/auth/v1/','/functions/v1/','/rest/v1/','/storage/v1/'])if(!worker.includes(p))fail.push(`worker proxy missing ${p}`);
 if(!worker.includes("connect-src 'self' https://checkout.flutterwave.com"))fail.push('production CSP is not same-origin-first');
+if(!worker.includes("provider_rate_limit:'UNVERIFIED_EXTERNALLY'"))fail.push('gateway health must mark provider rate limit UNVERIFIED_EXTERNALLY');
 if(!common.includes('USE_GATEWAY'))fail.push('common.js same-origin gateway selection missing');
 if(!access.includes('gatewayHealth'))fail.push('access gateway health diagnostic missing');
 if(!member.includes('signInWithPassword'))fail.push('member password login missing');
@@ -22,6 +23,8 @@ const htmlChecks={'member.html':['signInForm','signUpForm','forgotForm','resetFo
 for(const [file,ids] of Object.entries(htmlChecks)){const t=fs.readFileSync(path.join(root,file),'utf8');for(const id of ids)if(!t.includes(`id="${id}"`))fail.push(`${file} missing #${id}`)}
 for(const file of fs.readdirSync(root).filter(x=>x.endsWith('.html'))){const t=fs.readFileSync(path.join(root,file),'utf8');if(/<script\b(?![^>]*\bsrc=)[^>]*>/i.test(t))fail.push(`${file} contains inline script blocked by production CSP`)}
 for(const file of ['app.js','status.js','live-markets.js','gold-live.js','access.js','member.js','owner.js']){const p=path.join(root,file);if(!fs.existsSync(p))continue;const t=fs.readFileSync(p,'utf8');if(t.includes("common.js?v=52.1.0"))fail.push(`${file} still imports stale v52.1 common runtime`)}
+const forbidden=/VERIFIED_LIFTED_BY_SUPABASE_SUPPORT|VERIFIED_LIFTED_BY_SUPPORT/g;for(const file of fs.readdirSync(root).filter(x=>/\.(?:js|mjs|cjs|json|html)$/.test(x))){if(file==='qa.cjs')continue;const t=fs.readFileSync(path.join(root,file),'utf8');if(forbidden.test(t))fail.push(`${file} contains an unverified provider rate-limit claim`);forbidden.lastIndex=0}
+const health=JSON.parse(fs.readFileSync(path.join(root,'health.json'),'utf8'));if(health.provider_rate_limit!=='UNVERIFIED_EXTERNALLY')fail.push('health.json provider_rate_limit must be UNVERIFIED_EXTERNALLY');
 const vercel=fs.readFileSync(path.join(root,'vercel.json'),'utf8');if(!vercel.includes('"/__tfa/health"'))fail.push('Vercel health fallback route missing');
 if(fail.length){console.error('QA FAILED\n- '+fail.join('\n- '));process.exit(1)}
-console.log('QA PASS: v52.2 same-origin gateway, CSP and runtime-cache contract are internally consistent.');
+console.log('QA PASS: v52.2 same-origin gateway, CSP, runtime-cache and provider-truth contracts are internally consistent.');
