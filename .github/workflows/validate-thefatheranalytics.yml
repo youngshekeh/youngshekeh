@@ -1,0 +1,37 @@
+name: Validate THE FATHER ANALYTICS
+
+on:
+  push:
+    branches: [thefatheranalytics-production]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check common.js
+          node --check app.js
+          node --check member.js
+          node --check owner.js
+          node --check status.js
+          node --check live-markets.js
+          node --check gold-live.js
+          node --check _worker.js
+      - name: Validate deployment JSON
+        run: python -m json.tool vercel.json >/dev/null
+      - name: Verify critical files
+        run: |
+          test -f index.html
+          test -f access.html
+          test -f member.html
+          test -f owner.html
+          test -f health.json
+          test -f wrangler.toml
+          test -f _worker.js
+          test -f vercel.json
