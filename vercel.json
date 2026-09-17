@@ -2,6 +2,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
+    {"source":"/__tfa/health","destination":"/health.json"},
     {"source":"/access","destination":"/access.html"},
     {"source":"/member","destination":"/member.html"},
     {"source":"/owner","destination":"/owner.html"},
@@ -25,6 +26,7 @@
       {"key":"Cross-Origin-Opener-Policy","value":"same-origin"},
       {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self' https://esm.sh; connect-src 'self' https://checkout.flutterwave.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://checkout.flutterwave.com; upgrade-insecure-requests"}
     ]},
+    {"source":"/__tfa/health","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},
     {"source":"/auth/v1/(.*)","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Pragma","value":"no-cache"}]},
     {"source":"/member","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Pragma","value":"no-cache"}]},
     {"source":"/owner","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Pragma","value":"no-cache"}]},
