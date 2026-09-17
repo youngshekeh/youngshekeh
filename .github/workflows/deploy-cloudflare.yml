@@ -1,0 +1,44 @@
+name: Deploy THE FATHER ANALYTICS to Cloudflare
+
+on:
+  push:
+    branches: [thefatheranalytics-production]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect Cloudflare deployment credentials
+        id: gate
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF_API_TOKEN" ] && [ -n "$CF_ACCOUNT_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare credentials are not configured in GitHub secrets; deployment skipped safely."
+          fi
+      - name: Validate source
+        run: |
+          node --check common.js
+          node --check app.js
+          node --check member.js
+          node --check owner.js
+          node --check status.js
+          node --check live-markets.js
+          node --check gold-live.js
+          node --check _worker.js
+          python -m json.tool vercel.json >/dev/null
+      - name: Deploy Worker + static assets
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler@4 deploy
