@@ -26,6 +26,7 @@ jobs:
           node --check _worker.js
           node --check qa.cjs
           node --check worker-smoke.mjs
+          node --check postdeploy-smoke.mjs
       - name: Validate deployment JSON
         run: |
           python -m json.tool vercel.json >/dev/null
@@ -45,4 +46,5 @@ jobs:
           test -f health.json
           test -f wrangler.toml
           test -f _worker.js
+          test -f postdeploy-smoke.mjs
           test -f vercel.json
