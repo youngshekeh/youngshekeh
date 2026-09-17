@@ -1,0 +1,6 @@
+Cloudflare deployment target: branch thefatheranalytics-production
+Static assets: repository root
+Worker entry: _worker.js
+Wrangler config: wrangler.toml
+Custom domain: thefatheranalytics.com
+Same-origin gateway paths: /auth/v1/*, /functions/v1/*, /rest/v1/*, /storage/v1/*
