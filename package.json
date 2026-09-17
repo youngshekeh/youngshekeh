@@ -1,5 +1,7 @@
 {
   "name": "thefatheranalytics-production",
   "private": true,
-  "version": "52.1.0"
+  "version": "52.2.0",
+  "scripts": {"build": "node build.cjs", "qa": "node qa.cjs"},
+  "dependencies": {"adm-zip": "0.5.16"}
 }
