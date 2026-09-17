@@ -1,0 +1,31 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {"source":"/access","destination":"/access.html"},
+    {"source":"/member","destination":"/member.html"},
+    {"source":"/owner","destination":"/owner.html"},
+    {"source":"/live-markets","destination":"/live-markets.html"},
+    {"source":"/gold-live","destination":"/gold-live.html"},
+    {"source":"/status","destination":"/status.html"},
+    {"source":"/privacy","destination":"/privacy.html"},
+    {"source":"/terms","destination":"/terms.html"},
+    {"source":"/functions/v1/:path*","destination":"https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/:path*"},
+    {"source":"/auth/v1/:path*","destination":"https://mpcelmjiycjpdyyflisn.supabase.co/auth/v1/:path*"},
+    {"source":"/rest/v1/:path*","destination":"https://mpcelmjiycjpdyyflisn.supabase.co/rest/v1/:path*"},
+    {"source":"/storage/v1/:path*","destination":"https://mpcelmjiycjpdyyflisn.supabase.co/storage/v1/:path*"}
+  ],
+  "headers": [
+    {"source":"/(.*)","headers":[
+      {"key":"X-Content-Type-Options","value":"nosniff"},
+      {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"},
+      {"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"},
+      {"key":"X-Frame-Options","value":"DENY"},
+      {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self' https://esm.sh; connect-src 'self' https://mpcelmjiycjpdyyflisn.supabase.co https://checkout.flutterwave.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://checkout.flutterwave.com; upgrade-insecure-requests"}
+    ]},
+    {"source":"/member","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"no-store, max-age=0"}]},
+    {"source":"/owner","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"no-store, max-age=0"}]},
+    {"source":"/access","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"public, max-age=60, s-maxage=120, stale-while-revalidate=300"}]},
+    {"source":"/status","headers":[{"key":"X-Robots-Tag","value":"noindex, nofollow"},{"key":"Cache-Control","value":"public, max-age=60, s-maxage=120, stale-while-revalidate=300"}]}
+  ]
+}
