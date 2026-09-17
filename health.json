@@ -3,7 +3,7 @@
   "app": "THE FATHER ANALYTICS",
   "frontend_version": "52.2.0",
   "release": "same-origin-access-gateway",
-  "provider_rate_limit": "VERIFIED_LIFTED_BY_SUPABASE_SUPPORT",
+  "provider_rate_limit": "UNVERIFIED_EXTERNALLY",
   "expected_routes": ["/access","/member","/owner","/live-markets","/gold-live","/status"],
   "gateway_paths": ["/auth/v1/*","/functions/v1/*","/rest/v1/*","/storage/v1/*"],
   "auth_policy": {"automatic_retries": false, "private_cache": "no-store"}
