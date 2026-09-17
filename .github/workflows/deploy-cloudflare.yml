@@ -32,6 +32,7 @@ jobs:
       - name: Validate production source
         run: |
           node --check common.js
+          node --check access.js
           node --check app.js
           node --check member.js
           node --check owner.js
