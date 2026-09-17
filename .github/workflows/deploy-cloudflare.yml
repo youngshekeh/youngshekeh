@@ -42,16 +42,34 @@ jobs:
           node --check _worker.js
           node --check qa.cjs
           node --check worker-smoke.mjs
+          node --check postdeploy-smoke.mjs
           python -m json.tool vercel.json >/dev/null
           python -m json.tool health.json >/dev/null
           node qa.cjs
           node worker-smoke.mjs
       - name: Deploy Worker + static assets
+        id: publish
         if: steps.gate.outputs.enabled == 'true'
+        shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler@4 deploy
+          NO_COLOR: '1'
+        run: |
+          set -o pipefail
+          npx wrangler@4 deploy 2>&1 | tee /tmp/wrangler-deploy.log
+          PREVIEW_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' /tmp/wrangler-deploy.log | tail -1 || true)"
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "::error::Wrangler completed but a workers.dev preview URL was not detected."
+            exit 1
+          fi
+          echo "url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+          echo "### Cloudflare preview\nPublished: $PREVIEW_URL" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify deployed workers.dev preview
+        if: steps.gate.outputs.enabled == 'true' && steps.publish.outputs.url != ''
+        env:
+          TFA_BASE_URL: ${{ steps.publish.outputs.url }}
+        run: node postdeploy-smoke.mjs
       - name: Record non-deployment state
         if: steps.gate.outputs.enabled != 'true'
         run: echo "Cloudflare source is validated, but this run did not publish production."
