@@ -40,9 +40,11 @@ jobs:
           node --check gold-live.js
           node --check _worker.js
           node --check qa.cjs
+          node --check worker-smoke.mjs
           python -m json.tool vercel.json >/dev/null
           python -m json.tool health.json >/dev/null
           node qa.cjs
+          node worker-smoke.mjs
       - name: Deploy Worker + static assets
         if: steps.gate.outputs.enabled == 'true'
         env:
