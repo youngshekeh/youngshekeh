@@ -16,6 +16,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check common.js
+          node --check access.js
           node --check app.js
           node --check member.js
           node --check owner.js
@@ -38,6 +39,7 @@ jobs:
         run: |
           test -f index.html
           test -f access.html
+          test -f access.js
           test -f member.html
           test -f owner.html
           test -f health.json
