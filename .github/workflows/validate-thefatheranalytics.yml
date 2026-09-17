@@ -24,6 +24,7 @@ jobs:
           node --check gold-live.js
           node --check _worker.js
           node --check qa.cjs
+          node --check worker-smoke.mjs
       - name: Validate deployment JSON
         run: |
           python -m json.tool vercel.json >/dev/null
@@ -31,6 +32,8 @@ jobs:
           python -m json.tool package.json >/dev/null
       - name: Run production contract QA
         run: node qa.cjs
+      - name: Run access gateway smoke test
+        run: node worker-smoke.mjs
       - name: Verify critical files
         run: |
           test -f index.html
