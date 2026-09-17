@@ -23,8 +23,14 @@ jobs:
           node --check live-markets.js
           node --check gold-live.js
           node --check _worker.js
+          node --check qa.cjs
       - name: Validate deployment JSON
-        run: python -m json.tool vercel.json >/dev/null
+        run: |
+          python -m json.tool vercel.json >/dev/null
+          python -m json.tool health.json >/dev/null
+          python -m json.tool package.json >/dev/null
+      - name: Run production contract QA
+        run: node qa.cjs
       - name: Verify critical files
         run: |
           test -f index.html
