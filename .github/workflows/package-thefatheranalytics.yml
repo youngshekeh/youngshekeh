@@ -1,0 +1,40 @@
+name: Package THE FATHER ANALYTICS
+
+on:
+  push:
+    branches: [thefatheranalytics-production]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate source before packaging
+        run: |
+          node qa.cjs
+          node worker-smoke.mjs
+      - name: Build deployment ZIP
+        shell: bash
+        run: |
+          VERSION="$(tr -d '\n\r ' < VERSION)"
+          mkdir -p dist
+          zip -qr "dist/thefatheranalytics_frontend_v${VERSION}.zip" . \
+            -x '.git/*' \
+            -x 'dist/*' \
+            -x 'site.part*' \
+            -x '*.DS_Store' \
+            -x '__MACOSX/*'
+          sha256sum "dist/thefatheranalytics_frontend_v${VERSION}.zip" | tee "dist/SHA256SUMS.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: thefatheranalytics-v52.2-production
+          path: |
+            dist/thefatheranalytics_frontend_v52.2.0.zip
+            dist/SHA256SUMS.txt
+          retention-days: 30
