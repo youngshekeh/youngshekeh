@@ -529,6 +529,8 @@ function renderQuantAccountability(pulse: any) {
   const settlement = pulse?.settlement_readiness ?? {};
   const benchmark = pulse?.benchmark_reputation ?? {};
   const calibrationStructure = pulse?.calibration_structure ?? {};
+  const scenarioEv = pulse?.scenario_ev ?? {};
+  const portfolioRisk = pulse?.portfolio_risk ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
