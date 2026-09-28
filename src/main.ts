@@ -527,6 +527,8 @@ function renderQuantAccountability(pulse: any) {
   const forecast = pulse?.forecast_error ?? {};
   const execution = pulse?.execution_latency ?? {};
   const settlement = pulse?.settlement_readiness ?? {};
+  const benchmark = pulse?.benchmark_reputation ?? {};
+  const calibrationStructure = pulse?.calibration_structure ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -607,6 +609,24 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV101Detail', settlement?.ok
     ? `${settlementCounts.publication_integrity_verified ?? 0}/${settlementCounts.total ?? 0} hashes verified · ${settlementCounts.due_today ?? 0} due · ${settlementCounts.overdue_open ?? 0} overdue · nearest ${settlement?.days_to_nearest_horizon ?? 'n/a'}d · ${settlementMode}${settlementAge}`
     : 'Settlement readiness evidence unavailable.');
+  const benchmarkCounts=benchmark?.counts ?? {};
+  const benchmarkPolicy=benchmark?.benchmark_policy ?? {};
+  const benchmarkMode=String(pulse?.benchmark_source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' ');
+  const benchmarkAge=typeof pulse?.benchmark_fallback_age_minutes==='number' ? ` · snapshot ${pulse.benchmark_fallback_age_minutes.toFixed(1)}m old` : '';
+  missionText('learningV102State', String(benchmark?.benchmark_state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV102Detail', benchmark?.ok
+    ? `${benchmarkPolicy.baseline_name ?? 'NO_SKILL_50'} ${benchmarkPolicy.baseline_accuracy_pct ?? 50}% · ${benchmarkCounts.models ?? 0} models · ${benchmarkCounts.human_review_eligible ?? 0} review-eligible · ${benchmarkCounts.reputation_sample_reached ?? 0} reputation-mature · ${benchmarkMode}${benchmarkAge}`
+    : 'Benchmark and signal-reputation evidence unavailable.');
+  const structureLedger=calibrationStructure?.ledger ?? {};
+  const structureConcentration=calibrationStructure?.concentration ?? {};
+  const structureMode=String(pulse?.calibration_structure_source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' ');
+  const structureAge=typeof pulse?.calibration_structure_fallback_age_minutes==='number'
+    ? ` · snapshot ${pulse.calibration_structure_fallback_age_minutes.toFixed(1)}m old`
+    : '';
+  missionText('learningV103State', String(calibrationStructure?.calibration_readiness_state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV103Detail', calibrationStructure?.ok
+    ? `${structureLedger.total ?? 0} forecasts · avg p ${structureLedger.average_probability ?? 'n/a'}% · ${structureLedger.up_forecasts ?? 0} up / ${structureLedger.down_forecasts ?? 0} down · largest horizon ${structureConcentration.largest_horizon_share_pct ?? 'n/a'}% · ${String(structureConcentration.direction_state ?? 'WITHHELD').replaceAll('_',' ')} · ${structureMode}${structureAge}`
+    : 'Calibration structure evidence unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
