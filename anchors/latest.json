@@ -1,11 +1,11 @@
 {
   "ok": true,
   "version": "v111-external-anchor-proof-v1",
-  "generated_at": "2026-09-28T09:41:57.091Z",
+  "generated_at": "2026-09-28T13:27:53.873Z",
   "source": "THE_FATHER_ANALYTICS_PRODUCTION",
   "source_mode": "VERIFIED_SNAPSHOT_FALLBACK",
   "observed_at": "2026-09-28T09:30:35.488761Z",
-  "fallback_age_minutes": 11.4,
+  "fallback_age_minutes": 237.3,
   "fallback_expires_at": "2026-09-28T15:30:35.488Z",
   "state": "GLOBAL_CHECKPOINT_VERIFIED",
   "checkpoint": {
@@ -43,6 +43,8 @@
     "branch": "the-father-analytics-audit",
     "workflow": "tfa-provenance-anchor",
     "anchored_at": "2026-09-28T09:41:57.291Z",
-    "source_proof_sha256": "375f07585236e5627618c8a63bc174d2ad68eefd9d5d7115f14a5dee6dad2b66"
+    "last_verified_at": "2026-09-28T13:27:54.105Z",
+    "verification_count": 2,
+    "source_proof_sha256": "6a76041f067354135ec734ecf1182ec5a6e4a4dcca5cd97200b106c7c5081a94"
   }
 }
