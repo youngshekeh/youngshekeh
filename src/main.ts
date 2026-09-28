@@ -91,6 +91,7 @@ async function loadAutonomousState() {
     const governance = state?.governance ?? {};
     const connectors = health?.connectors ?? {};
     const generated = state?.generated_at ? new Date(state.generated_at) : null;
+    const regimeMemory = state?.cross_asset_regime_memory ?? null;
 
     setAutonomyText('autonomyMode', state?.mode ?? 'UNAVAILABLE');
     setAutonomyText('autonomyScore', Number.isFinite(Number(state?.system_score)) ? `${state.system_score}/100` : '--');
@@ -100,6 +101,12 @@ async function loadAutonomousState() {
     setAutonomyText('autonomyConnectors', `${connectors?.healthy ?? 0}/${connectors?.required ?? 0} required connectors fresh`);
     setAutonomyText('autonomyMarket', state?.market_session ?? 'UNAVAILABLE');
     setAutonomyText('autonomyPermission', `${governance?.action_permitted ?? 'WAIT'} · ${governance?.capital_permission ?? '0R'}`);
+    const memoryLabel = regimeMemory?.confirmed_pattern
+      ? `CONFIRMED ${String(regimeMemory.confirmed_pattern).replaceAll('_', ' ')}`
+      : regimeMemory?.candidate_pattern
+        ? `CANDIDATE ${String(regimeMemory.candidate_pattern).replaceAll('_', ' ')} ×${regimeMemory.candidate_count ?? 1}`
+        : String(regimeMemory?.state ?? 'DB-GATED').replaceAll('_', ' ');
+    setAutonomyText('marketMemoryState', memoryLabel);
     setAutonomyText('autonomyUpdated', generated && !Number.isNaN(generated.getTime()) ? `Governed state · ${generated.toLocaleString()}` : 'Governed state unavailable');
     renderTags('autonomyBlockers', state?.blockers ?? []);
     renderTags('autonomyActions', state?.autonomous_actions ?? []);
