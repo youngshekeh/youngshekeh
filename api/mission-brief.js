@@ -530,15 +530,27 @@ function keyLifecycleSurvivorSnapshot(){
   return {...KEY_LIFECYCLE_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:KEY_LIFECYCLE_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+KEY_LIFECYCLE_SURVIVOR_MAX_AGE_MS).toISOString()};
 }
 
-const CHECKPOINT_SURVIVOR_CAPTURED_AT='2026-09-28T09:30:35.488761Z';
+const CHECKPOINT_SURVIVOR_CAPTURED_AT='2026-09-28T14:45:11.008693Z';
 const CHECKPOINT_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
 const CHECKPOINT_SURVIVOR_SNAPSHOT={
   ok:true,
   version:'v110-provenance-checkpoint-root-v1',
   state:'GLOBAL_CHECKPOINT_VERIFIED',
-  counts:{checkpoints:2,hmac_failures:0,chain_link_failures:0,payload_hash_failures:0,missing_historical_keys:0,uncheckpointed_attestations:0},
-  latest_checkpoint:{id:2,key_name:'tfa_v108_attestation_hmac_v2',module_count:8,receipt_count:32,attestation_count:32,checkpointed_at:'2026-09-28T09:30:32.042967Z',latest_receipt_at:'2026-09-28T09:05:00.373877Z',latest_attestation_at:'2026-09-28T09:07:00.114438Z',checkpoint_sha256:'24b4694334e4bb2bfc5e4d4ee474c107ea2b880ebecd7cc390900c62b27c5de0',previous_checkpoint_sha256:'2d829cc019980e7902428eb78c54468876be811641aee7815a1c88ee88f10cb3',checkpoint_hmac_sha256:'f9f26fe9880ba834f9abcb53f6b10f999aaebec5f7b9f8762ad1f47c950d298f'},
-  freshness:{lag_seconds:1411.928529,latest_checkpoint_at:'2026-09-28T09:30:32.042967Z',latest_attestation_at:'2026-09-28T09:07:00.114438Z'},
+  counts:{checkpoints:7,hmac_failures:0,chain_link_failures:0,payload_hash_failures:0,missing_historical_keys:0,uncheckpointed_attestations:0},
+  latest_checkpoint:{
+    id:7,
+    key_name:'tfa_v108_attestation_hmac_v2',
+    module_count:8,
+    receipt_count:72,
+    attestation_count:72,
+    checkpointed_at:'2026-09-28T14:10:00.153003Z',
+    latest_receipt_at:'2026-09-28T14:05:00.23336Z',
+    latest_attestation_at:'2026-09-28T14:07:00.152405Z',
+    checkpoint_sha256:'9ad7aee79409b6b94026755b60b608eb4d8789d276f5ed3204dac8a0b788d2a8',
+    previous_checkpoint_sha256:'52b1a613d002a820fc90793a3cc3ea94913558647b19c0cc8c6395d37065dc0c',
+    checkpoint_hmac_sha256:'5f3efcb9c818bd51073f7e4f7891e8adaab3212c90cf1aa090fcf81f9b895086'
+  },
+  freshness:{lag_seconds:180.000598,latest_checkpoint_at:'2026-09-28T14:10:00.153003Z',latest_attestation_at:'2026-09-28T14:07:00.152405Z'},
   scheduler:{cadence:'HOURLY_MINUTE_10',depends_on_receipts:'HOURLY_MINUTE_05',depends_on_attestations:'HOURLY_MINUTE_07',gateway_dependency:false},
   governance:{append_only:true,updates_blocked:true,deletes_blocked:true,checkpoint_hash:'SHA256',checkpoint_attestation:'HMAC_SHA256_SERVER_ATTESTATION',key_version_aware:true,not_public_key_signature:true,capital_permission:'0R'},
   truth_label:'GLOBAL_HASH_CHAINED_HMAC_ATTESTED_PROVENANCE_CHECKPOINT_NOT_EXTERNAL_PUBLIC_KEY_ANCHOR'
@@ -549,6 +561,88 @@ function checkpointSurvivorSnapshot(){
   const ageMs=Math.max(0,Date.now()-captured);
   if(ageMs>CHECKPOINT_SURVIVOR_MAX_AGE_MS)return null;
   return {...CHECKPOINT_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:CHECKPOINT_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+CHECKPOINT_SURVIVOR_MAX_AGE_MS).toISOString()};
+}
+function checkpointBoundProvenanceSurvivor(kind,checkpoint,observedAt,expiresAt){
+  if(checkpoint?.state!=='GLOBAL_CHECKPOINT_VERIFIED')return null;
+  const counts=checkpoint?.counts??{};
+  const latest=checkpoint?.latest_checkpoint??{};
+  const verified=Number(counts.hmac_failures??1)===0
+    &&Number(counts.chain_link_failures??1)===0
+    &&Number(counts.payload_hash_failures??1)===0
+    &&Number(counts.missing_historical_keys??1)===0
+    &&Number(counts.uncheckpointed_attestations??1)===0;
+  if(!verified)return null;
+  const observed=observedAt??latest?.checkpointed_at??null;
+  const observedMs=Date.parse(String(observed??''));
+  if(!Number.isFinite(observedMs))return null;
+  const expiry=expiresAt??new Date(observedMs+CHECKPOINT_SURVIVOR_MAX_AGE_MS).toISOString();
+  const expiryMs=Date.parse(String(expiry??''));
+  if(Number.isFinite(expiryMs)&&Date.now()>expiryMs)return null;
+  const ageMinutes=Number((Math.max(0,Date.now()-observedMs)/60000).toFixed(1));
+  const common={
+    ok:true,
+    source_mode:'CHECKPOINT_VERIFIED_SURVIVOR',
+    observed_at:observed,
+    fallback_age_minutes:ageMinutes,
+    fallback_expires_at:expiry,
+    checkpoint_reference:{
+      checkpoint_id:latest?.id??null,
+      checkpointed_at:latest?.checkpointed_at??null,
+      checkpoint_sha256:latest?.checkpoint_sha256??null,
+      key_name:latest?.key_name??null
+    },
+    governance:{
+      checkpoint_bound:true,
+      direct_rpc_live:false,
+      can_grant_capital:false,
+      capital_permission:'0R'
+    }
+  };
+  if(kind==='receipt')return {
+    ...common,
+    version:'v107-provenance-receipt-ledger-v1',
+    state:'HASH_CHAIN_VERIFIED',
+    counts:{
+      modules:latest?.module_count??null,
+      receipts:latest?.receipt_count??null,
+      chain_link_failures:Number(counts.chain_link_failures??0),
+      payload_hash_failures:Number(counts.payload_hash_failures??0),
+      receipt_hash_failures:0
+    },
+    history_window:{latest_receipt_at:latest?.latest_receipt_at??null},
+    truth_label:'CHECKPOINT_BOUND_HASH_CHAIN_SURVIVOR_NOT_LIVE_RECEIPT_RPC'
+  };
+  if(kind==='attestation')return {
+    ...common,
+    version:'v108-server-attested-provenance-v2-key-aware',
+    state:'SERVER_ATTESTATION_VERIFIED',
+    counts:{
+      receipts:latest?.receipt_count??null,
+      attestations:latest?.attestation_count??null,
+      verified_attestations:latest?.attestation_count??null,
+      failed_attestations:Number(counts.hmac_failures??0),
+      missing_historical_keys:Number(counts.missing_historical_keys??0),
+      unattested_receipts:Number(counts.uncheckpointed_attestations??0)
+    },
+    history_window:{latest_attestation_at:latest?.latest_attestation_at??null},
+    truth_label:'CHECKPOINT_BOUND_HMAC_ATTESTATION_SURVIVOR_NOT_LIVE_ATTESTATION_RPC'
+  };
+  if(kind==='key_lifecycle')return {
+    ...common,
+    version:'v109-attestation-key-lifecycle-v1',
+    state:'KEY_LIFECYCLE_HEALTHY',
+    counts:{
+      keys:null,
+      active_keys:null,
+      retired_keys:null,
+      attestations:latest?.attestation_count??null,
+      missing_vault_keys:Number(counts.missing_historical_keys??0)
+    },
+    keys:latest?.key_name?[{key_name:latest.key_name,status:'CHECKPOINT_REFERENCED'}]:[],
+    rotation:{history_preserved:true,checkpoint_verified:true,live_inventory_withheld:true},
+    truth_label:'CHECKPOINT_BOUND_KEY_CONTINUITY_SURVIVOR_NOT_LIVE_VAULT_INVENTORY'
+  };
+  return null;
 }
 
 async function githubExternalAnchor(timeout=6000){
@@ -852,6 +946,37 @@ export default async function handler(req,res){
     }else checkpointSourceMode='EVIDENCE_GATED';
   }
 
+  if(!provenanceReceiptState?.ok){
+    const bridge=checkpointBoundProvenanceSurvivor('receipt',checkpointState,checkpointObservedAt,checkpointFallbackExpiresAt);
+    if(bridge?.ok){
+      provenanceReceiptState=bridge;
+      receiptLedgerSourceMode=bridge.source_mode;
+      receiptLedgerObservedAt=bridge.observed_at;
+      receiptLedgerFallbackAgeMinutes=bridge.fallback_age_minutes;
+      receiptLedgerFallbackExpiresAt=bridge.fallback_expires_at;
+    }
+  }
+  if(!provenanceAttestationState?.ok){
+    const bridge=checkpointBoundProvenanceSurvivor('attestation',checkpointState,checkpointObservedAt,checkpointFallbackExpiresAt);
+    if(bridge?.ok){
+      provenanceAttestationState=bridge;
+      attestationSourceMode=bridge.source_mode;
+      attestationObservedAt=bridge.observed_at;
+      attestationFallbackAgeMinutes=bridge.fallback_age_minutes;
+      attestationFallbackExpiresAt=bridge.fallback_expires_at;
+    }
+  }
+  if(!keyLifecycleState?.ok){
+    const bridge=checkpointBoundProvenanceSurvivor('key_lifecycle',checkpointState,checkpointObservedAt,checkpointFallbackExpiresAt);
+    if(bridge?.ok){
+      keyLifecycleState=bridge;
+      keyLifecycleSourceMode=bridge.source_mode;
+      keyLifecycleObservedAt=bridge.observed_at;
+      keyLifecycleFallbackAgeMinutes=bridge.fallback_age_minutes;
+      keyLifecycleFallbackExpiresAt=bridge.fallback_expires_at;
+    }
+  }
+
   const externalAnchorState=(()=>{
     const current=checkpointState?.latest_checkpoint??{};
     const anchor=externalAnchorRaw?.ok?externalAnchorRaw:null;
@@ -1099,7 +1224,7 @@ export default async function handler(req,res){
       const age=Number(fallbackAgeMinutes??0);
       return {id,state:remaining>0?'LIVE':'EVIDENCE_GATED',source_mode:mode,observed_at:observedAt??null,expires_at:expiresAt??null,age_minutes:Number(age.toFixed(1)),remaining_minutes:Number(remaining.toFixed(1))};
     }
-    if(mode!=='VERIFIED_SNAPSHOT_FALLBACK')return {id,state:'LIVE',source_mode:mode,observed_at:observedAt??null,expires_at:null,age_minutes:null,remaining_minutes:null};
+    if(!['VERIFIED_SNAPSHOT_FALLBACK','CHECKPOINT_VERIFIED_SURVIVOR'].includes(mode))return {id,state:'LIVE',source_mode:mode,observed_at:observedAt??null,expires_at:null,age_minutes:null,remaining_minutes:null};
     const expiryMs=Date.parse(expiresAt??'');
     const remaining=Number.isFinite(expiryMs)?Math.max(0,(expiryMs-Date.now())/60000):0;
     const age=Number(fallbackAgeMinutes??0);
@@ -1431,7 +1556,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v113-unified-intelligence-experience-v1',
+    version:'v113.1-unified-intelligence-experience-v2',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
