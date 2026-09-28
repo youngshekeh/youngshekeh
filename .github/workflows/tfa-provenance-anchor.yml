@@ -93,6 +93,23 @@ jobs:
             }
           };
 
+          // Immutable hourly liveness artifact. Runtime readers can fetch the
+          // current or previous UTC hour directly, avoiding mutable CDN cache
+          // ambiguity around anchors/latest.json.
+          fs.mkdirSync('anchors/heartbeats', { recursive: true });
+          const heartbeatHour = verifiedAt.slice(0, 13);
+          const heartbeatFile = 'anchors/heartbeats/' + heartbeatHour + '.json';
+          if (!fs.existsSync(heartbeatFile)) {
+            fs.writeFileSync(heartbeatFile, JSON.stringify({
+              ...anchored,
+              heartbeat_artifact: {
+                version: 'v112-hourly-heartbeat-artifact-v1',
+                hour_utc: heartbeatHour,
+                immutable: true
+              }
+            }, null, 2) + '\n');
+          }
+
           if (existingRoot === root) {
             // Keep the immutable checkpoint artifact untouched. Only latest.json
             // receives a liveness heartbeat proving GitHub independently
