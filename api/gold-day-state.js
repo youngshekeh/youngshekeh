@@ -12,7 +12,7 @@ async function chart(){
     return {ok:true,status:r.status,latency_ms:Date.now()-started,result:x};
   }catch(error){return {ok:false,status:0,latency_ms:Date.now()-started,error:String(error).slice(0,160)}}
 }
-function finite(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function finite(v){if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function chicago(ts){
   const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date(ts*1000));
   const get=t=>p.find(x=>x.type===t)?.value||'0';
