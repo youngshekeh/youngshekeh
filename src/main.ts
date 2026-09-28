@@ -746,6 +746,30 @@ async function loadQaMatrix() {
   }
 }
 
+
+async function loadHealthOrchestrator() {
+  try {
+    const response = await fetch(`/api/autonomous-health-orchestrator?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`health_http_${response.status}`);
+    const health = await response.json();
+    const state = String(health?.state ?? 'WITHHELD');
+    const summary = health?.summary ?? {};
+    const readiness = typeof health?.readiness_pct === 'number' ? `${health.readiness_pct}%` : 'n/a';
+    const critical = Number(summary?.critical_failures ?? 0);
+    const gated = Number(summary?.gated ?? 0);
+    const degraded = Number(summary?.degraded ?? 0);
+    const recovered = Number(summary?.retry_recoveries ?? 0);
+    const display = state.replaceAll('_', ' ');
+    missionText('learningV113State', display);
+    missionText('learningV113Detail', `${readiness} system readiness · ${critical} critical · ${gated} gated · ${degraded} degraded · ${recovered} retry-recovered · WAIT / 0R`);
+    updateMissionTapeItem('AUTONOMOUS HEALTH', `${display} · ${readiness}`);
+  } catch {
+    missionText('learningV113State', 'FAIL CLOSED');
+    missionText('learningV113Detail', 'Health channel unavailable · authority remains WAIT / 0R.');
+    updateMissionTapeItem('AUTONOMOUS HEALTH', 'FAIL CLOSED');
+  }
+}
+
 async function loadMissionBrief() {
   try {
     const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -788,7 +812,7 @@ async function loadMissionBrief() {
 
 async function refreshMissionExperience() {
   await loadMissionBrief();
-  await loadQaMatrix();
+  await Promise.all([loadQaMatrix(), loadHealthOrchestrator()]);
 }
 void refreshMissionExperience();
 window.setInterval(() => void refreshMissionExperience(), 60_000);
