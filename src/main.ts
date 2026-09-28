@@ -593,7 +593,8 @@ function renderQuantAccountability(pulse: any) {
 
   missionText('quantLearningState', String(pulse?.state ?? 'WITHHELD').replaceAll('_',' '));
   missionText('quantPublicationGate', gates?.public_accuracy ?? 'WITHHELD');
-  missionText('quantPublicationReason', `Max non-flat n=${gates?.max_nonflat_sample ?? 0}; threshold n=${gates?.forecast_threshold ?? 20} per horizon.`);
+  const sourceMode=String(pulse?.source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' '); const fallbackAge=typeof pulse?.fallback_age_minutes==='number'?` · snapshot age ${pulse.fallback_age_minutes.toFixed(1)}m`:'';
+  missionText('quantPublicationReason', `Max non-flat n=${gates?.max_nonflat_sample ?? 0}; threshold n=${gates?.forecast_threshold ?? 20} per horizon · ${sourceMode}${fallbackAge}.`);
   missionText('quantErrorMix', errorParts.length ? errorParts.join(' · ') : 'WITHHELD');
   missionText('quantIntegrity', forecast?.data_integrity ? `${forecast.data_integrity.negative_mfe ?? 0} negative MFE · ${forecast.data_integrity.negative_mae ?? 0} negative MAE` : 'WITHHELD');
   missionText('quantLatencyMaturity', `max n=${gates?.max_latency_sample ?? 0}/${gates?.latency_threshold ?? 30} · ${String(gates?.latency_stability ?? 'WITHHELD').replaceAll('_',' ')}`);

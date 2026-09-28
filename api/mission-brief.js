@@ -365,6 +365,49 @@ function marketBreadth(rows){
 }
 
 
+const QUANT_SURVIVOR_CAPTURED_AT='2026-09-28T07:11:37.628Z';
+const QUANT_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
+const QUANT_SURVIVOR_SNAPSHOT={
+  forecast_error:{
+    ok:true,version:'v96-forecast-error-attribution-v1',
+    horizons:[
+      {horizon_minutes:30,resolved_sample:12,nonflat_sample:8,hits:6,misses:2,flat_count:4,clean_hits:6,timing_recovered:2,directional_failures:0,low_follow_through:4,adverse_path_risk:0,avg_mfe_pct:0.1433,avg_mae_pct:0.0397,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {horizon_minutes:60,resolved_sample:10,nonflat_sample:10,hits:8,misses:2,flat_count:0,clean_hits:7,timing_recovered:2,directional_failures:0,low_follow_through:0,adverse_path_risk:1,avg_mfe_pct:0.2676,avg_mae_pct:0.0431,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {horizon_minutes:120,resolved_sample:6,nonflat_sample:6,hits:6,misses:0,flat_count:0,clean_hits:5,timing_recovered:0,directional_failures:0,low_follow_through:0,adverse_path_risk:0,avg_mfe_pct:0.5098,avg_mae_pct:0.0615,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'}
+    ],
+    categories:{DIRECTIONAL_HIT:1,ADVERSE_PATH_RISK:1,CLEAN_DIRECTIONAL_HIT:18,TIMING_ERROR_RECOVERED_LATER:4,LOW_FOLLOW_THROUGH_UNRESOLVED:2,LOW_FOLLOW_THROUGH_RECOVERED_LATER:2},
+    sample_policy:{public_accuracy:'WITHHELD_UNTIL_THRESHOLD',minimum_nonflat_sample_for_public_accuracy:20},
+    data_integrity:{negative_mae:0,negative_mfe:0},
+    governance:{research_only:true,action_permitted:'WAIT',capital_permission:'0R'}
+  },
+  execution_latency:{
+    ok:true,version:'v97-execution-latency-quality-v1',
+    delays:[
+      {delay_minutes:2,sample_size:14,adverse_count:10,improved_count:4,neutral_count:0,adverse_frequency_pct:71.43,avg_signed_shortfall_bps:1.3125,median_signed_shortfall_bps:1.3043,avg_adverse_cost_bps:3.2787,avg_favorable_improvement_bps:1.9662,p75_adverse_cost_bps:4.9103,max_adverse_cost_bps:11.3505,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {delay_minutes:5,sample_size:14,adverse_count:9,improved_count:5,neutral_count:0,adverse_frequency_pct:64.29,avg_signed_shortfall_bps:2.7909,median_signed_shortfall_bps:4.0201,avg_adverse_cost_bps:5.7906,avg_favorable_improvement_bps:2.9996,p75_adverse_cost_bps:9.1954,max_adverse_cost_bps:22.5873,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {delay_minutes:10,sample_size:13,adverse_count:7,improved_count:6,neutral_count:0,adverse_frequency_pct:53.85,avg_signed_shortfall_bps:2.0783,median_signed_shortfall_bps:4.2528,avg_adverse_cost_bps:4.5202,avg_favorable_improvement_bps:2.442,p75_adverse_cost_bps:6.8553,max_adverse_cost_bps:16.8674,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'}
+    ],
+    truth_label:'OBSERVED_SIGNAL_TO_LATER_PRICE_SHORTFALL_PROXY',
+    sample_policy:{minimum_sample_for_stable_latency_estimate:30},
+    excluded_costs:['bid_ask_spread','broker_slippage','commission','market_impact','fill_probability'],
+    governance:{research_only:true,action_permitted:'WAIT',capital_permission:'0R',realized_execution_cost:false}
+  }
+};
+function quantSurvivorSnapshot(){
+  const captured=Date.parse(QUANT_SURVIVOR_CAPTURED_AT);
+  if(!Number.isFinite(captured))return null;
+  const ageMs=Math.max(0,Date.now()-captured);
+  if(ageMs>QUANT_SURVIVOR_MAX_AGE_MS)return null;
+  return {
+    ok:true,
+    source_mode:'VERIFIED_SNAPSHOT_FALLBACK',
+    observed_at:QUANT_SURVIVOR_CAPTURED_AT,
+    fallback_age_minutes:Number((ageMs/60000).toFixed(1)),
+    forecast_error:QUANT_SURVIVOR_SNAPSHOT.forecast_error,
+    execution_latency:QUANT_SURVIVOR_SNAPSHOT.execution_latency
+  };
+}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -476,6 +519,7 @@ export default async function handler(req,res){
 
   let accountabilitySourceMode='POSTGREST_RPC';
   let accountabilityObservedAt=null;
+  let accountabilityFallbackAgeMinutes=null;
   if(!forecastErrorState?.ok || !executionQualityState?.ok){
     const edgeAccountability=await quantAccountabilityEdge();
     if(edgeAccountability?.ok){
@@ -484,7 +528,16 @@ export default async function handler(req,res){
       accountabilitySourceMode=edgeAccountability.source_mode??'DIRECT_POSTGRES_EDGE_FUNCTION';
       accountabilityObservedAt=edgeAccountability.observed_at??null;
     }else{
-      accountabilitySourceMode='EVIDENCE_GATED';
+      const survivor=quantSurvivorSnapshot();
+      if(survivor?.ok){
+        forecastErrorState=survivor.forecast_error;
+        executionQualityState=survivor.execution_latency;
+        accountabilitySourceMode=survivor.source_mode;
+        accountabilityObservedAt=survivor.observed_at;
+        accountabilityFallbackAgeMinutes=survivor.fallback_age_minutes;
+      }else{
+        accountabilitySourceMode='EVIDENCE_GATED';
+      }
     }
   }
 
@@ -647,6 +700,7 @@ export default async function handler(req,res){
     state:learningState,
     source_mode:accountabilitySourceMode,
     observed_at:accountabilityObservedAt,
+    fallback_age_minutes:accountabilityFallbackAgeMinutes,
     forecast_error:forecastErrorState,
     execution_latency:executionQualityState,
     publication_gates:{
