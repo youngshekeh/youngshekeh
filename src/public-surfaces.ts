@@ -18,6 +18,19 @@ async function read(path: string, timeout = 6500): Promise<AnyJson> {
   }
 }
 
+async function readLocal(path: string, timeout = 6500): Promise<AnyJson> {
+  try {
+    const response = await fetch(path, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeout),
+    });
+    return await response.json().catch(() => ({}));
+  } catch {
+    return { ok: false, state: 'UNAVAILABLE', error: 'local_transport_unavailable' };
+  }
+}
+
 function byId(id: string) {
   return document.getElementById(id);
 }
@@ -129,35 +142,81 @@ async function loadLiveMarkets() {
 }
 
 async function loadGold() {
-  const [gold, core, evidence] = await Promise.all([
+  const [gold, core, evidence, day] = await Promise.all([
     read('public-gold-live-api', 4500),
     read('public-v63-structural-core-fabric', 5000),
     read('public-v65-model-evidence-fabric', 5000),
+    readLocal('/api/gold-day-state', 7000),
   ]);
-  const market = first(gold?.market_status, gold?.state, 'UNKNOWN');
-  const action = first(gold?.action, gold?.decision?.action, core?.gold?.action, 'WAIT');
-  const capital = first(gold?.capital_permission, gold?.decision?.capital_permission, core?.gold?.capital_permission, '0R');
-  const price = market === 'UNAVAILABLE' ? null : first(gold?.price, gold?.quote?.price, gold?.last, null);
-  const evidenceState = first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN');
-  set('gold-live-state', first(gold?.engine, gold?.state, market));
-  set('gold-live-copy', market === 'MARKET_CLOSED'
-    ? 'The governed Gold session is closed. Structural context is frozen until reopening.'
-    : market === 'UNAVAILABLE'
-      ? 'The live Gold market spine is unavailable. No structural price is promoted to a live execution quote.'
-      : 'Gold market state is live, but capital permission remains independently governed.');
+
+  const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
+  const canonicalUnavailable =
+    gold?.ok === false ||
+    /UNKNOWN|UNAVAILABLE|RESTRICTED|ERROR|FAIL/i.test(String(canonicalMarket)) ||
+    !first(gold?.price, gold?.quote?.price, gold?.last, null);
+
+  const useShadow = canonicalUnavailable && day?.ok === true;
+  const action = useShadow ? 'WAIT' : first(gold?.action, gold?.decision?.action, core?.gold?.action, 'WAIT');
+  const capital = useShadow ? '0R' : first(gold?.capital_permission, gold?.decision?.capital_permission, core?.gold?.capital_permission, '0R');
+  const market = useShadow ? first(day?.market_session, 'SHADOW_MARKET') : canonicalMarket;
+  const price = useShadow ? day?.current?.price : (market === 'UNAVAILABLE' ? null : first(gold?.price, gold?.quote?.price, gold?.last, null));
+  const evidenceState = useShadow
+    ? 'SHADOW_RESEARCH_ONLY'
+    : first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN');
+
+  set('gold-live-state', useShadow ? `SHADOW · ${first(day?.day_state?.day_state, 'DAY_STATE_UNAVAILABLE')}` : first(gold?.engine, gold?.state, market));
+  set('gold-live-copy', useShadow
+    ? 'Canonical Supabase market services are unavailable. V75 is showing delayed research-only structure; it cannot grant execution permission.'
+    : market === 'MARKET_CLOSED'
+      ? 'The governed Gold session is closed. Structural context is frozen until reopening.'
+      : market === 'UNAVAILABLE'
+        ? 'The live Gold market spine is unavailable. No structural price is promoted to a live execution quote.'
+        : 'Gold market state is live, but capital permission remains independently governed.');
   set('gold-live-action', action);
   set('gold-live-capital', capital);
   set('gold-market', market);
   set('gold-price', price);
   set('gold-evidence', evidenceState);
-  set('gold-confidence', evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.confidence, evidence?.gold?.confidence, null));
-  set('gold-structure', first(core?.structure_signals?.market_status, core?.market_status, 'UNKNOWN'));
-  set('gold-structure-copy', first(core?.decision_compression?.what_matters_now, core?.interpretation, 'Structural context is conditional.'));
-  set('gold-model', evidenceState);
-  set('gold-model-copy', evidenceState === 'EVIDENCE_STORE_UNAVAILABLE'
-    ? 'Probability, EV, MFE/MAE and signal reputation are withheld until immutable evidence is readable.'
-    : 'Observed model evidence is available subject to its sample and calibration gates.');
+  set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.confidence, evidence?.gold?.confidence, null)));
+
+  if (useShadow) {
+    set('gold-structure', first(day?.day_state?.day_state, 'SHADOW_DAY_STATE'));
+    set('gold-structure-copy', `Research-only: range ${day?.current?.range ?? 'n/a'} · VWAP ${day?.current?.vwap ?? 'n/a'} · prior range ${day?.previous?.range ?? 'n/a'}.`);
+    set('gold-model', 'V75 SHADOW QUANT RESEARCH');
+    set('gold-model-copy', 'Transparent five-minute day-state rules are active. No probability or calibrated edge is claimed.');
+  } else {
+    set('gold-structure', first(core?.structure_signals?.market_status, core?.market_status, 'UNKNOWN'));
+    set('gold-structure-copy', first(core?.decision_compression?.what_matters_now, core?.interpretation, 'Structural context is conditional.'));
+    set('gold-model', evidenceState);
+    set('gold-model-copy', evidenceState === 'EVIDENCE_STORE_UNAVAILABLE'
+      ? 'Probability, EV, MFE/MAE and signal reputation are withheld until immutable evidence is readable.'
+      : 'Observed model evidence is available subject to its sample and calibration gates.');
+  }
   set('gold-firewall', `${action} · ${capital}`);
+
+  if (day?.ok) {
+    const state = day?.day_state ?? {};
+    const profile = day?.volume_profile_proxy ?? {};
+    const above = day?.liquidity?.nearest_above;
+    const below = day?.liquidity?.nearest_below;
+    set('v75-day-state', first(state?.day_state, 'WITHHELD'));
+    set('v75-day-copy', `${state?.framework_signal_day ? 'Framework signal-day conditions detected' : 'No framework signal-day condition'} · ${first(state?.vwap_relation, 'VWAP n/a')} · ${first(state?.profile_relation, 'profile n/a')}.`);
+    set('v75-range', state?.range_vs_adr == null ? null : `${Number(state.range_vs_adr).toFixed(3)}× ADR3`);
+    set('v75-range-copy', `Current range ${day?.current?.range ?? 'n/a'} · ADR3 ${day?.range_model?.adr3 ?? 'n/a'}.`);
+    set('v75-breakout-quality', state?.breakout_quality == null ? null : `${state.breakout_quality}/100`);
+    set('v75-breakout-copy', `Break prior high: ${state?.break_prior_high ? 'YES' : 'NO'} · break prior low: ${state?.break_prior_low ? 'YES' : 'NO'} · score is deterministic, not probabilistic.`);
+    set('v75-prior-high', day?.previous?.high);
+    set('v75-prior-low', day?.previous?.low);
+    set('v75-vwap', day?.current?.vwap);
+    set('v75-poc', profile?.poc);
+    set('v75-opening-range', day?.opening_range ? `${day.opening_range.low} → ${day.opening_range.high}` : null);
+    set('v75-opening-copy', `${first(state?.opening_range_relation, 'UNAVAILABLE')} · first ${day?.opening_range?.bars ?? 0} five-minute bars.`);
+    set('v75-liquidity', `${below?.label ?? 'NONE'} ↔ ${above?.label ?? 'NONE'}`);
+    set('v75-liquidity-copy', `Below ${below?.price ?? 'n/a'} · above ${above?.price ?? 'n/a'} · mapped levels, not targets.`);
+    set('v75-profile', profile?.poc == null ? null : `VAL ${profile.val} · POC ${profile.poc} · VAH ${profile.vah}`);
+  } else {
+    for (const id of ['v75-day-state','v75-range','v75-breakout-quality','v75-prior-high','v75-prior-low','v75-vwap','v75-poc','v75-opening-range','v75-liquidity','v75-profile']) set(id, null);
+  }
 }
 
 async function loadVisualLab() {
