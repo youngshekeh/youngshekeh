@@ -40,6 +40,16 @@ async function marketQuote(asset){
       source:'Yahoo Finance chart endpoint'};
   }catch{return {id:asset.id,name:asset.name,symbol:asset.symbol,ok:false,freshness:'UNAVAILABLE'}}
 }
+async function worldBankLatest(country,indicator,label){
+  const url=`https://api.worldbank.org/v2/country/${encodeURIComponent(country)}/indicator/${encodeURIComponent(indicator)}?format=json&mrnev=1&per_page=1`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/90.0'},cache:'no-store',signal:AbortSignal.timeout(8000)});
+    const j=await r.json().catch(()=>null); const meta=Array.isArray(j)?j?.[0]:null; const row=Array.isArray(j?.[1])?j[1][0]:null;
+    if(!r.ok||!row)return {ok:false,label,country,indicator,state:'UNAVAILABLE',source:'World Bank API'};
+    return {ok:true,label,country:row?.country?.value??country,indicator,period:String(row?.date??''),value:num(row?.value),
+      source:'World Bank API',source_last_updated:meta?.lastupdated??null,frequency:'ANNUAL_STRUCTURAL'};
+  }catch{return {ok:false,label,country,indicator,state:'UNAVAILABLE',source:'World Bank API'}}
+}
 function marketBreadth(rows){
   const live=rows.filter(x=>x.ok&&['FRESH','DELAYED'].includes(x.freshness));
   const by=id=>live.find(x=>x.id===id);
@@ -79,7 +89,7 @@ function label(state){
 }
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [auto,qa,day,confluence,breakout,tournament,quality,quota,marketAssets]=await Promise.all([
+  const [auto,qa,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/autonomous-qa-matrix',12000),
     read('/api/gold-day-state'),
@@ -88,7 +98,15 @@ export default async function handler(req,res){
     read('/api/research-model-tournament'),
     read('/api/data-quality-sentinel'),
     read('/api/quota-probe'),
-    Promise.all(MARKET_ASSETS.map(marketQuote))
+    Promise.all(MARKET_ASSETS.map(marketQuote)),
+    Promise.all([
+      worldBankLatest('WLD','NY.GDP.MKTP.KD.ZG','World GDP growth'),
+      worldBankLatest('WLD','FP.CPI.TOTL.ZG','World inflation'),
+      worldBankLatest('NG','NY.GDP.MKTP.KD.ZG','Nigeria GDP growth'),
+      worldBankLatest('NG','FP.CPI.TOTL.ZG','Nigeria inflation'),
+      worldBankLatest('SSF','NY.GDP.MKTP.KD.ZG','Sub-Saharan Africa GDP growth'),
+      marketQuote({id:'usdngn',name:'USD/NGN',symbol:'NGN=X',kind:'fx',precision:2})
+    ])
   ]);
   const phase=safe(confluence.body?.intraday?.phase,day.body?.day_state?.day_state);
   const price=confluence.body?.price??day.body?.current?.price??null;
@@ -103,6 +121,19 @@ export default async function handler(req,res){
   const below=confluence.body?.confluence?.nearest_below_cluster??null;
   const above=confluence.body?.confluence?.nearest_above_cluster??null;
   const marketBreadthState=marketBreadth(marketAssets);
+  const [worldGdp,worldInflation,nigeriaGdp,nigeriaInflation,ssaGdp,usdNgn]=macroEvidence;
+  const pp=(a,b)=>a?.ok&&b?.ok&&a?.value!==null&&b?.value!==null?Number((a.value-b.value).toFixed(2)):null;
+  const macroPulse={
+    structural:[worldGdp,worldInflation,nigeriaGdp,nigeriaInflation,ssaGdp],
+    market_proxy:usdNgn,
+    comparisons:{
+      nigeria_growth_vs_world_pp:pp(nigeriaGdp,worldGdp),
+      nigeria_inflation_vs_world_pp:pp(nigeriaInflation,worldInflation),
+      ssa_growth_vs_world_pp:pp(ssaGdp,worldGdp)
+    },
+    truth_label:'OFFICIAL_STRUCTURAL_DATA_PLUS_SEPARATE_MARKET_PROXY',
+    note:'World Bank values are annual structural observations, not current-month estimates.'
+  };
 
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
@@ -143,7 +174,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v88-unified-intelligence-experience-v1',
+    version:'v90-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -172,6 +203,7 @@ export default async function handler(req,res){
       {label:'RUNTIME',value:runtimeRestricted?'SURVIVOR MODE':'CANONICAL'}
     ],
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
+    macro_evidence_pulse:macroPulse,
     six_desks:desks,
     engine_registry:engines,
     calibration:{

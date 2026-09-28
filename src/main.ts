@@ -142,6 +142,7 @@ window.setInterval(() => void loadAutonomousState(), 300_000);
 type MissionDesk = { name?: string; state?: string; detail?: string; href?: string };
 type MissionEngine = { name?: string; state?: string; detail?: string };
 type MarketAsset = { id?: string; name?: string; symbol?: string; ok?: boolean; price?: number | null; change_pct?: number | null; direction?: string; freshness?: string; age_minutes?: number | null; observed_at?: string | null };
+type MacroMetric = { ok?: boolean; label?: string; country?: string; period?: string; value?: number | null; source?: string; source_last_updated?: string | null; frequency?: string };
 
 function missionText(id: string, value: unknown) {
   const node = document.querySelector<HTMLElement>(`#${id}`);
@@ -198,6 +199,45 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
   missionText('marketUsdState', `USD ${breadth?.usd_state ?? 'MIXED'}`);
   missionText('marketRiskState', `RISK ${breadth?.risk_state ?? 'MIXED'}`);
   missionText('marketUsable', `${breadth?.usable_assets ?? 0}/7`);
+}
+
+
+function renderMacroPulse(pulse: { structural?: MacroMetric[]; market_proxy?: MarketAsset; comparisons?: any } | undefined) {
+  const grid = document.querySelector<HTMLElement>('#macroCardGrid');
+  const structural = Array.isArray(pulse?.structural) ? pulse?.structural ?? [] : [];
+  const proxy = pulse?.market_proxy;
+  if (grid) {
+    grid.replaceChildren();
+    for (const metric of structural) {
+      const card = document.createElement('article');
+      card.className = 'macro-card';
+      const label = document.createElement('span');
+      label.textContent = metric.label || 'MACRO SERIES';
+      const value = document.createElement('strong');
+      value.textContent = metric.ok && typeof metric.value === 'number' ? `${metric.value.toFixed(2)}%` : 'WITHHELD';
+      const meta = document.createElement('small');
+      meta.textContent = metric.ok ? `${metric.period || 'period n/a'} · World Bank · updated ${metric.source_last_updated || 'n/a'}` : 'Official series unavailable';
+      card.append(label, value, meta);
+      grid.appendChild(card);
+    }
+    if (proxy) {
+      const card = document.createElement('article');
+      card.className = 'macro-card proxy';
+      const label = document.createElement('span');
+      label.textContent = proxy.name || 'USD/NGN';
+      const value = document.createElement('strong');
+      value.textContent = typeof proxy.price === 'number' ? proxy.price.toLocaleString(undefined,{maximumFractionDigits:2}) : 'WITHHELD';
+      const meta = document.createElement('small');
+      meta.textContent = `${String(proxy.freshness || 'UNAVAILABLE').replaceAll('_',' ')} · verified ${proxy.age_minutes ?? 'n/a'}m ago`;
+      card.append(label, value, meta);
+      grid.appendChild(card);
+    }
+  }
+  const c = pulse?.comparisons ?? {};
+  const gap = (v: unknown) => typeof v === 'number' ? `${v >= 0 ? '+' : ''}${v.toFixed(2)} pp` : 'WITHHELD';
+  missionText('ngGrowthGap', gap(c?.nigeria_growth_vs_world_pp));
+  missionText('ngInflationGap', gap(c?.nigeria_inflation_vs_world_pp));
+  missionText('ssaGrowthGap', gap(c?.ssa_growth_vs_world_pp));
 }
 
 function renderDesks(desks: MissionDesk[]) {
@@ -260,6 +300,7 @@ async function loadMissionBrief() {
 
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
+    renderMacroPulse(brief?.macro_evidence_pulse);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
