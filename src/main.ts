@@ -102,6 +102,15 @@ async function loadAutonomousState() {
     setAutonomyText('autonomyUpdated', generated && !Number.isNaN(generated.getTime()) ? `Governed state · ${generated.toLocaleString()}` : 'Governed state unavailable');
     renderTags('autonomyBlockers', state?.blockers ?? []);
     renderTags('autonomyActions', state?.autonomous_actions ?? []);
+    const test = state?.survivor_test;
+    const shadow = state?.shadow_market?.signal;
+    if (test) {
+      setAutonomyText('autonomyTest', `${test.passed ? 'PASS' : 'HOLD'} · ${test.test_id ?? 'V70'}`);
+      setAutonomyText('autonomyTestDetail', `${test.route_health ?? 'routes n/a'} · ${test.market_feeds ?? 'feeds n/a'} · core fresh ${test.core_fresh_feeds ?? 'n/a'} · age ${test.core_quote_age_minutes ?? 'n/a'}m · shadow ${shadow?.state ?? 'WITHHELD'}`);
+    } else {
+      setAutonomyText('autonomyTest', 'CANONICAL MODE');
+      setAutonomyText('autonomyTestDetail', 'The canonical database state channel is available.');
+    }
     if (state?.mode) modeNode.dataset.state = String(state.mode);
   } catch {
     setAutonomyText('autonomyMode', 'DATABASE STATE UNAVAILABLE');
