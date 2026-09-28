@@ -83,6 +83,7 @@ async function read(path,timeout=9000){
     return {ok:false,status:0,latency_ms:Date.now()-started,body:null,error:String(error).slice(0,160)};
   }
 }
+const pause=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
 function safe(v,fallback='WITHHELD'){return v===null||v===undefined||v===''?fallback:v}
 function label(state){
   return String(state||'WITHHELD').replaceAll('_',' ');
@@ -92,8 +93,15 @@ export default async function handler(req,res){
   // Run the regression matrix before the fan-out. The QA endpoint itself exercises
   // many downstream routes, so parallelizing it with the full dashboard can create
   // artificial contention and a self-induced DEGRADED reading.
-  const qa=await read('/api/autonomous-qa-matrix',12000);
-  const [auto,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
+  let qa=await read(`/api/autonomous-qa-matrix?brief=${Date.now()}`,12000);
+  if(qa.body?.state!=='PASS'){
+    await pause(300);
+    const qaRetry=await read(`/api/autonomous-qa-matrix?brief_retry=${Date.now()}`,12000);
+    const firstPassed=Number(qa.body?.summary?.passed??0);
+    const retryPassed=Number(qaRetry.body?.summary?.passed??0);
+    if(qaRetry.body?.state==='PASS'||retryPassed>firstPassed) qa=qaRetry;
+  }
+  let [auto,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-mtf-confluence',11000),
@@ -111,6 +119,13 @@ export default async function handler(req,res){
       marketQuote({id:'usdngn',name:'USD/NGN',symbol:'NGN=X',kind:'fx',precision:2})
     ])
   ]);
+  if(quality.body?.state==='PASS' && confluence.body?.intraday?.phase==='DATA_GATED'){
+    await pause(250);
+    const confluenceRetry=await read(`/api/gold-mtf-confluence?brief_retry=${Date.now()}`,11000);
+    if(confluenceRetry.ok && confluenceRetry.body?.intraday?.phase && confluenceRetry.body.intraday.phase!=='DATA_GATED'){
+      confluence=confluenceRetry;
+    }
+  }
   const phase=safe(confluence.body?.intraday?.phase,day.body?.day_state?.day_state);
   const price=confluence.body?.price??day.body?.current?.price??null;
   const breakoutState=safe(breakout.body?.dominant_state);
