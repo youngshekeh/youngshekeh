@@ -353,6 +353,46 @@ function renderTrendsPulse(pulse: { structural?: MacroMetric[]; research?: Resea
   missionText('trendCryptoState', String(crypto?.state ?? 'WITHHELD').replaceAll('_',' '));
 }
 
+
+function renderPositioningEvidence(evidence: { gold_cot?: any } | undefined) {
+  const cot = evidence?.gold_cot ?? {};
+  const grid = document.querySelector<HTMLElement>('#cotGroupGrid');
+  if (grid) {
+    grid.replaceChildren();
+    const groups = Array.isArray(cot?.groups) ? cot.groups : [];
+    if (!groups.length) {
+      const card = document.createElement('article');
+      card.className = 'positioning-card';
+      card.textContent = 'CFTC positioning unavailable';
+      grid.appendChild(card);
+    } else {
+      for (const g of groups) {
+        const card = document.createElement('article');
+        card.className = 'positioning-card';
+        const label = document.createElement('span');
+        label.textContent = g?.name || 'POSITIONING';
+        const net = document.createElement('strong');
+        const netValue = typeof g?.net === 'number' ? g.net : null;
+        net.textContent = netValue === null ? 'WITHHELD' : `${netValue >= 0 ? '+' : ''}${Math.round(netValue).toLocaleString()} NET`;
+        net.dataset.direction = netValue === null ? '' : netValue >= 0 ? 'UP' : 'DOWN';
+        const detail = document.createElement('em');
+        detail.textContent = `Long ${typeof g?.long === 'number' ? Math.round(g.long).toLocaleString() : 'n/a'} · Short ${typeof g?.short === 'number' ? Math.round(g.short).toLocaleString() : 'n/a'}`;
+        const weekly = document.createElement('small');
+        const chg = typeof g?.weekly_net_change === 'number' ? g.weekly_net_change : null;
+        const pct = typeof g?.net_pct_open_interest === 'number' ? g.net_pct_open_interest : null;
+        weekly.textContent = `Weekly net Δ ${chg === null ? 'n/a' : `${chg >= 0 ? '+' : ''}${Math.round(chg).toLocaleString()}`} · Net/OI ${pct === null ? 'n/a' : pct.toFixed(2)+'%'}`;
+        card.append(label,net,detail,weekly);
+        grid.appendChild(card);
+      }
+    }
+  }
+  missionText('cotReportDate', cot?.report_date ? String(cot.report_date).slice(0,10) : 'WITHHELD');
+  missionText('cotFreshness', cot?.freshness ? `${String(cot.freshness).replaceAll('_',' ')} · age ${cot.age_days ?? 'n/a'}d` : 'Weekly evidence unavailable');
+  missionText('cotOpenInterest', typeof cot?.open_interest === 'number' ? Math.round(cot.open_interest).toLocaleString() : 'WITHHELD');
+  missionText('cotOiChange', typeof cot?.open_interest_change === 'number' ? `${cot.open_interest_change >= 0 ? '+' : ''}${Math.round(cot.open_interest_change).toLocaleString()}` : 'WITHHELD');
+  missionText('cotManaged3', typeof cot?.managed_money_3_report_net_change === 'number' ? `${cot.managed_money_3_report_net_change >= 0 ? '+' : ''}${Math.round(cot.managed_money_3_report_net_change).toLocaleString()}` : 'WITHHELD');
+}
+
 function renderDesks(desks: MissionDesk[]) {
   const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
   if (!grid || !Array.isArray(desks)) return;
@@ -448,6 +488,7 @@ async function loadMissionBrief() {
     renderGlobalMarkets(brief?.global_market_dashboard);
     renderMacroPulse(brief?.macro_evidence_pulse);
     renderTrendsPulse(brief?.global_trends_evidence_pulse);
+    renderPositioningEvidence(brief?.flows_positioning_evidence);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 

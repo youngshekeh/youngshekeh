@@ -83,6 +83,57 @@ async function cryptoGlobal(){
       source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
   }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
+async function cftcGoldPositioning(){
+  const select=[
+    'report_date_as_yyyy_mm_dd','market_and_exchange_names','open_interest_all','change_in_open_interest_all',
+    'prod_merc_positions_long','prod_merc_positions_short','change_in_prod_merc_long','change_in_prod_merc_short',
+    'swap_positions_long_all','swap__positions_short_all','change_in_swap_long_all','change_in_swap_short_all',
+    'm_money_positions_long_all','m_money_positions_short_all','change_in_m_money_long_all','change_in_m_money_short_all',
+    'other_rept_positions_long','other_rept_positions_short','change_in_other_rept_long','change_in_other_rept_short'
+  ].join(',');
+  const url='https://publicreporting.cftc.gov/resource/72hh-3qpy.json?$select='+encodeURIComponent(select)
+    +'&$where='+encodeURIComponent("cftc_contract_market_code='088691'")
+    +'&$order='+encodeURIComponent('report_date_as_yyyy_mm_dd DESC')
+    +'&$limit=3';
+  const n=v=>{const x=Number(v);return Number.isFinite(x)?x:null};
+  const group=(name,row,longKey,shortKey,chgLongKey,chgShortKey,oi)=>{
+    const long=n(row?.[longKey]),short=n(row?.[shortKey]),chgLong=n(row?.[chgLongKey]),chgShort=n(row?.[chgShortKey]);
+    const net=long!==null&&short!==null?long-short:null;
+    const weeklyNetChange=chgLong!==null&&chgShort!==null?chgLong-chgShort:null;
+    return {name,long,short,net,weekly_net_change:weeklyNetChange,net_pct_open_interest:net!==null&&oi?Number((net/oi*100).toFixed(2)):null};
+  };
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/92.0'},cache:'no-store',signal:AbortSignal.timeout(9000)});
+    const rows=await r.json().catch(()=>null);
+    if(!r.ok||!Array.isArray(rows)||!rows.length)return {ok:false,state:'UNAVAILABLE',source:'CFTC Disaggregated Futures Only'};
+    const latest=rows[0],previous=rows[1]??null,third=rows[2]??null;
+    const oi=n(latest.open_interest_all);
+    const reportDate=latest.report_date_as_yyyy_mm_dd??null;
+    const ageDays=reportDate?Number(((Date.now()-new Date(reportDate).getTime())/86400000).toFixed(1)):null;
+    const freshness=ageDays===null?'UNAVAILABLE':ageDays<=10?'CURRENT_WEEKLY':ageDays<=17?'LATE_WEEKLY':'STALE_WEEKLY';
+    const managed=group('Managed Money',latest,'m_money_positions_long_all','m_money_positions_short_all','change_in_m_money_long_all','change_in_m_money_short_all',oi);
+    const swap=group('Swap Dealers',latest,'swap_positions_long_all','swap__positions_short_all','change_in_swap_long_all','change_in_swap_short_all',oi);
+    const producer=group('Producer / Merchant',latest,'prod_merc_positions_long','prod_merc_positions_short','change_in_prod_merc_long','change_in_prod_merc_short',oi);
+    const other=group('Other Reportables',latest,'other_rept_positions_long','other_rept_positions_short','change_in_other_rept_long','change_in_other_rept_short',oi);
+    const managedNet=row=>{
+      const a=n(row?.m_money_positions_long_all),b=n(row?.m_money_positions_short_all);
+      return a!==null&&b!==null?a-b:null;
+    };
+    const latestManaged=managedNet(latest),thirdManaged=managedNet(third);
+    return {
+      ok:true,report_date:reportDate,age_days:ageDays,freshness,
+      market:latest.market_and_exchange_names??'GOLD - COMMODITY EXCHANGE INC.',
+      contract_code:'088691',dataset_id:'72hh-3qpy',
+      open_interest:oi,open_interest_change:n(latest.change_in_open_interest_all),
+      groups:[managed,swap,producer,other],
+      managed_money_3_report_net_change:latestManaged!==null&&thirdManaged!==null?latestManaged-thirdManaged:null,
+      prior_report_date:previous?.report_date_as_yyyy_mm_dd??null,
+      source:'CFTC Disaggregated Futures Only',
+      truth_label:'OFFICIAL_WEEKLY_COT_NOT_INTRADAY_FLOW',
+      note:'COT positions are weekly Tuesday snapshots published by CFTC. They are not live dealer, CTA or intraday flow.'
+    };
+  }catch{return {ok:false,state:'UNAVAILABLE',source:'CFTC Disaggregated Futures Only'}}
+}
 function marketBreadth(rows){
   const live=rows.filter(x=>x.ok&&['FRESH','DELAYED'].includes(x.freshness));
   const by=id=>live.find(x=>x.id===id);
@@ -126,7 +177,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -157,7 +208,8 @@ export default async function handler(req,res){
       arxivActivity('cs.AI','AI research activity',7),
       arxivActivity('cs.RO','Robotics research activity',7),
       cryptoGlobal()
-    ])
+    ]),
+    cftcGoldPositioning()
   ]);
 
   const dataQuality=safe(quality.body?.state);
@@ -234,7 +286,7 @@ export default async function handler(req,res){
   const desks=[
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'ACTIVE SURFACE',detail:'World Bank structural evidence · FX proxy · growth · inflation · policy',href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
-    {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
+    {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
@@ -249,7 +301,7 @@ export default async function handler(req,res){
     ['Liquidity Heat Map','ACTIVE',below&&above?`${below.center} ↔ ${above.center}`:'WITHHELD'],
     ['CRT / AMD','FRAMEWORK','Evidence-gated structure engine'],
     ['SMC / FVG / Order Blocks','FRAMEWORK','Proxy layer only where data supports it'],
-    ['COT / Institutional Positioning','EVIDENCE-GATED','No fabricated positioning'],
+    ['COT / Institutional Positioning',cotGold?.ok?'ACTIVE':'EVIDENCE-GATED',cotGold?.ok?`Gold report ${String(cotGold.report_date).slice(0,10)} · official weekly CFTC`:'No fabricated positioning'],
     ['Seasonality & Cycles','EVIDENCE-GATED','Historical context requires verified sample'],
     ['Forecast Ledger','ACTIVE','Immutable outcomes + calibration'],
     ['Signal Reputation','LEARNING','Sample thresholds enforced'],
@@ -265,7 +317,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v91-unified-intelligence-experience-v2',
+    version:'v92-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -296,6 +348,7 @@ export default async function handler(req,res){
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
     macro_evidence_pulse:macroPulse,
     global_trends_evidence_pulse:trendsPulse,
+    flows_positioning_evidence:{gold_cot:cotGold},
     six_desks:desks,
     engine_registry:engines,
     calibration:{
