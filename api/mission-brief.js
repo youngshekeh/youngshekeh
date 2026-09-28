@@ -436,11 +436,36 @@ function settlementSurvivorSnapshot(){
   return {...SETTLEMENT_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:SETTLEMENT_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+SETTLEMENT_SURVIVOR_MAX_AGE_MS).toISOString()};
 }
 
+const BENCHMARK_SURVIVOR_CAPTURED_AT='2026-09-28T07:31:09.169Z';
+const BENCHMARK_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
+const BENCHMARK_SURVIVOR_SNAPSHOT={
+  ok:true,version:'v102-benchmark-reputation-v1',
+  counts:{models:4,edge_unproven:0,sample_too_small:4,human_review_eligible:0,reputation_sample_reached:0},
+  benchmark_policy:{version:'TFA_GOLD_BENCHMARK_V1',baseline_name:'NO_SKILL_50',baseline_probability:0.5,baseline_accuracy_pct:50,min_signal_reputation_n:10,min_calibration_bucket_n:5,min_capital_permission_n:5,adaptive_weighting_enabled:false},
+  promotion_gate:{minimum_60m_scored:30,minimum_120m_scored:20,required_wilson_lower_60m_pct:'>50',required_wilson_lower_120m_pct:'>50',result_if_passed:'ELIGIBLE_FOR_HUMAN_RESEARCH_REVIEW',automatic_promotion:false},
+  models:[
+    {model_name:'breakout_conservative_v1',state:'SAMPLE_TOO_SMALL',sample_60m:1,hits_60m:1,accuracy_60m_pct:100,wilson_lower_60m_pct:20.65,sample_120m:1,hits_120m:1,accuracy_120m_pct:100,wilson_lower_120m_pct:20.65,baseline_accuracy_pct:50,reputation_state:'WITHHELD_SAMPLE_TOO_SMALL',canonical_research_review_eligible:false},
+    {model_name:'regime_baseline_v1',state:'SAMPLE_TOO_SMALL',sample_60m:1,hits_60m:1,accuracy_60m_pct:100,wilson_lower_60m_pct:20.65,sample_120m:1,hits_120m:1,accuracy_120m_pct:100,wilson_lower_120m_pct:20.65,baseline_accuracy_pct:50,reputation_state:'WITHHELD_SAMPLE_TOO_SMALL',canonical_research_review_eligible:false},
+    {model_name:'reversal_specialist_v1',state:'SAMPLE_TOO_SMALL',sample_60m:0,hits_60m:0,accuracy_60m_pct:null,wilson_lower_60m_pct:null,sample_120m:0,hits_120m:0,accuracy_120m_pct:null,wilson_lower_120m_pct:null,baseline_accuracy_pct:50,reputation_state:'WITHHELD_SAMPLE_TOO_SMALL',canonical_research_review_eligible:false},
+    {model_name:'structure_balanced_v1',state:'SAMPLE_TOO_SMALL',sample_60m:1,hits_60m:1,accuracy_60m_pct:100,wilson_lower_60m_pct:20.65,sample_120m:1,hits_120m:1,accuracy_120m_pct:100,wilson_lower_120m_pct:20.65,baseline_accuracy_pct:50,reputation_state:'WITHHELD_SAMPLE_TOO_SMALL',canonical_research_review_eligible:false}
+  ],
+  benchmark_state:'INSUFFICIENT_EVIDENCE',signal_reputation_state:'WITHHELD_SAMPLE_TOO_SMALL',
+  governance:{canonical_performance_promotion:false,adaptive_weighting:false,automatic_execution:false,capital_permission:'0R'},
+  truth_label:'BASELINE_COMPARISON_PLUS_CONFIDENCE_BOUND_AND_SAMPLE_GATES'
+};
+function benchmarkSurvivorSnapshot(){
+  const captured=Date.parse(BENCHMARK_SURVIVOR_CAPTURED_AT);
+  if(!Number.isFinite(captured))return null;
+  const ageMs=Math.max(0,Date.now()-captured);
+  if(ageMs>BENCHMARK_SURVIVOR_MAX_AGE_MS)return null;
+  return {...BENCHMARK_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:BENCHMARK_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+BENCHMARK_SURVIVOR_MAX_AGE_MS).toISOString()};
+}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
       method:'POST',
-      headers:{apikey:PUBLISHABLE_KEY,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/97.0'},
+      headers:{apikey:PUBLISHABLE_KEY,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/102.0'},
       body:'{}',
       cache:'no-store',
       signal:AbortSignal.timeout(timeout)
@@ -496,7 +521,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -543,7 +568,8 @@ export default async function handler(req,res){
     goldSeasonality(),
     supabaseRpc('get_v96_forecast_error_state'),
     supabaseRpc('get_v97_execution_quality_state'),
-    supabaseRpc('get_v101_forecast_settlement_state')
+    supabaseRpc('get_v101_forecast_settlement_state'),
+    supabaseRpc('get_v102_benchmark_reputation_state')
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -583,6 +609,21 @@ export default async function handler(req,res){
       settlementFallbackAgeMinutes=fallback.fallback_age_minutes;
       settlementFallbackExpiresAt=fallback.fallback_expires_at;
     }else settlementSourceMode='EVIDENCE_GATED';
+  }
+
+  let benchmarkSourceMode='POSTGREST_RPC';
+  let benchmarkObservedAt=null;
+  let benchmarkFallbackAgeMinutes=null;
+  let benchmarkFallbackExpiresAt=null;
+  if(!benchmarkReputationState?.ok){
+    const fallback=benchmarkSurvivorSnapshot();
+    if(fallback?.ok){
+      benchmarkReputationState=fallback;
+      benchmarkSourceMode=fallback.source_mode;
+      benchmarkObservedAt=fallback.observed_at;
+      benchmarkFallbackAgeMinutes=fallback.fallback_age_minutes;
+      benchmarkFallbackExpiresAt=fallback.fallback_expires_at;
+    }else benchmarkSourceMode='EVIDENCE_GATED';
   }
 
   const dataQuality=safe(quality.body?.state);
@@ -753,6 +794,11 @@ export default async function handler(req,res){
     settlement_observed_at:settlementObservedAt,
     settlement_fallback_age_minutes:settlementFallbackAgeMinutes,
     settlement_fallback_expires_at:settlementFallbackExpiresAt,
+    benchmark_reputation:benchmarkReputationState,
+    benchmark_source_mode:benchmarkSourceMode,
+    benchmark_observed_at:benchmarkObservedAt,
+    benchmark_fallback_age_minutes:benchmarkFallbackAgeMinutes,
+    benchmark_fallback_expires_at:benchmarkFallbackExpiresAt,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -763,7 +809,8 @@ export default async function handler(req,res){
       brier:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
       capital_permission:'0R',
       learning_state:learningState,
-      brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES'
+      brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
+      signal_reputation:benchmarkReputationState?.signal_reputation_state??'WITHHELD'
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -779,7 +826,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 ${String(forecastSettlementState?.settlement_state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:`Execution latency ${executionQualityState?.ok?'observed':'gated'} · realized costs excluded · capital permission 0R`,href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -796,7 +843,8 @@ export default async function handler(req,res){
     ['COT / Institutional Positioning',cotGold?.ok?'ACTIVE':'EVIDENCE-GATED',cotGold?.ok?`Gold report ${String(cotGold.report_date).slice(0,10)} · official weekly CFTC`:'No fabricated positioning'],
     ['Seasonality & Cycles',seasonality?.ok?'ACTIVE':'EVIDENCE-GATED',seasonality?.ok?`${seasonality.month.label} ${seasonality.month.state.replaceAll('_',' ')} · ${seasonality.quarter.label} ${seasonality.quarter.state.replaceAll('_',' ')}`:'Historical context unavailable'],
     ['Forecast Ledger','ACTIVE',forecastErrorState?.ok?`V96 error reviews live · max non-flat n ${maxForecastSample}/${forecastThreshold}`:'Learning review unavailable'],
-    ['Signal Reputation','LEARNING',forecastErrorState?.ok?'Error categories + timing recovery · publication threshold enforced':'Evidence gated'],
+    ['Signal Reputation',benchmarkReputationState?.signal_reputation_state==='WITHHELD_SAMPLE_TOO_SMALL'?'LEARNING':'ACTIVE',benchmarkReputationState?.ok?`${String(benchmarkReputationState.signal_reputation_state??'WITHHELD').replaceAll('_',' ')} · ${benchmarkReputationState.counts?.reputation_sample_reached??0}/${benchmarkReputationState.counts?.models??0} models at reputation sample`:'Evidence gated'],
+    ['Benchmark / Baseline Comparison',benchmarkReputationState?.ok?'ACTIVE':'EVIDENCE-GATED',benchmarkReputationState?.ok?`${benchmarkReputationState.benchmark_policy?.baseline_name??'NO_SKILL_50'} ${benchmarkReputationState.benchmark_policy?.baseline_accuracy_pct??50}% · ${benchmarkReputationState.counts?.human_review_eligible??0} human-review eligible · ${String(benchmarkReputationState.benchmark_state??'WITHHELD').replaceAll('_',' ')}`:'Benchmark evidence unavailable'],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -816,7 +864,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v101-unified-intelligence-experience-v1',
+    version:'v102-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
