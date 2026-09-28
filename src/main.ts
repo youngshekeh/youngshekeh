@@ -76,6 +76,53 @@ function renderTags(id: string, values: unknown[]) {
   }
 }
 
+
+function renderClosedLoopLearning(stack: any) {
+  if (!stack?.ok) {
+    const state = String(stack?.state ?? 'DB_GATED_SURVIVOR_MODE').replaceAll('_',' ');
+    missionText('learningLoopStatus', state);
+    missionText('learningV96State', 'DB-GATED');
+    missionText('learningV97State', 'DB-GATED');
+    missionText('learningV98State', 'WITHHELD');
+    missionText('learningV99State', '0R · DB-GATED');
+    missionText('learningV86State', 'BLOCKED · 0R');
+    missionText('learningV96Detail', 'Internal attribution continues database-side; public bridge is restricted.');
+    missionText('learningV97Detail', 'Internal latency-cost calibration continues database-side; broker costs remain unavailable.');
+    missionText('learningV98Detail', 'Scenario EV proxy remains unpublished while evidence is not publicly verifiable.');
+    missionText('learningV99Detail', 'Risk readiness remains fail-closed while the governed database bridge is restricted.');
+    missionText('learningV86Detail', 'Capital permission remains 0R. Public runtime restrictions cannot be bypassed.');
+    return;
+  }
+
+  const v96 = stack?.forecast_error_attribution ?? {};
+  const v97 = stack?.execution_quality ?? {};
+  const v98 = stack?.scenario_ev_proxy ?? {};
+  const v99 = stack?.portfolio_risk_readiness ?? {};
+  const v86 = stack?.capital_firewall ?? {};
+  const h60 = Array.isArray(v96?.horizons) ? v96.horizons.find((x: any) => Number(x?.horizon_minutes) === 60) : null;
+  const h120 = Array.isArray(v96?.horizons) ? v96.horizons.find((x: any) => Number(x?.horizon_minutes) === 120) : null;
+  const d5 = Array.isArray(v97?.delays) ? v97.delays.find((x: any) => Number(x?.delay_minutes) === 5) : null;
+  const ev60 = Array.isArray(v98?.horizons) ? v98.horizons.find((x: any) => Number(x?.horizon_minutes) === 60) : null;
+
+  missionText('learningLoopStatus', 'LIVE GOVERNED LOOP');
+  missionText('learningV96State', h60 ? `${h60.calibration_state?.replaceAll?.('_',' ') ?? 'EARLY SAMPLE'}` : 'WITHHELD');
+  missionText('learningV96Detail', h60
+    ? `60m n=${h60.nonflat_sample ?? 0}/20 · timing recovered ${h60.timing_recovered ?? 0} · directional failures ${h60.directional_failures ?? 0} · 120m n=${h120?.nonflat_sample ?? 0}/20`
+    : 'Forecast attribution unavailable.');
+  missionText('learningV97State', d5 ? String(d5.calibration_state ?? 'EARLY SAMPLE').replaceAll('_',' ') : 'WITHHELD');
+  missionText('learningV97Detail', d5
+    ? `5m latency n=${d5.sample_size ?? 0}/30 · avg shortfall ${d5.avg_signed_shortfall_bps ?? 'n/a'} bp · P75 adverse ${d5.p75_adverse_cost_bps ?? 'n/a'} bp`
+    : 'Execution latency calibration unavailable.');
+  missionText('learningV98State', ev60 ? String(ev60.publication_state ?? 'WITHHELD').replaceAll('_',' ') : 'WITHHELD');
+  missionText('learningV98Detail', ev60
+    ? `60m forecast n=${ev60.nonflat_sample ?? 0}/20 · execution n=${ev60.execution_sample ?? 0}/30 · research edge proxy remains non-PnL`
+    : 'Scenario EV proxy unavailable.');
+  missionText('learningV99State', String(v99?.state ?? '0R').replaceAll('_',' '));
+  missionText('learningV99Detail', `Single-asset human review eligible: ${v99?.single_asset_human_review_eligible ? 'YES' : 'NO'} · multi-asset portfolio ready: ${v99?.multi_asset_portfolio_ready ? 'YES' : 'NO'}`);
+  missionText('learningV86State', `${String(v86?.state ?? 'BLOCKED').replaceAll('_',' ')} · ${v86?.capital_permission ?? '0R'}`);
+  missionText('learningV86Detail', `Human approval required: ${v86?.human_approval_required === false ? 'NO' : 'YES'} · automatic risk increase: ${v86?.automatic_risk_increase ? 'ON' : 'OFF'}`);
+}
+
 async function loadAutonomousState() {
   const modeNode = document.querySelector<HTMLElement>('#autonomyMode');
   if (!modeNode) return;
@@ -92,6 +139,7 @@ async function loadAutonomousState() {
     const connectors = health?.connectors ?? {};
     const generated = state?.generated_at ? new Date(state.generated_at) : null;
     const regimeMemory = state?.cross_asset_regime_memory ?? null;
+    const learningStack = state?.closed_loop_learning ?? null;
 
     setAutonomyText('autonomyMode', state?.mode ?? 'UNAVAILABLE');
     setAutonomyText('autonomyScore', Number.isFinite(Number(state?.system_score)) ? `${state.system_score}/100` : '--');
@@ -107,6 +155,7 @@ async function loadAutonomousState() {
         ? `CANDIDATE ${String(regimeMemory.candidate_pattern).replaceAll('_', ' ')} ×${regimeMemory.candidate_count ?? 1}`
         : String(regimeMemory?.state ?? 'DB-GATED').replaceAll('_', ' ');
     setAutonomyText('marketMemoryState', memoryLabel);
+    renderClosedLoopLearning(learningStack);
     setAutonomyText('autonomyUpdated', generated && !Number.isNaN(generated.getTime()) ? `Governed state · ${generated.toLocaleString()}` : 'Governed state unavailable');
     renderTags('autonomyBlockers', state?.blockers ?? []);
     renderTags('autonomyActions', state?.autonomous_actions ?? []);
@@ -132,6 +181,7 @@ async function loadAutonomousState() {
     renderTags('autonomyBlockers', ['PUBLIC_STATE_CHANNEL_UNAVAILABLE']);
     renderTags('autonomyActions', ['FAIL_CLOSED']);
     setAutonomyText('autonomyPermission', 'WAIT · 0R');
+    renderClosedLoopLearning({ ok:false, state:'PUBLIC_STATE_CHANNEL_UNAVAILABLE' });
   }
 }
 
