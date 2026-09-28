@@ -1,6 +1,7 @@
 const BASE='https://thefatheranalytics.com';
 const SUPABASE_URL='https://mpcelmjiycjpdyyflisn.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+const LEGACY_ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wY2VsbWppeWNqcGR5eWZsaXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MjIzNDUsImV4cCI6MjEwNDI5ODM0NX0.6uYPhuQRuG7MKqbUe-Ndq5e6scRFDW9qCfzAF4wLAMk';
 const MARKET_ASSETS=[
   {id:'gold',name:'Gold',symbol:'GC=F',kind:'futures',precision:1},
   {id:'dxy',name:'U.S. Dollar Index',symbol:'DX-Y.NYB',kind:'index',precision:3},
@@ -379,6 +380,27 @@ async function supabaseRpc(name,timeout=5000){
   }catch(error){return {ok:false,state:'UNAVAILABLE',source:`Supabase RPC ${name}`,error:String(error).slice(0,120)}}
 }
 
+async function quantAccountabilityEdge(timeout=7000){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/quant-accountability-state`,{
+      method:'POST',
+      headers:{
+        Authorization:`Bearer ${LEGACY_ANON_JWT}`,
+        apikey:PUBLISHABLE_KEY,
+        'Content-Type':'application/json',
+        Accept:'application/json',
+        'User-Agent':'THE-FATHER-ANALYTICS/97.1'
+      },
+      body:'{}',
+      cache:'no-store',
+      signal:AbortSignal.timeout(timeout)
+    });
+    const body=await r.json().catch(()=>null);
+    if(!r.ok||!body?.ok)return {ok:false,state:'UNAVAILABLE',source:'Supabase Edge direct-Postgres accountability lane',http_status:r.status};
+    return body;
+  }catch(error){return {ok:false,state:'UNAVAILABLE',source:'Supabase Edge direct-Postgres accountability lane',error:String(error).slice(0,120)}}
+}
+
 async function read(path,timeout=9000){
   const started=Date.now();
   try{
@@ -451,6 +473,20 @@ export default async function handler(req,res){
     supabaseRpc('get_v96_forecast_error_state'),
     supabaseRpc('get_v97_execution_quality_state')
   ]);
+
+  let accountabilitySourceMode='POSTGREST_RPC';
+  let accountabilityObservedAt=null;
+  if(!forecastErrorState?.ok || !executionQualityState?.ok){
+    const edgeAccountability=await quantAccountabilityEdge();
+    if(edgeAccountability?.ok){
+      forecastErrorState=edgeAccountability.forecast_error;
+      executionQualityState=edgeAccountability.execution_latency;
+      accountabilitySourceMode=edgeAccountability.source_mode??'DIRECT_POSTGRES_EDGE_FUNCTION';
+      accountabilityObservedAt=edgeAccountability.observed_at??null;
+    }else{
+      accountabilitySourceMode='EVIDENCE_GATED';
+    }
+  }
 
   const dataQuality=safe(quality.body?.state);
   if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
@@ -609,6 +645,8 @@ export default async function handler(req,res){
     : 'LEARNING_EVIDENCE_GATED';
   const quantAccountability={
     state:learningState,
+    source_mode:accountabilitySourceMode,
+    observed_at:accountabilityObservedAt,
     forecast_error:forecastErrorState,
     execution_latency:executionQualityState,
     publication_gates:{
