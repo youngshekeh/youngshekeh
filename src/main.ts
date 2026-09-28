@@ -139,9 +139,10 @@ void loadAutonomousState();
 window.setInterval(() => void loadAutonomousState(), 300_000);
 
 
-type MissionDesk = { name?: string; state?: string; detail?: string; href?: string };
+type MissionDesk = { id?: string; name?: string; state?: string; detail?: string; href?: string };
 type MissionEngine = { name?: string; state?: string; detail?: string };
 type MarketAsset = { id?: string; name?: string; symbol?: string; ok?: boolean; price?: number | null; change_pct?: number | null; direction?: string; freshness?: string; age_minutes?: number | null; observed_at?: string | null };
+type MacroMetric = { ok?: boolean; label?: string; country?: string; period?: string; value?: number | null; source?: string; source_last_updated?: string | null; frequency?: string };
 
 function missionText(id: string, value: unknown) {
   const node = document.querySelector<HTMLElement>(`#${id}`);
@@ -162,6 +163,20 @@ function renderMissionTape(items: Array<{label?: string; value?: string}>) {
   }
 }
 
+
+function updateMissionTapeItem(label: string, value: string) {
+  const tape = document.querySelector<HTMLElement>('#missionTape');
+  if (!tape) return;
+  for (const span of Array.from(tape.querySelectorAll<HTMLElement>('span'))) {
+    const bold = span.querySelector<HTMLElement>('b');
+    if (bold?.textContent === label) {
+      span.replaceChildren();
+      const nextBold = document.createElement('b');
+      nextBold.textContent = label;
+      span.append(nextBold, document.createTextNode(` ${value}`));
+    }
+  }
+}
 
 function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any } | undefined) {
   const grid = document.querySelector<HTMLElement>('#marketTileGrid');
@@ -200,6 +215,45 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
   missionText('marketUsable', `${breadth?.usable_assets ?? 0}/7`);
 }
 
+
+function renderMacroPulse(pulse: { structural?: MacroMetric[]; market_proxy?: MarketAsset; comparisons?: any } | undefined) {
+  const grid = document.querySelector<HTMLElement>('#macroCardGrid');
+  const structural = Array.isArray(pulse?.structural) ? pulse?.structural ?? [] : [];
+  const proxy = pulse?.market_proxy;
+  if (grid) {
+    grid.replaceChildren();
+    for (const metric of structural) {
+      const card = document.createElement('article');
+      card.className = 'macro-card';
+      const label = document.createElement('span');
+      label.textContent = metric.label || 'MACRO SERIES';
+      const value = document.createElement('strong');
+      value.textContent = metric.ok && typeof metric.value === 'number' ? `${metric.value.toFixed(2)}%` : 'WITHHELD';
+      const meta = document.createElement('small');
+      meta.textContent = metric.ok ? `${metric.period || 'period n/a'} · World Bank · updated ${metric.source_last_updated || 'n/a'}` : 'Official series unavailable';
+      card.append(label, value, meta);
+      grid.appendChild(card);
+    }
+    if (proxy) {
+      const card = document.createElement('article');
+      card.className = 'macro-card proxy';
+      const label = document.createElement('span');
+      label.textContent = proxy.name || 'USD/NGN';
+      const value = document.createElement('strong');
+      value.textContent = typeof proxy.price === 'number' ? proxy.price.toLocaleString(undefined,{maximumFractionDigits:2}) : 'WITHHELD';
+      const meta = document.createElement('small');
+      meta.textContent = `${String(proxy.freshness || 'UNAVAILABLE').replaceAll('_',' ')} · verified ${proxy.age_minutes ?? 'n/a'}m ago`;
+      card.append(label, value, meta);
+      grid.appendChild(card);
+    }
+  }
+  const c = pulse?.comparisons ?? {};
+  const gap = (v: unknown) => typeof v === 'number' ? `${v >= 0 ? '+' : ''}${v.toFixed(2)} pp` : 'WITHHELD';
+  missionText('ngGrowthGap', gap(c?.nigeria_growth_vs_world_pp));
+  missionText('ngInflationGap', gap(c?.nigeria_inflation_vs_world_pp));
+  missionText('ssaGrowthGap', gap(c?.ssa_growth_vs_world_pp));
+}
+
 function renderDesks(desks: MissionDesk[]) {
   const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
   if (!grid || !Array.isArray(desks)) return;
@@ -207,6 +261,7 @@ function renderDesks(desks: MissionDesk[]) {
   desks.forEach((desk, index) => {
     const card = document.createElement('a');
     card.className = 'desk-card';
+    card.dataset.deskId = desk.id || `desk-${index + 1}`;
     card.href = desk.href || '#';
     card.innerHTML = `<span>${String(index + 1).padStart(2, '0')}</span><h3></h3><strong></strong><p></p><i>OPEN DESK ↗</i>`;
     const h = card.querySelector('h3');
@@ -242,6 +297,38 @@ function renderEngines(engines: MissionEngine[]) {
   missionText('engineCount', `${engines.length} ENGINES`);
 }
 
+
+async function loadQaMatrix() {
+  try {
+    let response = await fetch(`/api/autonomous-qa-matrix?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    let qa = response.ok ? await response.json() : null;
+    if (!qa || qa?.state !== 'PASS') {
+      await new Promise((resolve) => window.setTimeout(resolve, 350));
+      response = await fetch(`/api/autonomous-qa-matrix?ui_retry=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      const retry = response.ok ? await response.json() : null;
+      if (retry && (!qa || retry?.state === 'PASS' || Number(retry?.summary?.passed ?? 0) > Number(qa?.summary?.passed ?? 0))) qa = retry;
+    }
+    const passed = Number(qa?.summary?.passed ?? 0);
+    const total = Number(qa?.summary?.total ?? 0);
+    const state = String(qa?.state ?? 'WITHHELD');
+    const value = total > 0 ? `${passed}/${total} ${state.replaceAll('_', ' ')}` : state.replaceAll('_', ' ');
+    missionText('briefQA', value);
+    missionText('calibrationQA', value);
+    updateMissionTapeItem('AUTONOMOUS QA', value);
+    const quantStatus = document.querySelector<HTMLElement>('[data-desk-id="quant"] strong');
+    if (quantStatus) {
+      quantStatus.textContent = state === 'PASS' ? 'QA PASS' : `QA ${state.replaceAll('_', ' ')}`;
+      quantStatus.dataset.state = state === 'PASS' ? 'QA PASS' : state;
+    }
+    const quantDetail = document.querySelector<HTMLElement>('[data-desk-id="quant"] p');
+    if (quantDetail) quantDetail.textContent = `${passed}/${total || '?'} autonomous invariants · forecast ledger · Brier · MFE/MAE`;
+  } catch {
+    missionText('briefQA', 'QA CHANNEL UNAVAILABLE');
+    missionText('calibrationQA', 'UNAVAILABLE');
+    updateMissionTapeItem('AUTONOMOUS QA', 'CHANNEL UNAVAILABLE');
+  }
+}
+
 async function loadMissionBrief() {
   try {
     const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -254,18 +341,19 @@ async function loadMissionBrief() {
     missionText('briefHeadline', changed?.headline ?? 'Governed intelligence brief unavailable.');
     missionText('briefMatter', changed?.confluence_tension ?? 'Evidence remains gated until verified.');
     missionText('briefQuality', changed?.data_quality ?? 'WITHHELD');
-    missionText('briefQA', changed?.qa_score ?? 'WITHHELD');
+    missionText('briefQA', changed?.qa_score ?? 'VERIFYING');
     missionText('briefPhase', changed?.phase ?? 'WITHHELD');
     missionText('briefTimestamp', generated && !Number.isNaN(generated.getTime()) ? generated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'WITHHELD');
 
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
+    renderMacroPulse(brief?.macro_evidence_pulse);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
     missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
-    missionText('calibrationQA', calibration?.qa_score ?? '--');
+    missionText('calibrationQA', calibration?.qa_score ?? 'VERIFYING');
   } catch {
     missionText('briefHeadline', 'Mission brief unavailable. The UI is failing closed.');
     missionText('briefMatter', 'No live intelligence is promoted while the mission brief cannot be verified.');
@@ -275,5 +363,9 @@ async function loadMissionBrief() {
   }
 }
 
-void loadMissionBrief();
-window.setInterval(() => void loadMissionBrief(), 60_000);
+async function refreshMissionExperience() {
+  await loadMissionBrief();
+  await loadQaMatrix();
+}
+void refreshMissionExperience();
+window.setInterval(() => void refreshMissionExperience(), 60_000);
