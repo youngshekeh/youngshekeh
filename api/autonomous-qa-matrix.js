@@ -1,10 +1,10 @@
-const VERSION='v112.1-autonomous-regression-matrix-v4';
+const VERSION='v113.0-autonomous-regression-matrix-v5';
 const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
   const started=Date.now();
   try{
-    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/112.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
+    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/113.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
     const ct=r.headers.get('content-type')||'';
     const body=ct.includes('application/json')?await r.json().catch(()=>null):await r.text().catch(()=>null);
     return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body};
@@ -14,7 +14,7 @@ function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,lat
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission]=await Promise.all([
+  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission,health]=await Promise.all([
     fetchAny('/'),
     fetchAny('/gold-live/'),
     fetchAny('/api/autonomous-state'),
@@ -29,7 +29,8 @@ export default async function handler(req,res){
     fetchAny('/api/gold-mtf-confluence'),
     fetchAny('/api/gold-breakout-acceptance'),
     fetchAny('/api/gold-breakout-acceptance?selftest=1'),
-    fetchAny('/api/mission-brief',15000)
+    fetchAny('/api/mission-brief',15000),
+    fetchAny('/api/autonomous-health-orchestrator',15000)
   ]);
   const tests=[];
   tests.push(result('homepage_http',home.status===200,`status=${home.status}`,home.latency_ms));
@@ -79,6 +80,8 @@ export default async function handler(req,res){
     `heartbeat=${anchor?.heartbeat_state}, age=${anchor?.age_minutes}m, checks=${anchor?.verification_count ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v112_capital_firewall',q?.publication_gates?.capital_permission==='0R'&&mission.body?.governance?.capital_permission==='0R',
     `quant=${q?.publication_gates?.capital_permission}, mission=${mission.body?.governance?.capital_permission}`,mission.latency_ms));
+  tests.push(result('v113_health_orchestrator',health.body?.ok===true&&['NOMINAL','GUARDED'].includes(String(health.body?.state))&&health.body?.governance?.action_permitted==='WAIT'&&health.body?.governance?.capital_permission==='0R',
+    `state=${health.body?.state}, readiness=${health.body?.readiness_pct ?? 'n/a'}%, critical=${health.body?.summary?.critical_failures ?? 'n/a'}, capital=${health.body?.governance?.capital_permission}`,health.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
