@@ -142,7 +142,7 @@ async function loadLiveMarkets() {
 }
 
 async function loadGold() {
-  const [gold, core, evidence, day, v79, v81, v82] = await Promise.all([
+  const [gold, core, evidence, day, v79, v81, v82, v83] = await Promise.all([
     read('public-gold-live-api', 4500),
     read('public-v63-structural-core-fabric', 5000),
     read('public-v65-model-evidence-fabric', 5000),
@@ -150,6 +150,7 @@ async function loadGold() {
     readLocal('/api/gold-liquidity-state-machine', 9000),
     readLocal('/api/gold-mtf-zones', 9000),
     readLocal('/api/gold-mtf-confluence', 10000),
+    readLocal('/api/gold-breakout-acceptance', 10000),
   ]);
 
   const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
@@ -250,6 +251,19 @@ async function loadGold() {
     set('v82-dragon-copy', first(v82?.scenarios?.continuation?.condition, 'Continuation condition withheld.'));
     set('v82-hero', first(v82?.scenarios?.repair?.name, 'WITHHELD'));
     set('v82-hero-copy', first(v82?.scenarios?.repair?.condition, 'Repair condition withheld.'));
+  }
+
+  if (v83?.ok) {
+    const down = v83?.downside ?? {};
+    const up = v83?.upside ?? {};
+    const active = String(v83?.dominant_state || '').includes('DOWN') ? down :
+      String(v83?.dominant_state || '').includes('UP') ? up : null;
+    set('v83-state', first(v83?.dominant_state, 'WITHHELD'));
+    set('v83-state-copy', active ? `${active.close_acceptance_pct ?? 'n/a'}% closes beyond · quality ${active.quality_score ?? 'n/a'}/100 · extension ${active.extension_vs_prior_range ?? 'n/a'}× prior range.` : 'No active accepted or failed breakout state.');
+    set('v83-time', active?.acceptance_minutes == null ? null : `${active.acceptance_minutes} min`);
+    set('v83-time-copy', active ? `${active.consecutive_beyond ?? 0} consecutive five-minute closes beyond level ${active.level ?? 'n/a'}.` : 'Acceptance time unavailable.');
+    set('v83-false-risk', first(active?.false_breakout_risk, 'NORMAL'));
+    set('v83-false-copy', active ? `Reclaim closes: ${active.consecutive_reclaim ?? 0} · current close ${active.current_close ?? 'n/a'}.` : 'No active breakout risk state.');
   }
 }
 

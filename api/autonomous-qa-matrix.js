@@ -1,4 +1,4 @@
-const VERSION='v78-autonomous-regression-matrix-v1';
+const VERSION='v78.1-autonomous-regression-matrix-v2';
 const BASE='https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
@@ -14,7 +14,7 @@ function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,lat
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota]=await Promise.all([
+  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self]=await Promise.all([
     fetchAny('/'),
     fetchAny('/gold-live/'),
     fetchAny('/api/autonomous-state'),
@@ -23,7 +23,12 @@ export default async function handler(req,res){
     fetchAny('/api/data-quality-sentinel?selftest=1'),
     fetchAny('/api/research-model-tournament'),
     fetchAny('/api/shadow-market-snapshot'),
-    fetchAny('/api/quota-probe')
+    fetchAny('/api/quota-probe'),
+    fetchAny('/api/gold-liquidity-state-machine'),
+    fetchAny('/api/gold-mtf-zones'),
+    fetchAny('/api/gold-mtf-confluence'),
+    fetchAny('/api/gold-breakout-acceptance'),
+    fetchAny('/api/gold-breakout-acceptance?selftest=1')
   ]);
   const tests=[];
   tests.push(result('homepage_http',home.status===200,`status=${home.status}`,home.latency_ms));
@@ -44,6 +49,16 @@ export default async function handler(req,res){
     `canonical=${shadow.body?.governance?.canonical}, action=${shadow.body?.governance?.action_permitted}`,shadow.latency_ms));
   tests.push(result('quota_probe_truthful',quota.body?.ok===true&&typeof quota.body?.restricted==='boolean',
     `restricted=${quota.body?.restricted}, upstream=${quota.body?.upstream_status}`,quota.latency_ms));
+  tests.push(result('v79_state_machine_firewall',v79.body?.ok===true&&v79.body?.governance?.canonical===false&&v79.body?.governance?.action_permitted==='WAIT'&&v79.body?.governance?.capital_permission==='0R',
+    `phase=${v79.body?.state?.phase}, action=${v79.body?.governance?.action_permitted}`,v79.latency_ms));
+  tests.push(result('v81_mtf_zone_integrity',v81.body?.ok===true&&Array.isArray(v81.body?.zones)&&v81.body.zones.length===5&&v81.body?.governance?.action_permitted==='WAIT',
+    `zones=${v81.body?.zones?.length}, composite=${v81.body?.composite?.state}`,v81.latency_ms));
+  tests.push(result('v82_confluence_firewall',v82.body?.ok===true&&v82.body?.governance?.canonical===false&&v82.body?.governance?.automatic_execution===false&&v82.body?.governance?.capital_permission==='0R',
+    `tension=${v82.body?.confluence?.tension}, capital=${v82.body?.governance?.capital_permission}`,v82.latency_ms));
+  tests.push(result('v83_breakout_detector',v83.body?.ok===true&&v83.body?.governance?.canonical===false&&v83.body?.governance?.action_permitted==='WAIT',
+    `state=${v83.body?.dominant_state}, quality=${v83.body?.downside?.quality_score ?? v83.body?.upside?.quality_score ?? 'n/a'}`,v83.latency_ms));
+  tests.push(result('v83_regression_selftest',v83self.body?.ok===true&&v83self.body?.self_test?.passed===true,
+    `accepted=${v83self.body?.self_test?.accepted_state}, failed=${v83self.body?.self_test?.failed_state}`,v83self.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
