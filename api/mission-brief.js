@@ -19,7 +19,7 @@ function marketFreshness(kind,ts){
   if(!ts)return {state:'UNAVAILABLE',age_minutes:null};
   const age=Math.max(0,(Date.now()/1000-ts)/60);
   let state='FRESH';
-  if(kind==='cash_index'||kind==='cash_yield') state=age<=45?'FRESH':'MARKET_CLOSED_OR_STALE';
+  if(String(kind).startsWith('cash_')) state=age<=45?'FRESH':'MARKET_CLOSED_OR_STALE';
   else if(kind==='crypto') state=age<=20?'FRESH':age<=60?'DELAYED':'STALE';
   else state=age<=30?'FRESH':age<=120?'DELAYED':'STALE';
   return {state,age_minutes:Number(age.toFixed(1))};
@@ -49,6 +49,39 @@ async function worldBankLatest(country,indicator,label){
     return {ok:true,label,country:row?.country?.value??country,indicator,period:String(row?.date??''),value:num(row?.value),
       source:'World Bank API',source_last_updated:meta?.lastupdated??null,frequency:'ANNUAL_STRUCTURAL'};
   }catch{return {ok:false,label,country,indicator,state:'UNAVAILABLE',source:'World Bank API'}}
+}
+function arxivStamp(d){
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth()+1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
+}
+async function arxivActivity(category,label,days=7){
+  const end=new Date();
+  const start=new Date(end.getTime()-days*86400000);
+  const query=`cat:${category} AND submittedDate:[${arxivStamp(start)} TO ${arxivStamp(end)}]`;
+  const url=`https://export.arxiv.org/api/query?search_query=${encodeURIComponent(query)}&start=0&max_results=1`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/atom+xml','User-Agent':'THE-FATHER-ANALYTICS/91.0'},cache:'no-store',signal:AbortSignal.timeout(9000)});
+    const xml=await r.text();
+    const match=xml.match(/<opensearch:totalResults[^>]*>(\d+)<\/opensearch:totalResults>/i);
+    if(!r.ok||!match)return {ok:false,label,category,state:'UNAVAILABLE',source:'arXiv API'};
+    return {ok:true,label,category,count:Number(match[1]),window_days:days,window_start:start.toISOString(),window_end:end.toISOString(),
+      source:'arXiv API',truth_label:'ACTIVITY_COUNT_NOT_MOMENTUM'};
+  }catch{return {ok:false,label,category,state:'UNAVAILABLE',source:'arXiv API'}}
+}
+async function cryptoGlobal(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/global',{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/91.0'},cache:'no-store',signal:AbortSignal.timeout(9000)});
+    const j=await r.json().catch(()=>null); const d=j?.data;
+    if(!r.ok||!d)return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'};
+    const change=num(d.market_cap_change_percentage_24h_usd);
+    return {ok:true,total_market_cap_usd:num(d.total_market_cap?.usd),total_volume_usd:num(d.total_volume?.usd),
+      market_cap_change_24h_pct:change,volume_change_24h_pct:num(d.volume_change_percentage_24h_usd),
+      btc_dominance_pct:num(d.market_cap_percentage?.btc),eth_dominance_pct:num(d.market_cap_percentage?.eth),
+      active_cryptocurrencies:num(d.active_cryptocurrencies),markets:num(d.markets),
+      observed_at:d.updated_at?new Date(Number(d.updated_at)*1000).toISOString():null,
+      state:change===null?'WITHHELD':change<=-3?'RISK_OFF_24H':change>=3?'EXPANSION_24H':'MIXED_24H',
+      source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
+  }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
 function marketBreadth(rows){
   const live=rows.filter(x=>x.ok&&['FRESH','DELAYED'].includes(x.freshness));
@@ -93,7 +126,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -111,6 +144,19 @@ export default async function handler(req,res){
       worldBankLatest('NG','FP.CPI.TOTL.ZG','Nigeria inflation'),
       worldBankLatest('SSF','NY.GDP.MKTP.KD.ZG','Sub-Saharan Africa GDP growth'),
       marketQuote({id:'usdngn',name:'USD/NGN',symbol:'NGN=X',kind:'fx',precision:2})
+    ]),
+    Promise.all([
+      worldBankLatest('WLD','IT.NET.USER.ZS','Internet users'),
+      worldBankLatest('WLD','GB.XPD.RSDV.GD.ZS','R&D expenditure'),
+      worldBankLatest('WLD','EG.ELC.RNEW.ZS','Renewable electricity output'),
+      worldBankLatest('WLD','IP.PAT.RESD','Resident patent applications'),
+      marketQuote({id:'nvda',name:'NVIDIA',symbol:'NVDA',kind:'cash_equity',precision:2}),
+      marketQuote({id:'botz',name:'Robotics & AI ETF',symbol:'BOTZ',kind:'cash_etf',precision:2}),
+      marketQuote({id:'icln',name:'Clean Energy ETF',symbol:'ICLN',kind:'cash_etf',precision:2}),
+      marketQuote({id:'btc-trend',name:'Bitcoin',symbol:'BTC-USD',kind:'crypto',precision:0}),
+      arxivActivity('cs.AI','AI research activity',7),
+      arxivActivity('cs.RO','Robotics research activity',7),
+      cryptoGlobal()
     ])
   ]);
 
@@ -146,6 +192,38 @@ export default async function handler(req,res){
     truth_label:'OFFICIAL_STRUCTURAL_DATA_PLUS_SEPARATE_MARKET_PROXY',
     note:'World Bank values are annual structural observations, not current-month estimates.'
   };
+  const [
+    internetUsers,rdSpend,renewableOutput,residentPatents,
+    nvda,botz,icln,btcTrend,
+    aiResearch,roboticsResearch,crypto
+  ]=trendEvidence;
+  const trendStructural=[internetUsers,rdSpend,renewableOutput,residentPatents];
+  const trendResearch=[aiResearch,roboticsResearch];
+  const trendProxies=[nvda,botz,icln,btcTrend];
+  const usableTrendProxies=trendProxies.filter(x=>x?.ok&&['FRESH','DELAYED'].includes(x?.freshness));
+  const trendUp=usableTrendProxies.filter(x=>x.direction==='UP').length;
+  const trendDown=usableTrendProxies.filter(x=>x.direction==='DOWN').length;
+  const trendFlat=usableTrendProxies.filter(x=>x.direction==='FLAT').length;
+  const trendAttentionState=usableTrendProxies.length<2
+    ? 'LIMITED_FRESH_SIGNAL'
+    : trendUp>trendDown?'PROXY_BREADTH_POSITIVE'
+      : trendDown>trendUp?'PROXY_BREADTH_NEGATIVE':'PROXY_BREADTH_MIXED';
+  const trendsPulse={
+    structural:trendStructural,
+    research:trendResearch,
+    market_proxies:trendProxies,
+    digital_assets:crypto,
+    proxy_attention:{
+      state:trendAttentionState,
+      usable:usableTrendProxies.length,
+      total:trendProxies.length,
+      up:trendUp,
+      down:trendDown,
+      flat:trendFlat
+    },
+    truth_label:'STRUCTURAL_ADOPTION_PLUS_RESEARCH_ACTIVITY_PLUS_MARKET_ATTENTION_PLUS_DIGITAL_ASSET_BREADTH',
+    note:'Structural adoption, research activity, market attention and digital-asset breadth are separate evidence classes. Research activity is not momentum; market prices are not adoption proof.'
+  };
 
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
@@ -159,7 +237,7 @@ export default async function handler(req,res){
     {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
-    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'ACTIVE SURFACE',detail:'AI · industry · culture · problem maps · solution lab',href:'/global-trends/'}
+    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
 
   const engines=[
@@ -180,13 +258,14 @@ export default async function handler(req,res){
     ['Source Provenance','ACTIVE','Evidence trail + immutable snapshots'],
     ['Freshness Decay','ACTIVE','Stale inputs fail closed'],
     ['Adventure Map','ACTIVE SURFACE','Kid-friendly regime storytelling'],
-    ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization']
+    ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization'],
+    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v90-unified-intelligence-experience-v2',
+    version:'v91-unified-intelligence-experience-v2',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -216,6 +295,7 @@ export default async function handler(req,res){
     ],
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
     macro_evidence_pulse:macroPulse,
+    global_trends_evidence_pulse:trendsPulse,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
