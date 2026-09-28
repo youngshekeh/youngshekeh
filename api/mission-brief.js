@@ -461,6 +461,11 @@ function benchmarkSurvivorSnapshot(){
   return {...BENCHMARK_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:BENCHMARK_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+BENCHMARK_SURVIVOR_MAX_AGE_MS).toISOString()};
 }
 
+const CALIBRATION_STRUCTURE_CAPTURED_AT='2026-09-28T07:33:08.463Z';
+const CALIBRATION_STRUCTURE_MAX_AGE_MS=6*60*60*1000;
+const CALIBRATION_STRUCTURE_SNAPSHOT={ok:true,version:'v103-calibration-structure-v1',ledger:{total:7,open:7,resolved_or_closed:0,brier_scored:0,average_probability:88.29,median_probability:88,min_probability:79,max_probability:95,p90_plus:3,p80_to_89:3,p70_to_79:1,up_forecasts:7,down_forecasts:0,distinct_horizons:3,distinct_target_states:5,nearest_horizon_days:459,furthest_horizon_days:1555,oldest_forecast_age_days:22},concentration:{direction_state:'DIRECTION_CONCENTRATED',horizon_state:'HORIZON_CONCENTRATED',probability_state:'HIGH_CONFIDENCE_LEDGER',largest_horizon_cluster:5,largest_horizon_share_pct:71.43},calibration_readiness_state:'PRE_OUTCOME_CALIBRATION_BASELINE',brier_state:'WITHHELD_NO_RESOLVED_OUTCOMES',governance:{descriptive_only:true,does_not_publish_accuracy:true,does_not_resolve_outcomes:true,capital_permission:'0R'},truth_label:'PRE_OUTCOME_CALIBRATION_STRUCTURE_NOT_FORECAST_PERFORMANCE'};
+function calibrationStructureSurvivorSnapshot(){const captured=Date.parse(CALIBRATION_STRUCTURE_CAPTURED_AT);if(!Number.isFinite(captured))return null;const ageMs=Math.max(0,Date.now()-captured);if(ageMs>CALIBRATION_STRUCTURE_MAX_AGE_MS)return null;return {...CALIBRATION_STRUCTURE_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:CALIBRATION_STRUCTURE_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+CALIBRATION_STRUCTURE_MAX_AGE_MS).toISOString()};}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -521,7 +526,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -569,7 +574,8 @@ export default async function handler(req,res){
     supabaseRpc('get_v96_forecast_error_state'),
     supabaseRpc('get_v97_execution_quality_state'),
     supabaseRpc('get_v101_forecast_settlement_state'),
-    supabaseRpc('get_v102_benchmark_reputation_state')
+    supabaseRpc('get_v102_benchmark_reputation_state'),
+    supabaseRpc('get_v103_calibration_structure_state')
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -625,6 +631,12 @@ export default async function handler(req,res){
       benchmarkFallbackExpiresAt=fallback.fallback_expires_at;
     }else benchmarkSourceMode='EVIDENCE_GATED';
   }
+
+  let calibrationStructureSourceMode='POSTGREST_RPC';
+  let calibrationStructureObservedAt=null;
+  let calibrationStructureFallbackAgeMinutes=null;
+  let calibrationStructureFallbackExpiresAt=null;
+  if(!calibrationStructureState?.ok){const fallback=calibrationStructureSurvivorSnapshot();if(fallback?.ok){calibrationStructureState=fallback;calibrationStructureSourceMode=fallback.source_mode;calibrationStructureObservedAt=fallback.observed_at;calibrationStructureFallbackAgeMinutes=fallback.fallback_age_minutes;calibrationStructureFallbackExpiresAt=fallback.fallback_expires_at;}else calibrationStructureSourceMode='EVIDENCE_GATED';}
 
   const dataQuality=safe(quality.body?.state);
   if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
@@ -799,6 +811,11 @@ export default async function handler(req,res){
     benchmark_observed_at:benchmarkObservedAt,
     benchmark_fallback_age_minutes:benchmarkFallbackAgeMinutes,
     benchmark_fallback_expires_at:benchmarkFallbackExpiresAt,
+    calibration_structure:calibrationStructureState,
+    calibration_structure_source_mode:calibrationStructureSourceMode,
+    calibration_structure_observed_at:calibrationStructureObservedAt,
+    calibration_structure_fallback_age_minutes:calibrationStructureFallbackAgeMinutes,
+    calibration_structure_fallback_expires_at:calibrationStructureFallbackExpiresAt,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -845,6 +862,7 @@ export default async function handler(req,res){
     ['Forecast Ledger','ACTIVE',forecastErrorState?.ok?`V96 error reviews live · max non-flat n ${maxForecastSample}/${forecastThreshold}`:'Learning review unavailable'],
     ['Signal Reputation',benchmarkReputationState?.signal_reputation_state==='WITHHELD_SAMPLE_TOO_SMALL'?'LEARNING':'ACTIVE',benchmarkReputationState?.ok?`${String(benchmarkReputationState.signal_reputation_state??'WITHHELD').replaceAll('_',' ')} · ${benchmarkReputationState.counts?.reputation_sample_reached??0}/${benchmarkReputationState.counts?.models??0} models at reputation sample`:'Evidence gated'],
     ['Benchmark / Baseline Comparison',benchmarkReputationState?.ok?'ACTIVE':'EVIDENCE-GATED',benchmarkReputationState?.ok?`${benchmarkReputationState.benchmark_policy?.baseline_name??'NO_SKILL_50'} ${benchmarkReputationState.benchmark_policy?.baseline_accuracy_pct??50}% · ${benchmarkReputationState.counts?.human_review_eligible??0} human-review eligible · ${String(benchmarkReputationState.benchmark_state??'WITHHELD').replaceAll('_',' ')}`:'Benchmark evidence unavailable'],
+    ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -864,7 +882,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v102-unified-intelligence-experience-v1',
+    version:'v103-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
