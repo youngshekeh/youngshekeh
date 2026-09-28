@@ -254,6 +254,64 @@ function renderMacroPulse(pulse: { structural?: MacroMetric[]; market_proxy?: Ma
   missionText('ssaGrowthGap', gap(c?.ssa_growth_vs_world_pp));
 }
 
+
+function renderTrendsPulse(pulse: { structural?: MacroMetric[]; market_proxies?: MarketAsset[]; proxy_attention?: any } | undefined) {
+  const structuralGrid = document.querySelector<HTMLElement>('#trendStructuralGrid');
+  const proxyGrid = document.querySelector<HTMLElement>('#trendProxyGrid');
+  const structural = Array.isArray(pulse?.structural) ? pulse?.structural ?? [] : [];
+  const proxies = Array.isArray(pulse?.market_proxies) ? pulse?.market_proxies ?? [] : [];
+
+  if (structuralGrid) {
+    structuralGrid.replaceChildren();
+    for (const metric of structural) {
+      const card = document.createElement('article');
+      card.className = 'trend-card';
+      const label = document.createElement('span');
+      label.textContent = metric.label || 'STRUCTURAL TREND';
+      const value = document.createElement('strong');
+      if (!metric.ok || typeof metric.value !== 'number') value.textContent = 'WITHHELD';
+      else if (metric.label === 'Resident patent applications') value.textContent = Math.round(metric.value).toLocaleString();
+      else value.textContent = `${metric.value.toFixed(2)}%`;
+      const meta = document.createElement('small');
+      meta.textContent = metric.ok ? `${metric.period || 'period n/a'} · World Bank · updated ${metric.source_last_updated || 'n/a'}` : 'Official series unavailable';
+      card.append(label, value, meta);
+      structuralGrid.appendChild(card);
+    }
+  }
+
+  if (proxyGrid) {
+    proxyGrid.replaceChildren();
+    for (const proxy of proxies) {
+      const card = document.createElement('article');
+      card.className = 'trend-card proxy';
+      const top = document.createElement('div');
+      const label = document.createElement('span');
+      const fresh = document.createElement('i');
+      label.textContent = proxy.name || proxy.symbol || 'MARKET PROXY';
+      fresh.textContent = String(proxy.freshness || 'UNAVAILABLE').replaceAll('_',' ');
+      fresh.dataset.freshness = String(proxy.freshness || '');
+      top.append(label, fresh);
+      const value = document.createElement('strong');
+      value.textContent = typeof proxy.price === 'number' ? proxy.price.toLocaleString(undefined,{maximumFractionDigits:2}) : 'WITHHELD';
+      const move = document.createElement('em');
+      const pct = typeof proxy.change_pct === 'number' ? proxy.change_pct : null;
+      move.textContent = pct === null ? 'change unavailable' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% · ${String(proxy.direction || 'MIXED').replaceAll('_',' ')}`;
+      move.dataset.direction = String(proxy.direction || '');
+      const meta = document.createElement('small');
+      meta.textContent = proxy.freshness === 'MARKET_CLOSED_OR_STALE'
+        ? `Market closed / last verified ${Math.round(Number(proxy.age_minutes || 0) / 60)}h ago`
+        : `Verified ${proxy.age_minutes ?? 'n/a'}m ago · attention proxy only`;
+      card.append(top, value, move, meta);
+      proxyGrid.appendChild(card);
+    }
+  }
+
+  const attention = pulse?.proxy_attention ?? {};
+  missionText('trendAttentionState', attention?.state ?? 'WITHHELD');
+  missionText('trendProxyUsable', `${attention?.usable ?? 0}/${attention?.total ?? 4}`);
+  missionText('trendProxyBreadth', `${attention?.up ?? 0} ↑ / ${attention?.down ?? 0} ↓ / ${attention?.flat ?? 0} →`);
+}
+
 function renderDesks(desks: MissionDesk[]) {
   const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
   if (!grid || !Array.isArray(desks)) return;
@@ -348,6 +406,7 @@ async function loadMissionBrief() {
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
     renderMacroPulse(brief?.macro_evidence_pulse);
+    renderTrendsPulse(brief?.global_trends_evidence_pulse);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 

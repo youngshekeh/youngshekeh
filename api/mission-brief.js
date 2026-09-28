@@ -19,7 +19,7 @@ function marketFreshness(kind,ts){
   if(!ts)return {state:'UNAVAILABLE',age_minutes:null};
   const age=Math.max(0,(Date.now()/1000-ts)/60);
   let state='FRESH';
-  if(kind==='cash_index'||kind==='cash_yield') state=age<=45?'FRESH':'MARKET_CLOSED_OR_STALE';
+  if(String(kind).startsWith('cash_')) state=age<=45?'FRESH':'MARKET_CLOSED_OR_STALE';
   else if(kind==='crypto') state=age<=20?'FRESH':age<=60?'DELAYED':'STALE';
   else state=age<=30?'FRESH':age<=120?'DELAYED':'STALE';
   return {state,age_minutes:Number(age.toFixed(1))};
@@ -93,7 +93,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -111,6 +111,16 @@ export default async function handler(req,res){
       worldBankLatest('NG','FP.CPI.TOTL.ZG','Nigeria inflation'),
       worldBankLatest('SSF','NY.GDP.MKTP.KD.ZG','Sub-Saharan Africa GDP growth'),
       marketQuote({id:'usdngn',name:'USD/NGN',symbol:'NGN=X',kind:'fx',precision:2})
+    ]),
+    Promise.all([
+      worldBankLatest('WLD','IT.NET.USER.ZS','Internet users'),
+      worldBankLatest('WLD','GB.XPD.RSDV.GD.ZS','R&D expenditure'),
+      worldBankLatest('WLD','EG.ELC.RNEW.ZS','Renewable electricity output'),
+      worldBankLatest('WLD','IP.PAT.RESD','Resident patent applications'),
+      marketQuote({id:'nvda',name:'NVIDIA',symbol:'NVDA',kind:'cash_equity',precision:2}),
+      marketQuote({id:'botz',name:'Robotics & AI ETF',symbol:'BOTZ',kind:'cash_etf',precision:2}),
+      marketQuote({id:'icln',name:'Clean Energy ETF',symbol:'ICLN',kind:'cash_etf',precision:2}),
+      marketQuote({id:'btc-trend',name:'Bitcoin',symbol:'BTC-USD',kind:'crypto',precision:0})
     ])
   ]);
 
@@ -147,6 +157,32 @@ export default async function handler(req,res){
     note:'World Bank values are annual structural observations, not current-month estimates.'
   };
 
+  const [internetUsers,rdSpend,renewableOutput,residentPatents,nvda,botz,icln,btcTrend]=trendEvidence;
+  const trendStructural=[internetUsers,rdSpend,renewableOutput,residentPatents];
+  const trendProxies=[nvda,botz,icln,btcTrend];
+  const usableTrendProxies=trendProxies.filter(x=>x?.ok&&['FRESH','DELAYED'].includes(x?.freshness));
+  const trendUp=usableTrendProxies.filter(x=>x.direction==='UP').length;
+  const trendDown=usableTrendProxies.filter(x=>x.direction==='DOWN').length;
+  const trendFlat=usableTrendProxies.filter(x=>x.direction==='FLAT').length;
+  const trendAttentionState=usableTrendProxies.length<2
+    ? 'LIMITED_FRESH_SIGNAL'
+    : trendUp>trendDown?'PROXY_BREADTH_POSITIVE'
+      : trendDown>trendUp?'PROXY_BREADTH_NEGATIVE':'PROXY_BREADTH_MIXED';
+  const trendsPulse={
+    structural:trendStructural,
+    market_proxies:trendProxies,
+    proxy_attention:{
+      state:trendAttentionState,
+      usable:usableTrendProxies.length,
+      total:trendProxies.length,
+      up:trendUp,
+      down:trendDown,
+      flat:trendFlat
+    },
+    truth_label:'STRUCTURAL_ADOPTION_DATA_PLUS_MARKET_ATTENTION_PROXIES',
+    note:'Market prices are attention proxies only. They do not prove technology adoption, productivity or real-economy impact.'
+  };
+
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
   changeParts.push(label(phase));
@@ -159,7 +195,7 @@ export default async function handler(req,res){
     {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
-    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'ACTIVE SURFACE',detail:'AI · industry · culture · problem maps · solution lab',href:'/global-trends/'}
+    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${usableTrendProxies.length}/4 fresh market proxies`,href:'/global-trends/'}
   ];
 
   const engines=[
@@ -180,13 +216,14 @@ export default async function handler(req,res){
     ['Source Provenance','ACTIVE','Evidence trail + immutable snapshots'],
     ['Freshness Decay','ACTIVE','Stale inputs fail closed'],
     ['Adventure Map','ACTIVE SURFACE','Kid-friendly regime storytelling'],
-    ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization']
+    ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization'],
+    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption data + freshness-gated market proxies']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v90-unified-intelligence-experience-v2',
+    version:'v91-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -216,6 +253,7 @@ export default async function handler(req,res){
     ],
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
     macro_evidence_pulse:macroPulse,
+    global_trends_evidence_pulse:trendsPulse,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
