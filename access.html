@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Access Gateway | THE FATHER ANALYTICS</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="label">THE FATHER ANALYTICS · ACCESS GATEWAY</div>
+      <h1>Choose your command room.</h1>
+      <p class="muted">Member and owner access from one production surface.</p>
+      <section class="grid">
+        <article class="card">
+          <div class="label">Members</div>
+          <div class="value">Member Sign In</div>
+          <p class="muted">Password access and private intelligence.</p>
+          <a href="./member.html">Open Member</a>
+        </article>
+        <article class="card">
+          <div class="label">Administration</div>
+          <div class="value">Owner Command</div>
+          <p class="muted">Owner verification and MFA/AAL2 entry.</p>
+          <a class="secondary" href="./owner.html">Open Owner</a>
+        </article>
+      </section>
+      <section class="card status-box">
+        <div class="label">Runtime status</div>
+        <div id="state" class="value wait">CHECKING</div>
+        <div id="detail" class="muted">Reading Supabase runtime...</div>
+      </section>
+    </main>
+    <script type="module">
+      const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
+      const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+
+      async function load() {
+        const state = document.getElementById('state');
+        const detail = document.getElementById('detail');
+        try {
+          const response = await fetch(
+            `${SUPABASE}/functions/v1/public-auth-runtime-check`,
+            {
+              headers: { apikey: KEY, Accept: 'application/json' },
+            }
+          );
+          const data = await response.json();
+          const ok = response.ok && data?.ok !== false;
+          state.textContent = ok ? 'READY' : 'CHECK';
+          state.className = `value ${ok ? 'good' : 'wait'}`;
+          detail.textContent = `Auth ${data?.state || 'UNKNOWN'} · provider rate limit ${data?.provider_rate_limit?.status || 'UNVERIFIED_EXTERNALLY'}`;
+        } catch {
+          state.textContent = 'CHECK REQUIRED';
+          state.className = 'value bad';
+          detail.textContent =
+            'Runtime telemetry is unavailable. Member password sign-in can still be attempted.';
+        }
+      }
+
+      load();
+    </script>
+  </body>
+</html>
