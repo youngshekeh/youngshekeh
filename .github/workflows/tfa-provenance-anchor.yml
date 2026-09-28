@@ -62,16 +62,12 @@ jobs:
           fs.mkdirSync('anchors', { recursive: true });
 
           const root = checkpoint.checkpoint_sha256;
-          let existingRoot = null;
+          let existing = null;
           try {
-            existingRoot = JSON.parse(fs.readFileSync('anchors/latest.json', 'utf8'))?.checkpoint?.checkpoint_sha256 || null;
+            existing = JSON.parse(fs.readFileSync('anchors/latest.json', 'utf8'));
           } catch {}
-
-          if (existingRoot === root) {
-            fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_NEW=0\n');
-            fs.appendFileSync(process.env.GITHUB_ENV, 'ROOT=' + root + '\n');
-            process.exit(0);
-          }
+          const existingRoot = existing?.checkpoint?.checkpoint_sha256 || null;
+          const verifiedAt = new Date().toISOString();
 
           const proofSha256 = crypto.createHash('sha256')
             .update(JSON.stringify(proof))
@@ -84,10 +80,29 @@ jobs:
               repository: 'youngshekeh/youngshekeh',
               branch: 'the-father-analytics-audit',
               workflow: 'tfa-provenance-anchor',
-              anchored_at: new Date().toISOString(),
+              anchored_at:
+                existingRoot === root && existing?.external_anchor?.anchored_at
+                  ? existing.external_anchor.anchored_at
+                  : verifiedAt,
+              last_verified_at: verifiedAt,
+              verification_count:
+                existingRoot === root
+                  ? Number(existing?.external_anchor?.verification_count || 1) + 1
+                  : 1,
               source_proof_sha256: proofSha256
             }
           };
+
+          if (existingRoot === root) {
+            // Keep the immutable checkpoint artifact untouched. Only latest.json
+            // receives a liveness heartbeat proving GitHub independently
+            // re-fetched and re-validated the same production checkpoint.
+            fs.writeFileSync('anchors/latest.json', JSON.stringify(anchored, null, 2) + '\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_NEW=0\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_HEARTBEAT=1\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ROOT=' + root + '\n');
+            process.exit(0);
+          }
 
           const stamp = String(checkpoint.checkpointed_at || new Date().toISOString())
             .replace(/[:.]/g, '-');
@@ -99,17 +114,24 @@ jobs:
           fs.writeFileSync('anchors/latest.json', JSON.stringify(anchored, null, 2) + '\n');
 
           fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_NEW=1\n');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_HEARTBEAT=1\n');
           fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_FILE=' + immutableFile + '\n');
           fs.appendFileSync(process.env.GITHUB_ENV, 'ROOT=' + root + '\n');
           NODE
 
-      - name: Commit external anchor
-        if: env.ANCHOR_NEW == '1'
+      - name: Commit external anchor or heartbeat
+        if: env.ANCHOR_NEW == '1' || env.ANCHOR_HEARTBEAT == '1'
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "THE FATHER ANALYTICS Anchor Bot"
           git config user.email "actions@users.noreply.github.com"
           git add anchors/
-          git commit -m "Anchor checkpoint ${ROOT:0:16}"
+          git diff --cached --quiet && exit 0
+          if [ "${ANCHOR_NEW:-0}" = "1" ]; then
+            MESSAGE="Anchor checkpoint ${ROOT:0:16}"
+          else
+            MESSAGE="Verify checkpoint ${ROOT:0:16}"
+          fi
+          git commit -m "$MESSAGE"
           git push origin HEAD:the-father-analytics-audit
