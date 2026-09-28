@@ -701,6 +701,7 @@ export default async function handler(req,res){
     source_mode:accountabilitySourceMode,
     observed_at:accountabilityObservedAt,
     fallback_age_minutes:accountabilityFallbackAgeMinutes,
+    fallback_expires_at:accountabilitySourceMode==='VERIFIED_SNAPSHOT_FALLBACK'?new Date(Date.parse(QUANT_SURVIVOR_CAPTURED_AT)+QUANT_SURVIVOR_MAX_AGE_MS).toISOString():null,
     forecast_error:forecastErrorState,
     execution_latency:executionQualityState,
     publication_gates:{
@@ -765,7 +766,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v97-unified-intelligence-experience-v1',
+    version:'v100-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
