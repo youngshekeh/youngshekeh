@@ -1,0 +1,107 @@
+name: TFA Production Health Watch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tfa-production-health-watch.yml
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tfa-production-health-watch
+  cancel-in-progress: true
+
+jobs:
+  production-health:
+    name: production-health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TFA_BASE_URL: https://thefatheranalytics.com
+    steps:
+      - name: Probe public production surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          home_status="$(curl --silent --show-error --location --max-time 25 --output /tmp/tfa-home.html --write-out '%{http_code}' "$TFA_BASE_URL/")"
+          mission_status="$(curl --silent --show-error --location --max-time 25 --output /tmp/tfa-mission.json --write-out '%{http_code}' "$TFA_BASE_URL/api/mission-brief?watch=$GITHUB_RUN_ID")"
+          qa_status="$(curl --silent --show-error --location --max-time 25 --output /tmp/tfa-qa.json --write-out '%{http_code}' "$TFA_BASE_URL/api/autonomous-qa-matrix?watch=$GITHUB_RUN_ID")"
+
+          printf 'HOME_HTTP=%s\nMISSION_HTTP=%s\nQA_HTTP=%s\n' "$home_status" "$mission_status" "$qa_status" >> "$GITHUB_ENV"
+
+          if [ "$home_status" != "200" ] || [ "$mission_status" != "200" ] || [ "$qa_status" != "200" ]; then
+            echo "Production HTTP probe failed."
+            exit 1
+          fi
+
+          grep -q "THE FATHER ANALYTICS" /tmp/tfa-home.html
+
+      - name: Verify autonomous invariants
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const mission = JSON.parse(fs.readFileSync('/tmp/tfa-mission.json', 'utf8'));
+          const qa = JSON.parse(fs.readFileSync('/tmp/tfa-qa.json', 'utf8'));
+          const failures = [];
+          const warnings = [];
+
+          const requireInvariant = (condition, message) => {
+            if (!condition) failures.push(message);
+          };
+
+          requireInvariant(mission?.governance?.action_permitted === 'WAIT', 'Mission action permission is not WAIT.');
+          requireInvariant(mission?.governance?.capital_permission === '0R', 'Mission capital permission is not 0R.');
+          requireInvariant(mission?.governance?.automatic_execution === false, 'Automatic execution is not disabled.');
+          requireInvariant(Number(mission?.autonomous_health?.summary?.critical_failures ?? 99) === 0, 'Autonomous health reports one or more critical failures.');
+          requireInvariant(qa?.invariants?.action_permitted === 'WAIT', 'QA action permission is not WAIT.');
+          requireInvariant(qa?.invariants?.capital_permission === '0R', 'QA capital permission is not 0R.');
+          requireInvariant(qa?.invariants?.automatic_promotion === false, 'Automatic model promotion is not disabled.');
+          requireInvariant(qa?.state === 'PASS' && qa?.ok === true, 'Regression matrix is ' + String(qa?.state ?? 'UNKNOWN') + ' with ' + String(qa?.summary?.failed ?? 'n/a') + ' failure(s).');
+
+          const release = mission?.release_integrity;
+          requireInvariant(Boolean(release), 'Release integrity evidence is missing from Mission Brief.');
+          if (release) {
+            requireInvariant(release?.state === 'PRODUCTION_SOURCE_VERIFIED', 'Release state is ' + String(release?.state ?? 'UNKNOWN') + '.');
+            requireInvariant(release?.environment === 'production', 'Release environment is ' + String(release?.environment ?? 'UNKNOWN') + '.');
+            requireInvariant(release?.git_branch === 'the-father-analytics-deploy', 'Release branch is ' + String(release?.git_branch ?? 'UNKNOWN') + '.');
+            requireInvariant(/^[a-f0-9]{40}$/i.test(String(release?.git_commit_sha ?? '')), 'Release commit SHA is missing or malformed.');
+          }
+
+          const health = mission?.autonomous_health ?? {};
+          if (health?.state === 'GUARDED') warnings.push('System is operating in GUARDED mode.');
+          if (Number(health?.summary?.gated ?? 0) > 0) warnings.push(String(health.summary.gated) + ' health lane(s) are gated.');
+
+          const lines = [
+            '# THE FATHER ANALYTICS Production Health Watch',
+            '',
+            '- Mission version: ' + String(mission?.version ?? 'UNKNOWN'),
+            '- QA version: ' + String(qa?.version ?? 'UNKNOWN'),
+            '- QA: ' + String(qa?.summary?.passed ?? 0) + '/' + String(qa?.summary?.total ?? 0) + ' passed',
+            '- Health: ' + String(health?.state ?? 'UNKNOWN') + ' · ' + String(health?.readiness_pct ?? 'n/a') + '% readiness · ' + String(health?.summary?.critical_failures ?? 'n/a') + ' critical',
+            '- Capital firewall: ' + String(mission?.governance?.action_permitted ?? 'UNKNOWN') + ' / ' + String(mission?.governance?.capital_permission ?? 'UNKNOWN'),
+            '- Release: ' + String(release?.state ?? 'MISSING') + ' · ' + String(release?.git_commit_short ?? 'SHA WITHHELD'),
+            '',
+            warnings.length ? '## Warnings' : '## Warnings\n- None',
+            ...(warnings.length ? warnings.map(x => '- ' + x) : []),
+            '',
+            failures.length ? '## Failures' : '## Failures\n- None',
+            ...(failures.length ? failures.map(x => '- ' + x) : [])
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+
+          if (failures.length) {
+            console.error(failures.join('\n'));
+            process.exit(1);
+          }
+
+          console.log('Production health watch passed.');
+          NODE
