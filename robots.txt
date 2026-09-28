@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /member/
+Disallow: /owner/
+Disallow: /access/
+Disallow: /status/
+
+Sitemap: https://thefatheranalytics.com/sitemap.xml
