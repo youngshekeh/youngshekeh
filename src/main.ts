@@ -746,6 +746,7 @@ async function loadQaMatrix() {
   }
 }
 
+
 async function loadMissionBrief() {
   try {
     const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -753,6 +754,7 @@ async function loadMissionBrief() {
     const brief = await response.json();
     const changed = brief?.what_changed ?? {};
     const calibration = brief?.calibration ?? {};
+    const health = brief?.autonomous_health ?? {};
     const generated = brief?.generated_at ? new Date(brief.generated_at) : null;
 
     missionText('briefHeadline', changed?.headline ?? 'Governed intelligence brief unavailable.');
@@ -773,6 +775,13 @@ async function loadMissionBrief() {
     renderQuantAccountability(brief?.quant_accountability);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
+
+    const healthState = String(health?.state ?? 'WITHHELD').replaceAll('_', ' ');
+    const healthSummary = health?.summary ?? {};
+    const healthReadiness = typeof health?.readiness_pct === 'number' ? `${health.readiness_pct}%` : 'n/a';
+    missionText('learningV113State', healthState);
+    missionText('learningV113Detail', `${healthReadiness} system readiness · ${healthSummary?.critical_failures ?? 0} critical · ${healthSummary?.gated ?? 0} gated · ${healthSummary?.degraded ?? 0} degraded · ${healthSummary?.survivor_fallbacks ?? 0} survivor · WAIT / 0R`);
+    updateMissionTapeItem('AUTONOMOUS HEALTH', `${healthState} · ${healthReadiness}`);
 
     missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');

@@ -1277,11 +1277,66 @@ export default async function handler(req,res){
   if(breakoutState!=='WITHHELD')changeParts.push(label(breakoutState));
   if(mtf!=='WITHHELD')changeParts.push(label(mtf));
 
+  const healthLane=(id,state,critical,detail)=>({id,state,critical:!!critical,detail});
+  const healthGold=marketAssets.find(x=>x?.id==='gold');
+  const healthFallbackCount=(freshnessCounts.survivor_fresh??0)+(freshnessCounts.survivor_aging??0)+(freshnessCounts.survivor_critical??0);
+  const healthLanes=[
+    healthLane('MISSION_COMPOSITION','HEALTHY',true,'Mission Brief assembled successfully.'),
+    healthLane('DATA_QUALITY',['PASS','PASS_WITH_WARNINGS'].includes(String(dataQuality))?'HEALTHY':'FAIL',true,`sentinel ${label(dataQuality)}`),
+    healthLane('CAPITAL_FIREWALL','HEALTHY',true,'WAIT · 0R invariant locked'),
+    healthLane('PROVENANCE_CHECKPOINT',checkpointState?.state==='GLOBAL_CHECKPOINT_VERIFIED'?'HEALTHY':'FAIL',true,`checkpoint ${label(checkpointState?.state)}`),
+    healthLane('EXTERNAL_ROOT',['MATCH','PENDING_NEWER_CHECKPOINT'].includes(String(externalAnchorState.root_state))?'HEALTHY':'FAIL',true,`root ${label(externalAnchorState.root_state)}`),
+    healthLane('ANCHOR_HEARTBEAT',externalAnchorState.heartbeat_state==='FRESH'?'HEALTHY':'FAIL',true,`heartbeat ${label(externalAnchorState.heartbeat_state)} · age ${externalAnchorState.age_minutes??'n/a'}m`),
+    healthLane('CANONICAL_RUNTIME',runtimeRestricted?'GATED':'HEALTHY',false,runtimeRestricted?'survivor mode active; canonical upstream restricted':'canonical runtime available'),
+    healthLane('MARKET_GOLD',healthGold?.ok&&['FRESH','DELAYED'].includes(String(healthGold?.freshness))?'HEALTHY':'DEGRADED',false,healthGold?.ok?`Gold ${healthGold.price??'n/a'} · ${label(healthGold.freshness)} · age ${healthGold.age_minutes??'n/a'}m`:'Gold market proxy unavailable'),
+    healthLane('EVIDENCE_FRESHNESS',freshnessCounts.evidence_gated===0?'HEALTHY':healthFallbackCount>0?'GATED':'DEGRADED',false,`${freshnessCounts.live??0} live · ${healthFallbackCount} survivor · ${freshnessCounts.evidence_gated??0} gated`)
+  ];
+  const healthCriticalFailures=healthLanes.filter(x=>x.critical&&x.state==='FAIL');
+  const healthGuarded=healthLanes.filter(x=>x.state==='GATED'||x.state==='DEGRADED');
+  const healthState=healthCriticalFailures.length?'FAIL_CLOSED':healthGuarded.length?'GUARDED':'NOMINAL';
+  const healthWeighted=healthLanes.reduce((sum,x)=>sum+(x.state==='HEALTHY'?1:x.state==='GATED'?.65:x.state==='DEGRADED'?.4:0),0);
+  const autonomousHealth={
+    ok:healthCriticalFailures.length===0,
+    version:'v113.0-autonomous-health-orchestrator-v2',
+    state:healthState,
+    readiness_pct:Math.round(healthWeighted/healthLanes.length*100),
+    summary:{
+      lanes:healthLanes.length,
+      healthy:healthLanes.filter(x=>x.state==='HEALTHY').length,
+      gated:healthLanes.filter(x=>x.state==='GATED').length,
+      degraded:healthLanes.filter(x=>x.state==='DEGRADED').length,
+      critical_failures:healthCriticalFailures.length,
+      survivor_fallbacks:healthFallbackCount
+    },
+    lanes:healthLanes,
+    incidents:[
+      ...healthCriticalFailures.map(x=>({severity:'CRITICAL',lane:x.id,state:x.state,detail:x.detail,containment:'FAIL_CLOSED'})),
+      ...healthGuarded.map(x=>({severity:x.state==='GATED'?'INFO':'WARNING',lane:x.id,state:x.state,detail:x.detail,containment:x.state==='GATED'?'KEEP_GATED':'ISOLATE_IF_PERSISTENT'}))
+    ],
+    recovery_actions:[
+      ...(healthFallbackCount>0?[{action:'SURVIVOR_SNAPSHOT_RESILIENCE',state:'ACTIVE',detail:`${healthFallbackCount} lane(s) operating from freshness-governed survivor evidence.`}]:[]),
+      ...(runtimeRestricted?[{action:'CANONICAL_RUNTIME_GATING',state:'ACTIVE',detail:'Restricted canonical runtime cannot escalate authority.'}]:[]),
+      ...(healthGuarded.some(x=>x.state==='DEGRADED')?[{action:'DEGRADED_LANE_ISOLATION',state:'ACTIVE',detail:'Degraded non-critical evidence is prevented from authority escalation.'}]:[]),
+      {action:'CAPITAL_FIREWALL',state:'LOCKED',detail:'WAIT · 0R remains immutable.'}
+    ],
+    governance:{
+      autonomous_observation:true,
+      survivor_resilience:true,
+      degraded_lane_isolation:true,
+      automatic_execution:false,
+      automatic_model_promotion:false,
+      action_permitted:'WAIT',
+      capital_permission:'0R',
+      rule:'Health orchestration may isolate, gate and fail closed; it may not grant execution or capital authority.'
+    },
+    truth_label:'AUTONOMOUS_SYSTEM_HEALTH_COORDINATION_NOT_FORECAST_ACCURACY_NOT_BROKER_EXECUTION'
+  };
+
   const desks=[
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · V111 ${String(externalAnchorState.root_state).replaceAll('_',' ')} · V112 ${String(externalAnchorState.heartbeat_state).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · V111 ${String(externalAnchorState.root_state).replaceAll('_',' ')} · V112 ${String(externalAnchorState.heartbeat_state).replaceAll('_',' ')} · V113 ${String(autonomousHealth.state).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -1303,6 +1358,7 @@ export default async function handler(req,res){
     ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
     ['Forecast Coverage Governance',forecastCoverageState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastCoverageState?.ok?`${String(forecastCoverageState.coverage_gates?.direction_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.horizon_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.confidence_band_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.generalization_readiness??'WITHHELD').replaceAll('_',' ')}`:'Coverage evidence unavailable'],
     ['Evidence Freshness & Survivor Resilience',evidenceFreshness.ok?'ACTIVE':'EVIDENCE-GATED',`${String(evidenceFreshness.state).replaceAll('_',' ')} · ${freshnessCounts.live} live · ${freshnessCounts.survivor_fresh+freshnessCounts.survivor_aging+freshnessCounts.survivor_critical} fallback · ${freshnessCounts.evidence_gated} gated · next expiry ${evidenceFreshness.next_expiry?.remaining_minutes??'n/a'}m`],
+    ['Autonomous Health Orchestrator',autonomousHealth.ok?'ACTIVE':'FAIL-CLOSED',`${String(autonomousHealth.state).replaceAll('_',' ')} · ${autonomousHealth.readiness_pct}% readiness · ${autonomousHealth.summary.critical_failures} critical · ${autonomousHealth.summary.gated} gated · no capital authority`],
     ['Snapshot Integrity & Provenance',provenanceManifest.ok?'ACTIVE':'EVIDENCE-GATED',`${String(provenanceIntegrityState).replaceAll('_',' ')} · ${fingerprintedCount}/${provenanceFingerprints.length} SHA-256 fingerprints · content address, not signature`],
     ['Provenance Receipt Ledger',provenanceReceiptState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceReceiptState?.ok?`${String(provenanceReceiptState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceReceiptState.counts?.receipts??0} receipts · ${provenanceReceiptState.counts?.modules??0} modules · hourly chain`:'Receipt ledger unavailable'],
     ['Server-Attested Provenance',provenanceAttestationState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceAttestationState?.ok?`${String(provenanceAttestationState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceAttestationState.counts?.verified_attestations??0}/${provenanceAttestationState.counts?.attestations??0} verified · Vault-backed HMAC · not public-key signature`:'Attestation evidence unavailable'],
@@ -1375,7 +1431,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v112-unified-intelligence-experience-v1',
+    version:'v113-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -1396,6 +1452,7 @@ export default async function handler(req,res){
     command_tape:[
       {label:'DATA QUALITY',value:dataQuality},
       {label:'AUTONOMOUS QA',value:'VERIFYING SEPARATELY'},
+      {label:'AUTONOMOUS HEALTH',value:'VERIFYING SEPARATELY'},
       {label:'GOLD PHASE',value:label(phase)},
       {label:'BREAKOUT',value:label(breakoutState)},
       {label:'MODEL CONSENSUS',value:label(consensus)},
@@ -1411,6 +1468,7 @@ export default async function handler(req,res){
     volatility_intelligence:volatilityIntelligence,
     gold_seasonality_cycle_context:seasonality,
     quant_accountability:quantAccountability,
+    autonomous_health:autonomousHealth,
     six_desks:desks,
     engine_registry:engines,
     calibration:{

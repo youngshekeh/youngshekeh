@@ -1,10 +1,10 @@
-const VERSION='v112.1-autonomous-regression-matrix-v4';
+const VERSION='v113.0-autonomous-regression-matrix-v5';
 const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
   const started=Date.now();
   try{
-    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/112.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
+    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/113.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
     const ct=r.headers.get('content-type')||'';
     const body=ct.includes('application/json')?await r.json().catch(()=>null):await r.text().catch(()=>null);
     return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body};
@@ -63,6 +63,7 @@ export default async function handler(req,res){
 
   const q=mission.body?.quant_accountability??{};
   const anchor=q?.external_anchor??{};
+  const health=mission.body?.autonomous_health??{};
   tests.push(result('v106_snapshot_fingerprints',q?.provenance_manifest?.state==='ALL_FINGERPRINTED',
     `state=${q?.provenance_manifest?.state}, fingerprinted=${q?.provenance_manifest?.counts?.fingerprinted ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v107_receipt_chain',q?.provenance_receipt_ledger?.state==='HASH_CHAIN_VERIFIED',
@@ -79,6 +80,8 @@ export default async function handler(req,res){
     `heartbeat=${anchor?.heartbeat_state}, age=${anchor?.age_minutes}m, checks=${anchor?.verification_count ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v112_capital_firewall',q?.publication_gates?.capital_permission==='0R'&&mission.body?.governance?.capital_permission==='0R',
     `quant=${q?.publication_gates?.capital_permission}, mission=${mission.body?.governance?.capital_permission}`,mission.latency_ms));
+  tests.push(result('v113_health_orchestrator',health?.ok===true&&['NOMINAL','GUARDED'].includes(String(health?.state))&&health?.governance?.action_permitted==='WAIT'&&health?.governance?.capital_permission==='0R',
+    `state=${health?.state}, readiness=${health?.readiness_pct ?? 'n/a'}%, critical=${health?.summary?.critical_failures ?? 'n/a'}, capital=${health?.governance?.capital_permission}`,mission.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
