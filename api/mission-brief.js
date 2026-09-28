@@ -83,6 +83,77 @@ async function cryptoGlobal(){
       source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
   }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
+function quantile(values,q){
+  if(!values.length)return null;
+  const x=[...values].sort((a,b)=>a-b);
+  const pos=(x.length-1)*q,lo=Math.floor(pos),hi=Math.ceil(pos);
+  return lo===hi?x[lo]:x[lo]+(x[hi]-x[lo])*(pos-lo);
+}
+function seasonalStats(values,current){
+  const clean=values.filter(Number.isFinite);
+  if(!clean.length)return {sample_size:0,state:'WITHHELD'};
+  const positive=clean.filter(v=>v>0).length;
+  const positiveRate=Number((positive/clean.length*100).toFixed(1));
+  const median=quantile(clean,.5),q25=quantile(clean,.25),q75=quantile(clean,.75);
+  const percentile=Number.isFinite(current)?Number((clean.filter(v=>v<=current).length/clean.length*100).toFixed(1)):null;
+  const state=positiveRate>=65&&median>0?'HISTORICALLY_POSITIVE':
+    positiveRate<=35&&median<0?'HISTORICALLY_NEGATIVE':'HISTORICALLY_MIXED';
+  return {sample_size:clean.length,positive_rate_pct:positiveRate,average_return_pct:Number((clean.reduce((a,b)=>a+b,0)/clean.length).toFixed(2)),
+    median_return_pct:Number(median.toFixed(2)),q25_return_pct:Number(q25.toFixed(2)),q75_return_pct:Number(q75.toFixed(2)),
+    best_return_pct:Number(Math.max(...clean).toFixed(2)),worst_return_pct:Number(Math.min(...clean).toFixed(2)),
+    current_return_pct:Number.isFinite(current)?Number(current.toFixed(2)):null,current_percentile:percentile,state};
+}
+async function goldSeasonality(){
+  const url='https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?interval=1d&range=10y&includePrePost=false';
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/95.0'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const j=await r.json().catch(()=>null),x=j?.chart?.result?.[0],ts=x?.timestamp||[],q=x?.indicators?.quote?.[0]||{};
+    if(!r.ok||!ts.length)return {ok:false,state:'UNAVAILABLE',source:'Yahoo Finance GC=F daily history'};
+    const rows=[];
+    for(let i=0;i<ts.length;i++){
+      const close=num(q.close?.[i]); if(close===null||close<=0)continue;
+      const d=new Date(ts[i]*1000);
+      rows.push({ts:ts[i],date:d.toISOString().slice(0,10),year:d.getUTCFullYear(),month:d.getUTCMonth()+1,
+        quarter:Math.floor(d.getUTCMonth()/3)+1,close});
+    }
+    rows.sort((a,b)=>a.ts-b.ts);
+    if(rows.length<500)return {ok:false,state:'INSUFFICIENT_HISTORY',source:'Yahoo Finance GC=F daily history'};
+
+    const monthEnds=new Map(),quarterEnds=new Map();
+    for(const row of rows){
+      monthEnds.set(`${row.year}-${String(row.month).padStart(2,'0')}`,row);
+      quarterEnds.set(`${row.year}-Q${row.quarter}`,row);
+    }
+    const monthly=[...monthEnds.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+    const monthlyReturns=[];
+    for(let i=1;i<monthly.length;i++){
+      const [key,row]=monthly[i],prev=monthly[i-1][1];
+      monthlyReturns.push({key,year:row.year,month:row.month,return_pct:(row.close/prev.close-1)*100,close:row.close,date:row.date});
+    }
+    const quarterly=[...quarterEnds.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+    const quarterlyReturns=[];
+    for(let i=1;i<quarterly.length;i++){
+      const [key,row]=quarterly[i],prev=quarterly[i-1][1];
+      quarterlyReturns.push({key,year:row.year,quarter:row.quarter,return_pct:(row.close/prev.close-1)*100,close:row.close,date:row.date});
+    }
+
+    const latest=rows.at(-1),currentMonthKey=`${latest.year}-${String(latest.month).padStart(2,'0')}`,currentQuarterKey=`${latest.year}-Q${latest.quarter}`;
+    const currentMonth=monthlyReturns.find(x=>x.key===currentMonthKey);
+    const currentQuarter=quarterlyReturns.find(x=>x.key===currentQuarterKey);
+    const histMonth=monthlyReturns.filter(x=>x.month===latest.month&&x.key!==currentMonthKey).slice(-10);
+    const histQuarter=quarterlyReturns.filter(x=>x.quarter===latest.quarter&&x.key!==currentQuarterKey).slice(-10);
+    const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    return {ok:true,as_of:latest.date,symbol:'GC=F',history_years:10,
+      month:{label:monthNames[latest.month-1],number:latest.month,...seasonalStats(histMonth.map(x=>x.return_pct),currentMonth?.return_pct),
+        historical:[...histMonth].map(x=>({year:x.year,return_pct:Number(x.return_pct.toFixed(2))}))},
+      quarter:{label:`Q${latest.quarter}`,number:latest.quarter,...seasonalStats(histQuarter.map(x=>x.return_pct),currentQuarter?.return_pct),
+        historical:[...histQuarter].map(x=>({year:x.year,return_pct:Number(x.return_pct.toFixed(2))}))},
+      source:'Yahoo Finance GC=F continuous futures daily history',
+      truth_label:'HISTORICAL_CONTINUOUS_FUTURES_SEASONALITY_NOT_FORECAST',
+      note:'Continuous futures can contain contract-roll effects. Historical calendar distributions are context, not a directional forecast or probability of the next move.'};
+  }catch{return {ok:false,state:'UNAVAILABLE',source:'Yahoo Finance GC=F daily history'}}
+}
 async function cboeVolIndex(symbol,label){
   const url=`https://cdn.cboe.com/api/global/us_indices/daily_prices/${symbol}_History.csv`;
   try{
@@ -315,7 +386,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -358,7 +429,8 @@ export default async function handler(req,res){
       cboeVolIndex('GVZ','Cboe Gold ETF Volatility Index'),
       cboeVolIndex('VVIX','Cboe VVIX'),
       cboeVolIndex('SKEW','Cboe SKEW')
-    ])
+    ]),
+    goldSeasonality()
   ]);
 
   const dataQuality=safe(quality.body?.state);
@@ -530,7 +602,7 @@ export default async function handler(req,res){
     ['CRT / AMD','FRAMEWORK','Evidence-gated structure engine'],
     ['SMC / FVG / Order Blocks','FRAMEWORK','Proxy layer only where data supports it'],
     ['COT / Institutional Positioning',cotGold?.ok?'ACTIVE':'EVIDENCE-GATED',cotGold?.ok?`Gold report ${String(cotGold.report_date).slice(0,10)} · official weekly CFTC`:'No fabricated positioning'],
-    ['Seasonality & Cycles','EVIDENCE-GATED','Historical context requires verified sample'],
+    ['Seasonality & Cycles',seasonality?.ok?'ACTIVE':'EVIDENCE-GATED',seasonality?.ok?`${seasonality.month.label} ${seasonality.month.state.replaceAll('_',' ')} · ${seasonality.quarter.label} ${seasonality.quarter.state.replaceAll('_',' ')}`:'Historical context unavailable'],
     ['Forecast Ledger','ACTIVE','Immutable outcomes + calibration'],
     ['Signal Reputation','LEARNING','Sample thresholds enforced'],
     ['Expected Value Engine','GATED','No EV without empirical inputs'],
@@ -548,7 +620,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v94-unified-intelligence-experience-v1',
+    version:'v95-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -582,6 +654,7 @@ export default async function handler(req,res){
     flows_positioning_evidence:{gold_cot:cotGold},
     rates_funding_intelligence:ratesFundingPulse,
     volatility_intelligence:volatilityIntelligence,
+    gold_seasonality_cycle_context:seasonality,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
