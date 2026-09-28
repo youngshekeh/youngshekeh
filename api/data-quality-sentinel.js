@@ -26,8 +26,33 @@ function validBar(name,bar,issues){
     if(h<l)add(issues,`${name}_HIGH_BELOW_LOW`,'critical',`high ${h} < low ${l}`);
   }
 }
+function syntheticSelfTest(){
+  const issues=[];
+  validBar('CURRENT',{open:0,high:4310,low:0,price:4229.4},issues);
+  const critical=issues.filter(x=>x.severity==='critical').length;
+  return {
+    fixture:'NULL_TO_ZERO_OHLC_REGRESSION',
+    expected:'QUARANTINE',
+    observed:critical>0?'QUARANTINE':'PASS',
+    passed:critical>0,
+    issues
+  };
+}
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
+  const requestUrl=new URL(req.url,'https://thefatheranalytics.com');
+  if(requestUrl.searchParams.get('selftest')==='1'){
+    const test=syntheticSelfTest();
+    res.setHeader('Cache-Control','no-store');
+    return res.status(200).json({
+      ok:test.passed,
+      version:VERSION,
+      checked_at:new Date().toISOString(),
+      state:test.observed,
+      self_test:test,
+      governance:{action_permitted:'WAIT',capital_permission:'0R',production_data_used:false}
+    });
+  }
   const [day,shadow]=await Promise.all([
     getJson('https://thefatheranalytics.com/api/gold-day-state'),
     getJson('https://thefatheranalytics.com/api/shadow-market-snapshot')
