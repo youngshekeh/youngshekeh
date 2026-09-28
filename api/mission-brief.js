@@ -51,7 +51,7 @@ export default async function handler(req,res){
 
   const desks=[
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'ACTIVE SURFACE',detail:'Growth · inflation · rates · liquidity · fiscal · trade',href:'/world-economy/'},
-    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
+    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&qaState==='PASS'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:qaState==='PASS'?'QA PASS':'WITHHELD',detail:`${qaPass}/${qaTotal} autonomous invariants · forecast ledger · Brier · MFE/MAE`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
