@@ -536,6 +536,7 @@ function renderQuantAccountability(pulse: any) {
   const provenanceManifest = pulse?.provenance_manifest ?? {};
   const receiptLedger = pulse?.provenance_receipt_ledger ?? {};
   const attestation = pulse?.provenance_attestation ?? {};
+  const keyLifecycle = pulse?.attestation_key_lifecycle ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -652,6 +653,9 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV107Detail', receiptLedger?.ok ? `${receiptLedger?.counts?.receipts ?? 0} receipts · ${receiptLedger?.counts?.modules ?? 0} modules · ${receiptLedger?.counts?.chain_link_failures ?? 0} broken links · hourly append-only chain.` : 'Provenance receipt ledger unavailable.');
   missionText('learningV108State', String(attestation?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   missionText('learningV108Detail', attestation?.ok ? `${attestation?.counts?.verified_attestations ?? 0}/${attestation?.counts?.attestations ?? 0} verified · ${attestation?.counts?.failed_attestations ?? 0} failed · ${attestation?.counts?.unattested_receipts ?? 0} unattested · Vault-backed HMAC · secret never exposed · not public-key signature.` : 'Server attestation evidence unavailable.');
+  missionText('learningV109State', String(keyLifecycle?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  const activeKey=Array.isArray(keyLifecycle?.keys)?keyLifecycle.keys.find((k:any)=>k?.status==='ACTIVE'):null;
+  missionText('learningV109Detail', keyLifecycle?.ok ? `${keyLifecycle?.counts?.keys ?? 0} keys · ${keyLifecycle?.counts?.active_keys ?? 0} active · ${keyLifecycle?.counts?.retired_keys ?? 0} retired · ${keyLifecycle?.counts?.missing_vault_keys ?? 0} missing · active v${activeKey?.version ?? '?'} · history preserved.` : 'Attestation key lifecycle unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
