@@ -553,9 +553,10 @@ function checkpointSurvivorSnapshot(){
 
 async function githubExternalAnchor(timeout=6000){
   const url='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors/latest.json';
+  const requestUrl=`${url}?heartbeat_minute=${Math.floor(Date.now()/60000)}`;
   try{
-    const r=await fetch(url,{
-      headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/111.0'},
+    const r=await fetch(requestUrl,{
+      headers:{Accept:'application/json','Cache-Control':'no-cache','User-Agent':'THE-FATHER-ANALYTICS/112.0'},
       cache:'no-store',
       signal:AbortSignal.timeout(timeout)
     });
