@@ -1195,6 +1195,52 @@ export default async function handler(req,res){
     ['Options / Volatility Intelligence','ACTIVE',gvz?.ok?`GVZ ${gvz.value} · ${gvz.regime} · ${compositeVolState.replaceAll('_',' ')}`:'WITHHELD']
   ].map(([name,state,detail])=>({name,state,detail}));
 
+  const checkpointProofRequested=String(req.query?.proof??'')==='checkpoint';
+  if(checkpointProofRequested){
+    const cp=checkpointState?.latest_checkpoint??{};
+    res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
+    return res.status(200).json({
+      ok:Boolean(checkpointState?.ok),
+      version:'v111-external-anchor-proof-v1',
+      generated_at:new Date().toISOString(),
+      source:'THE_FATHER_ANALYTICS_PRODUCTION',
+      source_mode:checkpointSourceMode,
+      observed_at:checkpointObservedAt,
+      fallback_age_minutes:checkpointFallbackAgeMinutes,
+      fallback_expires_at:checkpointFallbackExpiresAt,
+      state:checkpointState?.state??'EVIDENCE_GATED',
+      checkpoint:{
+        checkpoint_id:cp?.id??null,
+        checkpointed_at:cp?.checkpointed_at??null,
+        checkpoint_sha256:cp?.checkpoint_sha256??null,
+        previous_checkpoint_sha256:cp?.previous_checkpoint_sha256??null,
+        checkpoint_hmac_sha256:cp?.checkpoint_hmac_sha256??null,
+        key_name:cp?.key_name??null,
+        module_count:cp?.module_count??null,
+        receipt_count:cp?.receipt_count??null,
+        attestation_count:cp?.attestation_count??null,
+        latest_receipt_at:cp?.latest_receipt_at??null,
+        latest_attestation_at:cp?.latest_attestation_at??null
+      },
+      integrity:{
+        checkpoints:checkpointState?.counts?.checkpoints??0,
+        payload_hash_failures:checkpointState?.counts?.payload_hash_failures??0,
+        hmac_failures:checkpointState?.counts?.hmac_failures??0,
+        chain_link_failures:checkpointState?.counts?.chain_link_failures??0,
+        missing_historical_keys:checkpointState?.counts?.missing_historical_keys??0,
+        uncheckpointed_attestations:checkpointState?.counts?.uncheckpointed_attestations??0
+      },
+      governance:{
+        external_anchor_input_only:true,
+        public_key_signature:false,
+        append_only_source:Boolean(checkpointState?.governance?.append_only),
+        action_permitted:'WAIT',
+        capital_permission:'0R'
+      },
+      truth_label:'PUBLIC_SAFE_V110_CHECKPOINT_PROOF_FOR_EXTERNAL_ANCHOR_NOT_PUBLIC_KEY_SIGNATURE'
+    });
+  }
+
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
