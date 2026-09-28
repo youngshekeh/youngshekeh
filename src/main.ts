@@ -256,11 +256,15 @@ function renderMacroPulse(pulse: { structural?: MacroMetric[]; market_proxy?: Ma
 }
 
 
-function renderTrendsPulse(pulse: { structural?: MacroMetric[]; market_proxies?: MarketAsset[]; proxy_attention?: any } | undefined) {
+function renderTrendsPulse(pulse: { structural?: MacroMetric[]; research?: ResearchActivity[]; market_proxies?: MarketAsset[]; digital_assets?: any; proxy_attention?: any } | undefined) {
   const structuralGrid = document.querySelector<HTMLElement>('#trendStructuralGrid');
+  const researchGrid = document.querySelector<HTMLElement>('#trendResearchGrid');
   const proxyGrid = document.querySelector<HTMLElement>('#trendProxyGrid');
+  const digitalGrid = document.querySelector<HTMLElement>('#trendDigitalGrid');
   const structural = Array.isArray(pulse?.structural) ? pulse?.structural ?? [] : [];
+  const research = Array.isArray(pulse?.research) ? pulse?.research ?? [] : [];
   const proxies = Array.isArray(pulse?.market_proxies) ? pulse?.market_proxies ?? [] : [];
+  const crypto = pulse?.digital_assets ?? {};
 
   if (structuralGrid) {
     structuralGrid.replaceChildren();
@@ -277,6 +281,22 @@ function renderTrendsPulse(pulse: { structural?: MacroMetric[]; market_proxies?:
       meta.textContent = metric.ok ? `${metric.period || 'period n/a'} · World Bank · updated ${metric.source_last_updated || 'n/a'}` : 'Official series unavailable';
       card.append(label, value, meta);
       structuralGrid.appendChild(card);
+    }
+  }
+
+  if (researchGrid) {
+    researchGrid.replaceChildren();
+    for (const item of research) {
+      const card = document.createElement('article');
+      card.className = 'trend-card research';
+      const label = document.createElement('span');
+      label.textContent = `${item.label || 'RESEARCH ACTIVITY'} · ${item.window_days || 7}D`;
+      const value = document.createElement('strong');
+      value.textContent = item.ok && typeof item.count === 'number' ? item.count.toLocaleString() : 'WITHHELD';
+      const meta = document.createElement('small');
+      meta.textContent = item.ok ? `${item.category || ''} · arXiv · ACTIVITY ≠ MOMENTUM` : 'Research feed unavailable';
+      card.append(label, value, meta);
+      researchGrid.appendChild(card);
     }
   }
 
@@ -301,9 +321,28 @@ function renderTrendsPulse(pulse: { structural?: MacroMetric[]; market_proxies?:
       const meta = document.createElement('small');
       meta.textContent = proxy.freshness === 'MARKET_CLOSED_OR_STALE'
         ? `Market closed / last verified ${Math.round(Number(proxy.age_minutes || 0) / 60)}h ago`
-        : `Verified ${proxy.age_minutes ?? 'n/a'}m ago · attention proxy only`;
+        : `Verified ${proxy.age_minutes ?? 'n/a'}m ago · PROXY ≠ ADOPTION`;
       card.append(top, value, move, meta);
       proxyGrid.appendChild(card);
+    }
+  }
+
+  if (digitalGrid) {
+    digitalGrid.replaceChildren();
+    const cards: Array<[string,string,string]> = [
+      ['CRYPTO MARKET CAP', typeof crypto?.total_market_cap_usd === 'number' ? `$${(crypto.total_market_cap_usd/1e12).toFixed(2)}T` : 'WITHHELD', 'CoinGecko global market cap'],
+      ['CRYPTO 24H', typeof crypto?.market_cap_change_24h_pct === 'number' ? `${crypto.market_cap_change_24h_pct >= 0 ? '+' : ''}${crypto.market_cap_change_24h_pct.toFixed(2)}%` : 'WITHHELD', 'Market-cap change'],
+      ['BTC DOMINANCE', typeof crypto?.btc_dominance_pct === 'number' ? `${crypto.btc_dominance_pct.toFixed(2)}%` : 'WITHHELD', 'Share of crypto market cap'],
+      ['ACTIVE CRYPTO ASSETS', typeof crypto?.active_cryptocurrencies === 'number' ? crypto.active_cryptocurrencies.toLocaleString() : 'WITHHELD', 'CoinGecko active-asset coverage']
+    ];
+    for (const [name,valueText,metaText] of cards) {
+      const card = document.createElement('article');
+      card.className = 'trend-card digital';
+      const label = document.createElement('span'); label.textContent = name;
+      const value = document.createElement('strong'); value.textContent = valueText;
+      const meta = document.createElement('small'); meta.textContent = metaText;
+      card.append(label,value,meta);
+      digitalGrid.appendChild(card);
     }
   }
 
@@ -311,6 +350,7 @@ function renderTrendsPulse(pulse: { structural?: MacroMetric[]; market_proxies?:
   missionText('trendAttentionState', attention?.state ?? 'WITHHELD');
   missionText('trendProxyUsable', `${attention?.usable ?? 0}/${attention?.total ?? 4}`);
   missionText('trendProxyBreadth', `${attention?.up ?? 0} ↑ / ${attention?.down ?? 0} ↓ / ${attention?.flat ?? 0} →`);
+  missionText('trendCryptoState', String(crypto?.state ?? 'WITHHELD').replaceAll('_',' '));
 }
 
 function renderDesks(desks: MissionDesk[]) {

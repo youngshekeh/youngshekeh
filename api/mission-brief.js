@@ -153,7 +153,10 @@ export default async function handler(req,res){
       marketQuote({id:'nvda',name:'NVIDIA',symbol:'NVDA',kind:'cash_equity',precision:2}),
       marketQuote({id:'botz',name:'Robotics & AI ETF',symbol:'BOTZ',kind:'cash_etf',precision:2}),
       marketQuote({id:'icln',name:'Clean Energy ETF',symbol:'ICLN',kind:'cash_etf',precision:2}),
-      marketQuote({id:'btc-trend',name:'Bitcoin',symbol:'BTC-USD',kind:'crypto',precision:0})
+      marketQuote({id:'btc-trend',name:'Bitcoin',symbol:'BTC-USD',kind:'crypto',precision:0}),
+      arxivActivity('cs.AI','AI research activity',7),
+      arxivActivity('cs.RO','Robotics research activity',7),
+      cryptoGlobal()
     ])
   ]);
 
@@ -189,16 +192,13 @@ export default async function handler(req,res){
     truth_label:'OFFICIAL_STRUCTURAL_DATA_PLUS_SEPARATE_MARKET_PROXY',
     note:'World Bank values are annual structural observations, not current-month estimates.'
   };
-  const [aiResearch,roboticsResearch,crypto]=trendEvidence;
-  const trendsPulse={
-    research:[aiResearch,roboticsResearch],
-    digital_assets:crypto,
-    truth_label:'ACTIVITY_AND_MARKET_BREADTH_WITHOUT_SYNTHETIC_TREND_SCORE',
-    note:'Research counts describe seven-day publication activity. They do not claim acceleration without a historical baseline.'
-  };
-
-  const [internetUsers,rdSpend,renewableOutput,residentPatents,nvda,botz,icln,btcTrend]=trendEvidence;
+  const [
+    internetUsers,rdSpend,renewableOutput,residentPatents,
+    nvda,botz,icln,btcTrend,
+    aiResearch,roboticsResearch,crypto
+  ]=trendEvidence;
   const trendStructural=[internetUsers,rdSpend,renewableOutput,residentPatents];
+  const trendResearch=[aiResearch,roboticsResearch];
   const trendProxies=[nvda,botz,icln,btcTrend];
   const usableTrendProxies=trendProxies.filter(x=>x?.ok&&['FRESH','DELAYED'].includes(x?.freshness));
   const trendUp=usableTrendProxies.filter(x=>x.direction==='UP').length;
@@ -210,7 +210,9 @@ export default async function handler(req,res){
       : trendDown>trendUp?'PROXY_BREADTH_NEGATIVE':'PROXY_BREADTH_MIXED';
   const trendsPulse={
     structural:trendStructural,
+    research:trendResearch,
     market_proxies:trendProxies,
+    digital_assets:crypto,
     proxy_attention:{
       state:trendAttentionState,
       usable:usableTrendProxies.length,
@@ -219,8 +221,8 @@ export default async function handler(req,res){
       down:trendDown,
       flat:trendFlat
     },
-    truth_label:'STRUCTURAL_ADOPTION_DATA_PLUS_MARKET_ATTENTION_PROXIES',
-    note:'Market prices are attention proxies only. They do not prove technology adoption, productivity or real-economy impact.'
+    truth_label:'STRUCTURAL_ADOPTION_PLUS_RESEARCH_ACTIVITY_PLUS_MARKET_ATTENTION_PLUS_DIGITAL_ASSET_BREADTH',
+    note:'Structural adoption, research activity, market attention and digital-asset breadth are separate evidence classes. Research activity is not momentum; market prices are not adoption proof.'
   };
 
   const changeParts=[];
@@ -235,7 +237,7 @@ export default async function handler(req,res){
     {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
-    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${usableTrendProxies.length}/4 fresh market proxies`,href:'/global-trends/'}
+    {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
 
   const engines=[
@@ -257,13 +259,13 @@ export default async function handler(req,res){
     ['Freshness Decay','ACTIVE','Stale inputs fail closed'],
     ['Adventure Map','ACTIVE SURFACE','Kid-friendly regime storytelling'],
     ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization'],
-    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption data + freshness-gated market proxies']
+    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v91-unified-intelligence-experience-v1',
+    version:'v91-unified-intelligence-experience-v2',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -293,7 +295,6 @@ export default async function handler(req,res){
     ],
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
     macro_evidence_pulse:macroPulse,
-    global_trends_evidence_pulse:trendsPulse,
     global_trends_evidence_pulse:trendsPulse,
     six_desks:desks,
     engine_registry:engines,
