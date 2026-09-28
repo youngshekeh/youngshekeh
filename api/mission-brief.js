@@ -1303,6 +1303,7 @@ export default async function handler(req,res){
     ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
     ['Forecast Coverage Governance',forecastCoverageState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastCoverageState?.ok?`${String(forecastCoverageState.coverage_gates?.direction_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.horizon_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.confidence_band_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.generalization_readiness??'WITHHELD').replaceAll('_',' ')}`:'Coverage evidence unavailable'],
     ['Evidence Freshness & Survivor Resilience',evidenceFreshness.ok?'ACTIVE':'EVIDENCE-GATED',`${String(evidenceFreshness.state).replaceAll('_',' ')} · ${freshnessCounts.live} live · ${freshnessCounts.survivor_fresh+freshnessCounts.survivor_aging+freshnessCounts.survivor_critical} fallback · ${freshnessCounts.evidence_gated} gated · next expiry ${evidenceFreshness.next_expiry?.remaining_minutes??'n/a'}m`],
+    ['Autonomous Health Orchestrator','ACTIVE','Critical-lane health · retry recovery · degradation isolation · fail-closed governance · no capital authority'],
     ['Snapshot Integrity & Provenance',provenanceManifest.ok?'ACTIVE':'EVIDENCE-GATED',`${String(provenanceIntegrityState).replaceAll('_',' ')} · ${fingerprintedCount}/${provenanceFingerprints.length} SHA-256 fingerprints · content address, not signature`],
     ['Provenance Receipt Ledger',provenanceReceiptState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceReceiptState?.ok?`${String(provenanceReceiptState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceReceiptState.counts?.receipts??0} receipts · ${provenanceReceiptState.counts?.modules??0} modules · hourly chain`:'Receipt ledger unavailable'],
     ['Server-Attested Provenance',provenanceAttestationState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceAttestationState?.ok?`${String(provenanceAttestationState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceAttestationState.counts?.verified_attestations??0}/${provenanceAttestationState.counts?.attestations??0} verified · Vault-backed HMAC · not public-key signature`:'Attestation evidence unavailable'],
@@ -1375,7 +1376,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v112-unified-intelligence-experience-v1',
+    version:'v113-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -1396,6 +1397,7 @@ export default async function handler(req,res){
     command_tape:[
       {label:'DATA QUALITY',value:dataQuality},
       {label:'AUTONOMOUS QA',value:'VERIFYING SEPARATELY'},
+      {label:'AUTONOMOUS HEALTH',value:'VERIFYING SEPARATELY'},
       {label:'GOLD PHASE',value:label(phase)},
       {label:'BREAKOUT',value:label(breakoutState)},
       {label:'MODEL CONSENSUS',value:label(consensus)},
