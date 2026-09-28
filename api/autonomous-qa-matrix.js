@@ -1,4 +1,4 @@
-const VERSION='v113.1-autonomous-regression-matrix-v6';
+const VERSION='v113.2-autonomous-regression-matrix-v7';
 const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
@@ -64,6 +64,7 @@ export default async function handler(req,res){
   const q=mission.body?.quant_accountability??{};
   const anchor=q?.external_anchor??{};
   const health=mission.body?.autonomous_health??{};
+  const release=mission.body?.release_integrity??{};
   tests.push(result('v106_snapshot_fingerprints',q?.provenance_manifest?.state==='ALL_FINGERPRINTED',
     `state=${q?.provenance_manifest?.state}, fingerprinted=${q?.provenance_manifest?.counts?.fingerprinted ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v107_receipt_chain',q?.provenance_receipt_ledger?.state==='HASH_CHAIN_VERIFIED',
@@ -93,6 +94,8 @@ export default async function handler(req,res){
     `quant=${q?.publication_gates?.capital_permission}, mission=${mission.body?.governance?.capital_permission}`,mission.latency_ms));
   tests.push(result('v113_health_orchestrator',health?.ok===true&&['NOMINAL','GUARDED'].includes(String(health?.state))&&health?.governance?.action_permitted==='WAIT'&&health?.governance?.capital_permission==='0R',
     `state=${health?.state}, readiness=${health?.readiness_pct ?? 'n/a'}%, critical=${health?.summary?.critical_failures ?? 'n/a'}, capital=${health?.governance?.capital_permission}`,mission.latency_ms));
+  tests.push(result('v1132_release_integrity',release?.ok===true&&release?.state==='PRODUCTION_SOURCE_VERIFIED'&&release?.environment==='production'&&release?.git_branch==='the-father-analytics-deploy'&&/^[a-f0-9]{40}$/i.test(String(release?.git_commit_sha??''))&&release?.governance?.capital_permission==='0R',
+    `state=${release?.state}, env=${release?.environment}, branch=${release?.git_branch}, sha=${release?.git_commit_short??'withheld'}, capital=${release?.governance?.capital_permission}`,mission.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
