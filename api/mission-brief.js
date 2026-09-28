@@ -818,6 +818,55 @@ export default async function handler(req,res){
   const learningState=forecastErrorState?.ok&&executionQualityState?.ok
     ? (forecastMature&&latencyMature?'MATURE_REVIEW_READY':'CLOSED_LOOP_EARLY_SAMPLE')
     : 'LEARNING_EVIDENCE_GATED';
+  const freshnessModule=(id,sourceMode,observedAt,expiresAt,fallbackAgeMinutes,ok=true)=>{
+    const mode=String(sourceMode??'EVIDENCE_GATED');
+    if(!ok||mode==='EVIDENCE_GATED')return {id,state:'EVIDENCE_GATED',source_mode:mode,observed_at:observedAt??null,expires_at:expiresAt??null,age_minutes:fallbackAgeMinutes??null,remaining_minutes:null};
+    if(mode!=='VERIFIED_SNAPSHOT_FALLBACK')return {id,state:'LIVE',source_mode:mode,observed_at:observedAt??null,expires_at:null,age_minutes:null,remaining_minutes:null};
+    const expiryMs=Date.parse(expiresAt??'');
+    const remaining=Number.isFinite(expiryMs)?Math.max(0,(expiryMs-Date.now())/60000):0;
+    const age=Number(fallbackAgeMinutes??0);
+    const life=Math.max(1,age+remaining);
+    const used=age/life;
+    const state=remaining<=0?'EVIDENCE_GATED':used>=0.8?'SURVIVOR_CRITICAL':used>=0.5?'SURVIVOR_AGING':'SURVIVOR_FRESH';
+    return {id,state,source_mode:mode,observed_at:observedAt??null,expires_at:expiresAt??null,age_minutes:Number(age.toFixed(1)),remaining_minutes:Number(remaining.toFixed(1)),life_used_pct:Number((used*100).toFixed(1))};
+  };
+  const evidenceFreshnessModules=[
+    freshnessModule('V96_V97_ACCOUNTABILITY',accountabilitySourceMode,accountabilityObservedAt,accountabilitySourceMode==='VERIFIED_SNAPSHOT_FALLBACK'?new Date(Date.parse(QUANT_SURVIVOR_CAPTURED_AT)+QUANT_SURVIVOR_MAX_AGE_MS).toISOString():null,accountabilityFallbackAgeMinutes,Boolean(forecastErrorState?.ok&&executionQualityState?.ok)),
+    freshnessModule('V101_SETTLEMENT',settlementSourceMode,settlementObservedAt,settlementFallbackExpiresAt,settlementFallbackAgeMinutes,Boolean(forecastSettlementState?.ok)),
+    freshnessModule('V102_BENCHMARK',benchmarkSourceMode,benchmarkObservedAt,benchmarkFallbackExpiresAt,benchmarkFallbackAgeMinutes,Boolean(benchmarkReputationState?.ok)),
+    freshnessModule('V103_CALIBRATION_STRUCTURE',calibrationStructureSourceMode,calibrationStructureObservedAt,calibrationStructureFallbackExpiresAt,calibrationStructureFallbackAgeMinutes,Boolean(calibrationStructureState?.ok)),
+    freshnessModule('V98_V99_RISK_STACK',riskStackSourceMode,riskStackObservedAt,riskStackFallbackExpiresAt,riskStackFallbackAgeMinutes,Boolean(scenarioEvState?.ok&&portfolioRiskState?.ok)),
+    freshnessModule('V104_FORECAST_COVERAGE',forecastCoverageSourceMode,forecastCoverageObservedAt,forecastCoverageFallbackExpiresAt,forecastCoverageFallbackAgeMinutes,Boolean(forecastCoverageState?.ok))
+  ];
+  const freshnessCounts={
+    total:evidenceFreshnessModules.length,
+    live:evidenceFreshnessModules.filter(x=>x.state==='LIVE').length,
+    survivor_fresh:evidenceFreshnessModules.filter(x=>x.state==='SURVIVOR_FRESH').length,
+    survivor_aging:evidenceFreshnessModules.filter(x=>x.state==='SURVIVOR_AGING').length,
+    survivor_critical:evidenceFreshnessModules.filter(x=>x.state==='SURVIVOR_CRITICAL').length,
+    evidence_gated:evidenceFreshnessModules.filter(x=>x.state==='EVIDENCE_GATED').length
+  };
+  const expiring=evidenceFreshnessModules.filter(x=>typeof x.remaining_minutes==='number'&&x.remaining_minutes>=0).sort((a,b)=>a.remaining_minutes-b.remaining_minutes);
+  const evidenceFreshnessState=freshnessCounts.evidence_gated>0?'EVIDENCE_GATED'
+    :freshnessCounts.survivor_critical>0?'SURVIVOR_CRITICAL'
+      :freshnessCounts.survivor_aging>0?'SURVIVOR_AGING'
+        :(freshnessCounts.survivor_fresh>0?'SURVIVOR_FRESH':'LIVE');
+  const evidenceFreshness={
+    ok:freshnessCounts.evidence_gated===0,
+    version:'v105-evidence-freshness-survivor-resilience-v1',
+    state:evidenceFreshnessState,
+    counts:freshnessCounts,
+    modules:evidenceFreshnessModules,
+    next_expiry:expiring[0]??null,
+    governance:{
+      freshness_can_grant_capital:false,
+      freshness_can_only_preserve_or_reduce_permission:true,
+      stale_or_missing_evidence_fails_closed:true,
+      capital_permission:'0R'
+    },
+    truth_label:'RUNTIME_EVIDENCE_FRESHNESS_AND_FALLBACK_RESILIENCE_NOT_MODEL_PERFORMANCE'
+  };
+
   const quantAccountability={
     state:learningState,
     source_mode:accountabilitySourceMode,
@@ -852,6 +901,7 @@ export default async function handler(req,res){
     forecast_coverage_observed_at:forecastCoverageObservedAt,
     forecast_coverage_fallback_age_minutes:forecastCoverageFallbackAgeMinutes,
     forecast_coverage_fallback_expires_at:forecastCoverageFallbackExpiresAt,
+    evidence_freshness:evidenceFreshness,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -864,7 +914,8 @@ export default async function handler(req,res){
       learning_state:learningState,
       brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
       signal_reputation:benchmarkReputationState?.signal_reputation_state??'WITHHELD',
-      forecast_coverage:forecastCoverageState?.coverage_gates?.generalization_readiness??'WITHHELD'
+      forecast_coverage:forecastCoverageState?.coverage_gates?.generalization_readiness??'WITHHELD',
+      evidence_freshness:evidenceFreshnessState
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -880,7 +931,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -901,6 +952,7 @@ export default async function handler(req,res){
     ['Benchmark / Baseline Comparison',benchmarkReputationState?.ok?'ACTIVE':'EVIDENCE-GATED',benchmarkReputationState?.ok?`${benchmarkReputationState.benchmark_policy?.baseline_name??'NO_SKILL_50'} ${benchmarkReputationState.benchmark_policy?.baseline_accuracy_pct??50}% · ${benchmarkReputationState.counts?.human_review_eligible??0} human-review eligible · ${String(benchmarkReputationState.benchmark_state??'WITHHELD').replaceAll('_',' ')}`:'Benchmark evidence unavailable'],
     ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
     ['Forecast Coverage Governance',forecastCoverageState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastCoverageState?.ok?`${String(forecastCoverageState.coverage_gates?.direction_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.horizon_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.confidence_band_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.generalization_readiness??'WITHHELD').replaceAll('_',' ')}`:'Coverage evidence unavailable'],
+    ['Evidence Freshness & Survivor Resilience',evidenceFreshness.ok?'ACTIVE':'EVIDENCE-GATED',`${String(evidenceFreshness.state).replaceAll('_',' ')} · ${freshnessCounts.live} live · ${freshnessCounts.survivor_fresh+freshnessCounts.survivor_aging+freshnessCounts.survivor_critical} fallback · ${freshnessCounts.evidence_gated} gated · next expiry ${evidenceFreshness.next_expiry?.remaining_minutes??'n/a'}m`],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -920,7 +972,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v104-unified-intelligence-experience-v1',
+    version:'v105-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
