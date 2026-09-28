@@ -531,6 +531,20 @@ function safe(v,fallback='WITHHELD'){return v===null||v===undefined||v===''?fall
 function label(state){
   return String(state||'WITHHELD').replaceAll('_',' ');
 }
+function stableJson(value){
+  if(value===null||typeof value!=='object')return JSON.stringify(value);
+  if(Array.isArray(value))return '['+value.map(stableJson).join(',')+']';
+  const keys=Object.keys(value).sort();
+  return '{'+keys.map(k=>JSON.stringify(k)+':'+stableJson(value[k])).join(',')+'}';
+}
+async function sha256Hex(value){
+  try{
+    if(!globalThis.crypto?.subtle)return null;
+    const bytes=new TextEncoder().encode(stableJson(value));
+    const digest=await globalThis.crypto.subtle.digest('SHA-256',bytes);
+    return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  }catch{return null}
+}
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
 
@@ -867,6 +881,44 @@ export default async function handler(req,res){
     truth_label:'RUNTIME_EVIDENCE_FRESHNESS_AND_FALLBACK_RESILIENCE_NOT_MODEL_PERFORMANCE'
   };
 
+  const provenanceManifestSources=[
+    {id:'V96_V97_ACCOUNTABILITY',source_rpc:['get_v96_forecast_error_state','get_v97_execution_quality_state'],source_mode:accountabilitySourceMode,captured_at:accountabilityObservedAt,truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',payload:{forecast_error:forecastErrorState,execution_latency:executionQualityState}},
+    {id:'V101_SETTLEMENT',source_rpc:['get_v101_forecast_settlement_state'],source_mode:settlementSourceMode,captured_at:settlementObservedAt,truth_label:forecastSettlementState?.truth_label??null,payload:forecastSettlementState},
+    {id:'V102_BENCHMARK',source_rpc:['get_v102_benchmark_reputation_state'],source_mode:benchmarkSourceMode,captured_at:benchmarkObservedAt,truth_label:benchmarkReputationState?.truth_label??null,payload:benchmarkReputationState},
+    {id:'V103_CALIBRATION_STRUCTURE',source_rpc:['get_v103_calibration_structure_state'],source_mode:calibrationStructureSourceMode,captured_at:calibrationStructureObservedAt,truth_label:calibrationStructureState?.truth_label??null,payload:calibrationStructureState},
+    {id:'V98_V99_RISK_STACK',source_rpc:['get_v98_scenario_ev_state','get_v99_portfolio_risk_readiness'],source_mode:riskStackSourceMode,captured_at:riskStackObservedAt,truth_label:'RESEARCH_EV_PLUS_PORTFOLIO_RISK_READINESS',payload:{scenario_ev:scenarioEvState,portfolio_risk:portfolioRiskState}},
+    {id:'V104_FORECAST_COVERAGE',source_rpc:['get_v104_forecast_coverage_governance_state'],source_mode:forecastCoverageSourceMode,captured_at:forecastCoverageObservedAt,truth_label:forecastCoverageState?.truth_label??null,payload:forecastCoverageState}
+  ];
+  const provenanceFingerprints=await Promise.all(provenanceManifestSources.map(async source=>({
+    id:source.id,
+    source_rpc:source.source_rpc,
+    source_mode:source.source_mode,
+    captured_at:source.captured_at??null,
+    truth_label:source.truth_label,
+    algorithm:'SHA-256',
+    payload_scope:'PUBLIC_SAFE_AGGREGATE',
+    sha256:await sha256Hex(source.payload)
+  })));
+  const fingerprintedCount=provenanceFingerprints.filter(x=>typeof x.sha256==='string'&&x.sha256.length===64).length;
+  const provenanceIntegrityState=fingerprintedCount===provenanceFingerprints.length?'ALL_FINGERPRINTED'
+    :fingerprintedCount>0?'PARTIAL_FINGERPRINT_COVERAGE':'HASH_RUNTIME_UNAVAILABLE';
+  const provenanceManifest={
+    ok:fingerprintedCount===provenanceFingerprints.length,
+    version:'v106-snapshot-integrity-provenance-v1',
+    state:provenanceIntegrityState,
+    algorithm:'SHA-256',
+    fingerprints:provenanceFingerprints,
+    counts:{total:provenanceFingerprints.length,fingerprinted:fingerprintedCount,unfingerprinted:provenanceFingerprints.length-fingerprintedCount},
+    governance:{
+      fingerprints_are_content_addresses:true,
+      fingerprints_are_not_digital_signatures:true,
+      provenance_can_grant_capital:false,
+      missing_fingerprint_fails_integrity_gate:true,
+      capital_permission:'0R'
+    },
+    truth_label:'CONTENT_ADDRESSED_PUBLIC_SAFE_EVIDENCE_PROVENANCE_NOT_AUTHOR_SIGNATURE'
+  };
+
   const quantAccountability={
     state:learningState,
     source_mode:accountabilitySourceMode,
@@ -902,6 +954,7 @@ export default async function handler(req,res){
     forecast_coverage_fallback_age_minutes:forecastCoverageFallbackAgeMinutes,
     forecast_coverage_fallback_expires_at:forecastCoverageFallbackExpiresAt,
     evidence_freshness:evidenceFreshness,
+    provenance_manifest:provenanceManifest,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -915,7 +968,8 @@ export default async function handler(req,res){
       brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
       signal_reputation:benchmarkReputationState?.signal_reputation_state??'WITHHELD',
       forecast_coverage:forecastCoverageState?.coverage_gates?.generalization_readiness??'WITHHELD',
-      evidence_freshness:evidenceFreshnessState
+      evidence_freshness:evidenceFreshnessState,
+      provenance_integrity:provenanceIntegrityState
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -931,7 +985,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -953,6 +1007,7 @@ export default async function handler(req,res){
     ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
     ['Forecast Coverage Governance',forecastCoverageState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastCoverageState?.ok?`${String(forecastCoverageState.coverage_gates?.direction_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.horizon_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.confidence_band_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.generalization_readiness??'WITHHELD').replaceAll('_',' ')}`:'Coverage evidence unavailable'],
     ['Evidence Freshness & Survivor Resilience',evidenceFreshness.ok?'ACTIVE':'EVIDENCE-GATED',`${String(evidenceFreshness.state).replaceAll('_',' ')} · ${freshnessCounts.live} live · ${freshnessCounts.survivor_fresh+freshnessCounts.survivor_aging+freshnessCounts.survivor_critical} fallback · ${freshnessCounts.evidence_gated} gated · next expiry ${evidenceFreshness.next_expiry?.remaining_minutes??'n/a'}m`],
+    ['Snapshot Integrity & Provenance',provenanceManifest.ok?'ACTIVE':'EVIDENCE-GATED',`${String(provenanceIntegrityState).replaceAll('_',' ')} · ${fingerprintedCount}/${provenanceFingerprints.length} SHA-256 fingerprints · content address, not signature`],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -972,7 +1027,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v105-unified-intelligence-experience-v1',
+    version:'v106-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{

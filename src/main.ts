@@ -533,6 +533,7 @@ function renderQuantAccountability(pulse: any) {
   const portfolioRisk = pulse?.portfolio_risk ?? {};
   const forecastCoverage = pulse?.forecast_coverage ?? {};
   const evidenceFreshness = pulse?.evidence_freshness ?? {};
+  const provenanceManifest = pulse?.provenance_manifest ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -641,6 +642,10 @@ function renderQuantAccountability(pulse: any) {
   const nextExpiry=evidenceFreshness?.next_expiry ?? {};
   missionText('learningV105State', String(evidenceFreshness?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   missionText('learningV105Detail', evidenceFreshness?.version ? `${freshnessCounts.live ?? 0} live · ${(freshnessCounts.survivor_fresh ?? 0)+(freshnessCounts.survivor_aging ?? 0)+(freshnessCounts.survivor_critical ?? 0)} fallback · ${freshnessCounts.evidence_gated ?? 0} gated · next expiry ${typeof nextExpiry.remaining_minutes==='number'?nextExpiry.remaining_minutes.toFixed(1)+'m':'n/a'} · ${nextExpiry.id ?? 'no expiring lane'}` : 'Evidence freshness state unavailable.');
+  const provenanceCounts=provenanceManifest?.counts ?? {};
+  const firstFingerprint=Array.isArray(provenanceManifest?.fingerprints)?provenanceManifest.fingerprints.find((x:any)=>typeof x?.sha256==='string'):null;
+  missionText('learningV106State', String(provenanceManifest?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV106Detail', provenanceManifest?.version ? `${provenanceCounts.fingerprinted ?? 0}/${provenanceCounts.total ?? 0} SHA-256 fingerprints · ${provenanceManifest.algorithm ?? 'WITHHELD'} · ${firstFingerprint?.sha256 ? firstFingerprint.sha256.slice(0,12)+'…' : 'hash unavailable'} · content address, not signature` : 'Snapshot provenance unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
