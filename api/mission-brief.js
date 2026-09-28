@@ -1,4 +1,7 @@
 const BASE='https://thefatheranalytics.com';
+const SUPABASE_URL='https://mpcelmjiycjpdyyflisn.supabase.co';
+const PUBLISHABLE_KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+const LEGACY_ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wY2VsbWppeWNqcGR5eWZsaXNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MjIzNDUsImV4cCI6MjEwNDI5ODM0NX0.6uYPhuQRuG7MKqbUe-Ndq5e6scRFDW9qCfzAF4wLAMk';
 const MARKET_ASSETS=[
   {id:'gold',name:'Gold',symbol:'GC=F',kind:'futures',precision:1},
   {id:'dxy',name:'U.S. Dollar Index',symbol:'DX-Y.NYB',kind:'index',precision:3},
@@ -362,6 +365,85 @@ function marketBreadth(rows){
 }
 
 
+const QUANT_SURVIVOR_CAPTURED_AT='2026-09-28T07:11:37.628Z';
+const QUANT_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
+const QUANT_SURVIVOR_SNAPSHOT={
+  forecast_error:{
+    ok:true,version:'v96-forecast-error-attribution-v1',
+    horizons:[
+      {horizon_minutes:30,resolved_sample:12,nonflat_sample:8,hits:6,misses:2,flat_count:4,clean_hits:6,timing_recovered:2,directional_failures:0,low_follow_through:4,adverse_path_risk:0,avg_mfe_pct:0.1433,avg_mae_pct:0.0397,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {horizon_minutes:60,resolved_sample:10,nonflat_sample:10,hits:8,misses:2,flat_count:0,clean_hits:7,timing_recovered:2,directional_failures:0,low_follow_through:0,adverse_path_risk:1,avg_mfe_pct:0.2676,avg_mae_pct:0.0431,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {horizon_minutes:120,resolved_sample:6,nonflat_sample:6,hits:6,misses:0,flat_count:0,clean_hits:5,timing_recovered:0,directional_failures:0,low_follow_through:0,adverse_path_risk:0,avg_mfe_pct:0.5098,avg_mae_pct:0.0615,calibration_state:'EARLY_SAMPLE_LT_20',reviewed_at:'2026-09-28T07:10:00.204836Z'}
+    ],
+    categories:{DIRECTIONAL_HIT:1,ADVERSE_PATH_RISK:1,CLEAN_DIRECTIONAL_HIT:18,TIMING_ERROR_RECOVERED_LATER:4,LOW_FOLLOW_THROUGH_UNRESOLVED:2,LOW_FOLLOW_THROUGH_RECOVERED_LATER:2},
+    sample_policy:{public_accuracy:'WITHHELD_UNTIL_THRESHOLD',minimum_nonflat_sample_for_public_accuracy:20},
+    data_integrity:{negative_mae:0,negative_mfe:0},
+    governance:{research_only:true,action_permitted:'WAIT',capital_permission:'0R'}
+  },
+  execution_latency:{
+    ok:true,version:'v97-execution-latency-quality-v1',
+    delays:[
+      {delay_minutes:2,sample_size:14,adverse_count:10,improved_count:4,neutral_count:0,adverse_frequency_pct:71.43,avg_signed_shortfall_bps:1.3125,median_signed_shortfall_bps:1.3043,avg_adverse_cost_bps:3.2787,avg_favorable_improvement_bps:1.9662,p75_adverse_cost_bps:4.9103,max_adverse_cost_bps:11.3505,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {delay_minutes:5,sample_size:14,adverse_count:9,improved_count:5,neutral_count:0,adverse_frequency_pct:64.29,avg_signed_shortfall_bps:2.7909,median_signed_shortfall_bps:4.0201,avg_adverse_cost_bps:5.7906,avg_favorable_improvement_bps:2.9996,p75_adverse_cost_bps:9.1954,max_adverse_cost_bps:22.5873,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'},
+      {delay_minutes:10,sample_size:13,adverse_count:7,improved_count:6,neutral_count:0,adverse_frequency_pct:53.85,avg_signed_shortfall_bps:2.0783,median_signed_shortfall_bps:4.2528,avg_adverse_cost_bps:4.5202,avg_favorable_improvement_bps:2.442,p75_adverse_cost_bps:6.8553,max_adverse_cost_bps:16.8674,calibration_state:'EARLY_SAMPLE_10_TO_29',reviewed_at:'2026-09-28T07:10:00.204836Z'}
+    ],
+    truth_label:'OBSERVED_SIGNAL_TO_LATER_PRICE_SHORTFALL_PROXY',
+    sample_policy:{minimum_sample_for_stable_latency_estimate:30},
+    excluded_costs:['bid_ask_spread','broker_slippage','commission','market_impact','fill_probability'],
+    governance:{research_only:true,action_permitted:'WAIT',capital_permission:'0R',realized_execution_cost:false}
+  }
+};
+function quantSurvivorSnapshot(){
+  const captured=Date.parse(QUANT_SURVIVOR_CAPTURED_AT);
+  if(!Number.isFinite(captured))return null;
+  const ageMs=Math.max(0,Date.now()-captured);
+  if(ageMs>QUANT_SURVIVOR_MAX_AGE_MS)return null;
+  return {
+    ok:true,
+    source_mode:'VERIFIED_SNAPSHOT_FALLBACK',
+    observed_at:QUANT_SURVIVOR_CAPTURED_AT,
+    fallback_age_minutes:Number((ageMs/60000).toFixed(1)),
+    forecast_error:QUANT_SURVIVOR_SNAPSHOT.forecast_error,
+    execution_latency:QUANT_SURVIVOR_SNAPSHOT.execution_latency
+  };
+}
+
+async function supabaseRpc(name,timeout=5000){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
+      method:'POST',
+      headers:{apikey:PUBLISHABLE_KEY,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/97.0'},
+      body:'{}',
+      cache:'no-store',
+      signal:AbortSignal.timeout(timeout)
+    });
+    const body=await r.json().catch(()=>null);
+    if(!r.ok||!body)return {ok:false,state:'UNAVAILABLE',source:`Supabase RPC ${name}`,http_status:r.status};
+    return body;
+  }catch(error){return {ok:false,state:'UNAVAILABLE',source:`Supabase RPC ${name}`,error:String(error).slice(0,120)}}
+}
+
+async function quantAccountabilityEdge(timeout=7000){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/functions/v1/quant-accountability-state`,{
+      method:'POST',
+      headers:{
+        Authorization:`Bearer ${LEGACY_ANON_JWT}`,
+        apikey:PUBLISHABLE_KEY,
+        'Content-Type':'application/json',
+        Accept:'application/json',
+        'User-Agent':'THE-FATHER-ANALYTICS/97.1'
+      },
+      body:'{}',
+      cache:'no-store',
+      signal:AbortSignal.timeout(timeout)
+    });
+    const body=await r.json().catch(()=>null);
+    if(!r.ok||!body?.ok)return {ok:false,state:'UNAVAILABLE',source:'Supabase Edge direct-Postgres accountability lane',http_status:r.status};
+    return body;
+  }catch(error){return {ok:false,state:'UNAVAILABLE',source:'Supabase Edge direct-Postgres accountability lane',error:String(error).slice(0,120)}}
+}
+
 async function read(path,timeout=9000){
   const started=Date.now();
   try{
@@ -386,7 +468,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -430,8 +512,34 @@ export default async function handler(req,res){
       cboeVolIndex('VVIX','Cboe VVIX'),
       cboeVolIndex('SKEW','Cboe SKEW')
     ]),
-    goldSeasonality()
+    goldSeasonality(),
+    supabaseRpc('get_v96_forecast_error_state'),
+    supabaseRpc('get_v97_execution_quality_state')
   ]);
+
+  let accountabilitySourceMode='POSTGREST_RPC';
+  let accountabilityObservedAt=null;
+  let accountabilityFallbackAgeMinutes=null;
+  if(!forecastErrorState?.ok || !executionQualityState?.ok){
+    const edgeAccountability=await quantAccountabilityEdge();
+    if(edgeAccountability?.ok){
+      forecastErrorState=edgeAccountability.forecast_error;
+      executionQualityState=edgeAccountability.execution_latency;
+      accountabilitySourceMode=edgeAccountability.source_mode??'DIRECT_POSTGRES_EDGE_FUNCTION';
+      accountabilityObservedAt=edgeAccountability.observed_at??null;
+    }else{
+      const survivor=quantSurvivorSnapshot();
+      if(survivor?.ok){
+        forecastErrorState=survivor.forecast_error;
+        executionQualityState=survivor.execution_latency;
+        accountabilitySourceMode=survivor.source_mode;
+        accountabilityObservedAt=survivor.observed_at;
+        accountabilityFallbackAgeMinutes=survivor.fallback_age_minutes;
+      }else{
+        accountabilitySourceMode='EVIDENCE_GATED';
+      }
+    }
+  }
 
   const dataQuality=safe(quality.body?.state);
   if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
@@ -577,6 +685,41 @@ export default async function handler(req,res){
     note:'VIX, GVZ, VVIX and SKEW describe different options markets. GVZ supplies a Gold ETF volatility scale; SKEW is an equity tail-risk index. None of these alone provides Gold direction probability or dealer gamma.'
   };
 
+  const forecastHorizons=Array.isArray(forecastErrorState?.horizons)?forecastErrorState.horizons:[];
+  const executionDelays=Array.isArray(executionQualityState?.delays)?executionQualityState.delays:[];
+  const forecastThreshold=Number(forecastErrorState?.sample_policy?.minimum_nonflat_sample_for_public_accuracy??20);
+  const latencyThreshold=Number(executionQualityState?.sample_policy?.minimum_sample_for_stable_latency_estimate??30);
+  const maxForecastSample=forecastHorizons.reduce((m,h)=>Math.max(m,Number(h?.nonflat_sample??0)),0);
+  const maxLatencySample=executionDelays.reduce((m,h)=>Math.max(m,Number(h?.sample_size??0)),0);
+  const forecastMature=forecastHorizons.length>0&&forecastHorizons.every(h=>Number(h?.nonflat_sample??0)>=forecastThreshold);
+  const latencyMature=executionDelays.length>0&&executionDelays.every(h=>Number(h?.sample_size??0)>=latencyThreshold);
+  const learningState=forecastErrorState?.ok&&executionQualityState?.ok
+    ? (forecastMature&&latencyMature?'MATURE_REVIEW_READY':'CLOSED_LOOP_EARLY_SAMPLE')
+    : 'LEARNING_EVIDENCE_GATED';
+  const quantAccountability={
+    state:learningState,
+    source_mode:accountabilitySourceMode,
+    observed_at:accountabilityObservedAt,
+    fallback_age_minutes:accountabilityFallbackAgeMinutes,
+    fallback_expires_at:accountabilitySourceMode==='VERIFIED_SNAPSHOT_FALLBACK'?new Date(Date.parse(QUANT_SURVIVOR_CAPTURED_AT)+QUANT_SURVIVOR_MAX_AGE_MS).toISOString():null,
+    forecast_error:forecastErrorState,
+    execution_latency:executionQualityState,
+    publication_gates:{
+      public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
+      forecast_threshold:forecastThreshold,
+      max_nonflat_sample:maxForecastSample,
+      latency_stability:latencyMature?'REVIEW_READY':'EARLY_SAMPLE',
+      latency_threshold:latencyThreshold,
+      max_latency_sample:maxLatencySample,
+      brier:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
+      capital_permission:'0R',
+      learning_state:learningState,
+      brier_state:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES'
+    },
+    truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
+    note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
+  };
+
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
   changeParts.push(label(phase));
@@ -587,8 +730,8 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
-    {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 error attribution · V97 latency proxy · public accuracy ${forecastMature?'review-ready':'withheld'} · max n ${maxForecastSample}/${forecastThreshold}`,href:'/status/'},
+    {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:`Execution latency ${executionQualityState?.ok?'observed':'gated'} · realized costs excluded · capital permission 0R`,href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
 
@@ -603,8 +746,11 @@ export default async function handler(req,res){
     ['SMC / FVG / Order Blocks','FRAMEWORK','Proxy layer only where data supports it'],
     ['COT / Institutional Positioning',cotGold?.ok?'ACTIVE':'EVIDENCE-GATED',cotGold?.ok?`Gold report ${String(cotGold.report_date).slice(0,10)} · official weekly CFTC`:'No fabricated positioning'],
     ['Seasonality & Cycles',seasonality?.ok?'ACTIVE':'EVIDENCE-GATED',seasonality?.ok?`${seasonality.month.label} ${seasonality.month.state.replaceAll('_',' ')} · ${seasonality.quarter.label} ${seasonality.quarter.state.replaceAll('_',' ')}`:'Historical context unavailable'],
-    ['Forecast Ledger','ACTIVE','Immutable outcomes + calibration'],
-    ['Signal Reputation','LEARNING','Sample thresholds enforced'],
+    ['Forecast Ledger','ACTIVE',forecastErrorState?.ok?`V96 error reviews live · max non-flat n ${maxForecastSample}/${forecastThreshold}`:'Learning review unavailable'],
+    ['Signal Reputation','LEARNING',forecastErrorState?.ok?'Error categories + timing recovery · publication threshold enforced':'Evidence gated'],
+    ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
+    ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
+    ['Brier Calibration','GATED','No resolved probability outcomes are published yet'],
     ['Expected Value Engine','GATED','No EV without empirical inputs'],
     ['Portfolio Risk','GATED','Capital permission remains 0R'],
     ['Source Provenance','ACTIVE','Evidence trail + immutable snapshots'],
@@ -620,7 +766,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v95-unified-intelligence-experience-v1',
+    version:'v100-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -655,11 +801,12 @@ export default async function handler(req,res){
     rates_funding_intelligence:ratesFundingPulse,
     volatility_intelligence:volatilityIntelligence,
     gold_seasonality_cycle_context:seasonality,
+    quant_accountability:quantAccountability,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
-      public_accuracy:'WITHHELD',
-      reason:'Empirical outcome samples have not reached publication thresholds.',
+      public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
+      reason:forecastMature?'Forecast horizon samples crossed the minimum threshold; aggregate publication still requires review.':`Forecast error evidence is live, but public accuracy remains withheld until each horizon reaches n=${forecastThreshold}. Current maximum non-flat sample is n=${maxForecastSample}.`,
       qa_score:null,
       automatic_promotion:false,
       capital_permission:'0R'

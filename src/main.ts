@@ -76,6 +76,53 @@ function renderTags(id: string, values: unknown[]) {
   }
 }
 
+
+function renderClosedLoopLearning(stack: any) {
+  if (!stack?.ok) {
+    const state = String(stack?.state ?? 'DB_GATED_SURVIVOR_MODE').replaceAll('_',' ');
+    missionText('learningLoopStatus', state);
+    missionText('learningV96State', 'DB-GATED');
+    missionText('learningV97State', 'DB-GATED');
+    missionText('learningV98State', 'WITHHELD');
+    missionText('learningV99State', '0R · DB-GATED');
+    missionText('learningV86State', 'BLOCKED · 0R');
+    missionText('learningV96Detail', 'Internal attribution continues database-side; public bridge is restricted.');
+    missionText('learningV97Detail', 'Internal latency-cost calibration continues database-side; broker costs remain unavailable.');
+    missionText('learningV98Detail', 'Scenario EV proxy remains unpublished while evidence is not publicly verifiable.');
+    missionText('learningV99Detail', 'Risk readiness remains fail-closed while the governed database bridge is restricted.');
+    missionText('learningV86Detail', 'Capital permission remains 0R. Public runtime restrictions cannot be bypassed.');
+    return;
+  }
+
+  const v96 = stack?.forecast_error_attribution ?? {};
+  const v97 = stack?.execution_quality ?? {};
+  const v98 = stack?.scenario_ev_proxy ?? {};
+  const v99 = stack?.portfolio_risk_readiness ?? {};
+  const v86 = stack?.capital_firewall ?? {};
+  const h60 = Array.isArray(v96?.horizons) ? v96.horizons.find((x: any) => Number(x?.horizon_minutes) === 60) : null;
+  const h120 = Array.isArray(v96?.horizons) ? v96.horizons.find((x: any) => Number(x?.horizon_minutes) === 120) : null;
+  const d5 = Array.isArray(v97?.delays) ? v97.delays.find((x: any) => Number(x?.delay_minutes) === 5) : null;
+  const ev60 = Array.isArray(v98?.horizons) ? v98.horizons.find((x: any) => Number(x?.horizon_minutes) === 60) : null;
+
+  missionText('learningLoopStatus', 'LIVE GOVERNED LOOP');
+  missionText('learningV96State', h60 ? `${h60.calibration_state?.replaceAll?.('_',' ') ?? 'EARLY SAMPLE'}` : 'WITHHELD');
+  missionText('learningV96Detail', h60
+    ? `60m n=${h60.nonflat_sample ?? 0}/20 · timing recovered ${h60.timing_recovered ?? 0} · directional failures ${h60.directional_failures ?? 0} · 120m n=${h120?.nonflat_sample ?? 0}/20`
+    : 'Forecast attribution unavailable.');
+  missionText('learningV97State', d5 ? String(d5.calibration_state ?? 'EARLY SAMPLE').replaceAll('_',' ') : 'WITHHELD');
+  missionText('learningV97Detail', d5
+    ? `5m latency n=${d5.sample_size ?? 0}/30 · avg shortfall ${d5.avg_signed_shortfall_bps ?? 'n/a'} bp · P75 adverse ${d5.p75_adverse_cost_bps ?? 'n/a'} bp`
+    : 'Execution latency calibration unavailable.');
+  missionText('learningV98State', ev60 ? String(ev60.publication_state ?? 'WITHHELD').replaceAll('_',' ') : 'WITHHELD');
+  missionText('learningV98Detail', ev60
+    ? `60m forecast n=${ev60.nonflat_sample ?? 0}/20 · execution n=${ev60.execution_sample ?? 0}/30 · research edge proxy remains non-PnL`
+    : 'Scenario EV proxy unavailable.');
+  missionText('learningV99State', String(v99?.state ?? '0R').replaceAll('_',' '));
+  missionText('learningV99Detail', `Single-asset human review eligible: ${v99?.single_asset_human_review_eligible ? 'YES' : 'NO'} · multi-asset portfolio ready: ${v99?.multi_asset_portfolio_ready ? 'YES' : 'NO'}`);
+  missionText('learningV86State', `${String(v86?.state ?? 'BLOCKED').replaceAll('_',' ')} · ${v86?.capital_permission ?? '0R'}`);
+  missionText('learningV86Detail', `Human approval required: ${v86?.human_approval_required === false ? 'NO' : 'YES'} · automatic risk increase: ${v86?.automatic_risk_increase ? 'ON' : 'OFF'}`);
+}
+
 async function loadAutonomousState() {
   const modeNode = document.querySelector<HTMLElement>('#autonomyMode');
   if (!modeNode) return;
@@ -92,6 +139,7 @@ async function loadAutonomousState() {
     const connectors = health?.connectors ?? {};
     const generated = state?.generated_at ? new Date(state.generated_at) : null;
     const regimeMemory = state?.cross_asset_regime_memory ?? null;
+    const learningStack = state?.closed_loop_learning ?? null;
 
     setAutonomyText('autonomyMode', state?.mode ?? 'UNAVAILABLE');
     setAutonomyText('autonomyScore', Number.isFinite(Number(state?.system_score)) ? `${state.system_score}/100` : '--');
@@ -107,6 +155,7 @@ async function loadAutonomousState() {
         ? `CANDIDATE ${String(regimeMemory.candidate_pattern).replaceAll('_', ' ')} ×${regimeMemory.candidate_count ?? 1}`
         : String(regimeMemory?.state ?? 'DB-GATED').replaceAll('_', ' ');
     setAutonomyText('marketMemoryState', memoryLabel);
+    renderClosedLoopLearning(learningStack);
     setAutonomyText('autonomyUpdated', generated && !Number.isNaN(generated.getTime()) ? `Governed state · ${generated.toLocaleString()}` : 'Governed state unavailable');
     renderTags('autonomyBlockers', state?.blockers ?? []);
     renderTags('autonomyActions', state?.autonomous_actions ?? []);
@@ -132,6 +181,7 @@ async function loadAutonomousState() {
     renderTags('autonomyBlockers', ['PUBLIC_STATE_CHANNEL_UNAVAILABLE']);
     renderTags('autonomyActions', ['FAIL_CLOSED']);
     setAutonomyText('autonomyPermission', 'WAIT · 0R');
+    renderClosedLoopLearning({ ok:false, state:'PUBLIC_STATE_CHANNEL_UNAVAILABLE' });
   }
 }
 
@@ -472,6 +522,85 @@ function renderPositioningEvidence(evidence: { gold_cot?: any } | undefined) {
   missionText('cotManaged3', typeof cot?.managed_money_3_report_net_change === 'number' ? `${cot.managed_money_3_report_net_change >= 0 ? '+' : ''}${Math.round(cot.managed_money_3_report_net_change).toLocaleString()}` : 'WITHHELD');
 }
 
+
+function renderQuantAccountability(pulse: any) {
+  const forecast = pulse?.forecast_error ?? {};
+  const execution = pulse?.execution_latency ?? {};
+  const gates = pulse?.publication_gates ?? {};
+  const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
+  const delays = Array.isArray(execution?.delays) ? execution.delays : [];
+  const forecastGrid = document.querySelector<HTMLElement>('#forecastErrorGrid');
+  const latencyGrid = document.querySelector<HTMLElement>('#latencyQualityGrid');
+
+  if (forecastGrid) {
+    forecastGrid.replaceChildren();
+    for (const h of horizons) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card';
+      const label = document.createElement('span');
+      label.textContent = `${h.horizon_minutes ?? '?'} MIN HORIZON`;
+      const value = document.createElement('strong');
+      value.textContent = `n=${h.nonflat_sample ?? 0}/${gates.forecast_threshold ?? 20}`;
+      const metrics = document.createElement('em');
+      const mfe = typeof h.avg_mfe_pct === 'number' ? h.avg_mfe_pct.toFixed(4) : 'n/a';
+      const mae = typeof h.avg_mae_pct === 'number' ? h.avg_mae_pct.toFixed(4) : 'n/a';
+      metrics.textContent = `MFE ${mfe}% · MAE ${mae}%`;
+      const meta = document.createElement('small');
+      meta.textContent = `${h.hits ?? 0} observed hits · ${h.misses ?? 0} misses · ${h.timing_recovered ?? 0} timing recoveries · accuracy withheld`;
+      card.append(label, value, metrics, meta);
+      forecastGrid.appendChild(card);
+    }
+    if (!horizons.length) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card';
+      card.textContent = 'Forecast error evidence unavailable';
+      forecastGrid.appendChild(card);
+    }
+  }
+
+  if (latencyGrid) {
+    latencyGrid.replaceChildren();
+    for (const d of delays) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card latency';
+      const label = document.createElement('span');
+      label.textContent = `${d.delay_minutes ?? '?'} MIN DELAY`;
+      const value = document.createElement('strong');
+      value.textContent = `n=${d.sample_size ?? 0}/${gates.latency_threshold ?? 30}`;
+      const metrics = document.createElement('em');
+      const signed = typeof d.avg_signed_shortfall_bps === 'number' ? `${d.avg_signed_shortfall_bps >= 0 ? '+' : ''}${d.avg_signed_shortfall_bps.toFixed(2)} bp` : 'WITHHELD';
+      metrics.textContent = `Avg signed shortfall ${signed}`;
+      const meta = document.createElement('small');
+      meta.textContent = `${d.adverse_count ?? 0} adverse / ${d.improved_count ?? 0} improved · max adverse ${typeof d.max_adverse_cost_bps === 'number' ? d.max_adverse_cost_bps.toFixed(2) : 'n/a'} bp · early sample`;
+      card.append(label, value, metrics, meta);
+      latencyGrid.appendChild(card);
+    }
+    if (!delays.length) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card latency';
+      card.textContent = 'Execution latency evidence unavailable';
+      latencyGrid.appendChild(card);
+    }
+  }
+
+  const cats = forecast?.categories ?? {};
+  const errorParts = [
+    typeof cats.CLEAN_DIRECTIONAL_HIT === 'number' ? `${cats.CLEAN_DIRECTIONAL_HIT} clean` : null,
+    typeof cats.TIMING_ERROR_RECOVERED_LATER === 'number' ? `${cats.TIMING_ERROR_RECOVERED_LATER} timing recovered` : null,
+    typeof cats.LOW_FOLLOW_THROUGH_UNRESOLVED === 'number' ? `${cats.LOW_FOLLOW_THROUGH_UNRESOLVED} low follow-through` : null,
+    typeof cats.ADVERSE_PATH_RISK === 'number' ? `${cats.ADVERSE_PATH_RISK} adverse path` : null
+  ].filter(Boolean);
+
+  missionText('quantLearningState', String(pulse?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('quantPublicationGate', gates?.public_accuracy ?? 'WITHHELD');
+  const sourceMode=String(pulse?.source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' '); const fallbackAge=typeof pulse?.fallback_age_minutes==='number'?` · snapshot age ${pulse.fallback_age_minutes.toFixed(1)}m`:'';
+  missionText('quantPublicationReason', `Max non-flat n=${gates?.max_nonflat_sample ?? 0}; threshold n=${gates?.forecast_threshold ?? 20} per horizon · ${sourceMode}${fallbackAge}.`);
+  missionText('quantErrorMix', errorParts.length ? errorParts.join(' · ') : 'WITHHELD');
+  missionText('quantIntegrity', forecast?.data_integrity ? `${forecast.data_integrity.negative_mfe ?? 0} negative MFE · ${forecast.data_integrity.negative_mae ?? 0} negative MAE` : 'WITHHELD');
+  missionText('quantLatencyMaturity', `max n=${gates?.max_latency_sample ?? 0}/${gates?.latency_threshold ?? 30} · ${String(gates?.latency_stability ?? 'WITHHELD').replaceAll('_',' ')}`);
+  missionText('quantBrier', String(gates?.brier ?? 'WITHHELD').replaceAll('_',' '));
+}
+
 function renderDesks(desks: MissionDesk[]) {
   const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
   if (!grid || !Array.isArray(desks)) return;
@@ -571,6 +700,7 @@ async function loadMissionBrief() {
     renderMacroPulse(brief?.macro_evidence_pulse);
     renderTrendsPulse(brief?.global_trends_evidence_pulse);
     renderPositioningEvidence(brief?.flows_positioning_evidence);
+    renderQuantAccountability(brief?.quant_accountability);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
