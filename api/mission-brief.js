@@ -530,6 +530,27 @@ function keyLifecycleSurvivorSnapshot(){
   return {...KEY_LIFECYCLE_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:KEY_LIFECYCLE_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+KEY_LIFECYCLE_SURVIVOR_MAX_AGE_MS).toISOString()};
 }
 
+const CHECKPOINT_SURVIVOR_CAPTURED_AT='2026-09-28T09:30:35.488761Z';
+const CHECKPOINT_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
+const CHECKPOINT_SURVIVOR_SNAPSHOT={
+  ok:true,
+  version:'v110-provenance-checkpoint-root-v1',
+  state:'GLOBAL_CHECKPOINT_VERIFIED',
+  counts:{checkpoints:2,hmac_failures:0,chain_link_failures:0,payload_hash_failures:0,missing_historical_keys:0,uncheckpointed_attestations:0},
+  latest_checkpoint:{id:2,key_name:'tfa_v108_attestation_hmac_v2',module_count:8,receipt_count:32,attestation_count:32,checkpointed_at:'2026-09-28T09:30:32.042967Z',latest_receipt_at:'2026-09-28T09:05:00.373877Z',latest_attestation_at:'2026-09-28T09:07:00.114438Z',checkpoint_sha256:'24b4694334e4bb2bfc5e4d4ee474c107ea2b880ebecd7cc390900c62b27c5de0',previous_checkpoint_sha256:'2d829cc019980e7902428eb78c54468876be811641aee7815a1c88ee88f10cb3',checkpoint_hmac_sha256:'f9f26fe9880ba834f9abcb53f6b10f999aaebec5f7b9f8762ad1f47c950d298f'},
+  freshness:{lag_seconds:1411.928529,latest_checkpoint_at:'2026-09-28T09:30:32.042967Z',latest_attestation_at:'2026-09-28T09:07:00.114438Z'},
+  scheduler:{cadence:'HOURLY_MINUTE_10',depends_on_receipts:'HOURLY_MINUTE_05',depends_on_attestations:'HOURLY_MINUTE_07',gateway_dependency:false},
+  governance:{append_only:true,updates_blocked:true,deletes_blocked:true,checkpoint_hash:'SHA256',checkpoint_attestation:'HMAC_SHA256_SERVER_ATTESTATION',key_version_aware:true,not_public_key_signature:true,capital_permission:'0R'},
+  truth_label:'GLOBAL_HASH_CHAINED_HMAC_ATTESTED_PROVENANCE_CHECKPOINT_NOT_EXTERNAL_PUBLIC_KEY_ANCHOR'
+};
+function checkpointSurvivorSnapshot(){
+  const captured=Date.parse(CHECKPOINT_SURVIVOR_CAPTURED_AT);
+  if(!Number.isFinite(captured))return null;
+  const ageMs=Math.max(0,Date.now()-captured);
+  if(ageMs>CHECKPOINT_SURVIVOR_MAX_AGE_MS)return null;
+  return {...CHECKPOINT_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:CHECKPOINT_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+CHECKPOINT_SURVIVOR_MAX_AGE_MS).toISOString()};
+}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -604,7 +625,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState,provenanceReceiptState,provenanceAttestationState,keyLifecycleState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState,provenanceReceiptState,provenanceAttestationState,keyLifecycleState,checkpointState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -659,7 +680,8 @@ export default async function handler(req,res){
     supabaseRpc('get_v104_forecast_coverage_governance_state'),
     supabaseRpc('get_v107_provenance_ledger_state'),
     supabaseRpc('get_v108_provenance_attestation_state'),
-    supabaseRpc('get_v109_attestation_key_lifecycle_state')
+    supabaseRpc('get_v109_attestation_key_lifecycle_state'),
+    supabaseRpc('get_v110_provenance_checkpoint_state')
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -777,6 +799,21 @@ export default async function handler(req,res){
       keyLifecycleFallbackAgeMinutes=fallback.fallback_age_minutes;
       keyLifecycleFallbackExpiresAt=fallback.fallback_expires_at;
     }else keyLifecycleSourceMode='EVIDENCE_GATED';
+  }
+
+  let checkpointSourceMode='POSTGREST_RPC';
+  let checkpointObservedAt=null;
+  let checkpointFallbackAgeMinutes=null;
+  let checkpointFallbackExpiresAt=null;
+  if(!checkpointState?.ok){
+    const fallback=checkpointSurvivorSnapshot();
+    if(fallback?.ok){
+      checkpointState=fallback;
+      checkpointSourceMode=fallback.source_mode;
+      checkpointObservedAt=fallback.observed_at;
+      checkpointFallbackAgeMinutes=fallback.fallback_age_minutes;
+      checkpointFallbackExpiresAt=fallback.fallback_expires_at;
+    }else checkpointSourceMode='EVIDENCE_GATED';
   }
 
   const dataQuality=safe(quality.body?.state);
@@ -955,7 +992,8 @@ export default async function handler(req,res){
     freshnessModule('V104_FORECAST_COVERAGE',forecastCoverageSourceMode,forecastCoverageObservedAt,forecastCoverageFallbackExpiresAt,forecastCoverageFallbackAgeMinutes,Boolean(forecastCoverageState?.ok)),
     freshnessModule('V107_PROVENANCE_RECEIPT_LEDGER',receiptLedgerSourceMode,receiptLedgerObservedAt,receiptLedgerFallbackExpiresAt,receiptLedgerFallbackAgeMinutes,Boolean(provenanceReceiptState?.ok)),
     freshnessModule('V108_SERVER_ATTESTATION',attestationSourceMode,attestationObservedAt,attestationFallbackExpiresAt,attestationFallbackAgeMinutes,Boolean(provenanceAttestationState?.ok)),
-    freshnessModule('V109_KEY_LIFECYCLE',keyLifecycleSourceMode,keyLifecycleObservedAt,keyLifecycleFallbackExpiresAt,keyLifecycleFallbackAgeMinutes,Boolean(keyLifecycleState?.ok))
+    freshnessModule('V109_KEY_LIFECYCLE',keyLifecycleSourceMode,keyLifecycleObservedAt,keyLifecycleFallbackExpiresAt,keyLifecycleFallbackAgeMinutes,Boolean(keyLifecycleState?.ok)),
+    freshnessModule('V110_GLOBAL_CHECKPOINT',checkpointSourceMode,checkpointObservedAt,checkpointFallbackExpiresAt,checkpointFallbackAgeMinutes,Boolean(checkpointState?.ok))
   ];
   const freshnessCounts={
     total:evidenceFreshnessModules.length,
@@ -1075,6 +1113,11 @@ export default async function handler(req,res){
     attestation_key_lifecycle_observed_at:keyLifecycleObservedAt,
     attestation_key_lifecycle_fallback_age_minutes:keyLifecycleFallbackAgeMinutes,
     attestation_key_lifecycle_fallback_expires_at:keyLifecycleFallbackExpiresAt,
+    provenance_checkpoint:checkpointState,
+    provenance_checkpoint_source_mode:checkpointSourceMode,
+    provenance_checkpoint_observed_at:checkpointObservedAt,
+    provenance_checkpoint_fallback_age_minutes:checkpointFallbackAgeMinutes,
+    provenance_checkpoint_fallback_expires_at:checkpointFallbackExpiresAt,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -1092,7 +1135,8 @@ export default async function handler(req,res){
       provenance_integrity:provenanceIntegrityState,
       provenance_receipt_chain:provenanceReceiptState?.state??'WITHHELD',
       server_attestation:provenanceAttestationState?.state??'WITHHELD',
-      attestation_key_lifecycle:keyLifecycleState?.state??'WITHHELD'
+      attestation_key_lifecycle:keyLifecycleState?.state??'WITHHELD',
+      provenance_checkpoint:checkpointState?.state??'WITHHELD'
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -1108,7 +1152,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -1134,6 +1178,7 @@ export default async function handler(req,res){
     ['Provenance Receipt Ledger',provenanceReceiptState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceReceiptState?.ok?`${String(provenanceReceiptState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceReceiptState.counts?.receipts??0} receipts · ${provenanceReceiptState.counts?.modules??0} modules · hourly chain`:'Receipt ledger unavailable'],
     ['Server-Attested Provenance',provenanceAttestationState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceAttestationState?.ok?`${String(provenanceAttestationState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceAttestationState.counts?.verified_attestations??0}/${provenanceAttestationState.counts?.attestations??0} verified · Vault-backed HMAC · not public-key signature`:'Attestation evidence unavailable'],
     ['Attestation Key Lifecycle',keyLifecycleState?.ok?'ACTIVE':'EVIDENCE-GATED',keyLifecycleState?.ok?`${String(keyLifecycleState.state??'WITHHELD').replaceAll('_',' ')} · ${keyLifecycleState.counts?.keys??0} keys · ${keyLifecycleState.counts?.active_keys??0} active · ${keyLifecycleState.counts?.retired_keys??0} retired · history preserved`:'Key lifecycle unavailable'],
+    ['Global Provenance Checkpoint',checkpointState?.ok?'ACTIVE':'EVIDENCE-GATED',checkpointState?.ok?`${String(checkpointState.state??'WITHHELD').replaceAll('_',' ')} · ${checkpointState.counts?.checkpoints??0} checkpoints · ${checkpointState.counts?.chain_link_failures??0} broken links · ${checkpointState.counts?.uncheckpointed_attestations??0} unattested heads · root ${String(checkpointState.latest_checkpoint?.checkpoint_sha256??'').slice(0,12)}…`:'Checkpoint evidence unavailable'],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -1153,7 +1198,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v109-unified-intelligence-experience-v1',
+    version:'v110-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{

@@ -537,6 +537,7 @@ function renderQuantAccountability(pulse: any) {
   const receiptLedger = pulse?.provenance_receipt_ledger ?? {};
   const attestation = pulse?.provenance_attestation ?? {};
   const keyLifecycle = pulse?.attestation_key_lifecycle ?? {};
+  const checkpoint = pulse?.provenance_checkpoint ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -656,6 +657,11 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV109State', String(keyLifecycle?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   const activeKey=Array.isArray(keyLifecycle?.keys)?keyLifecycle.keys.find((k:any)=>k?.status==='ACTIVE'):null;
   missionText('learningV109Detail', keyLifecycle?.ok ? `${keyLifecycle?.counts?.keys ?? 0} keys · ${keyLifecycle?.counts?.active_keys ?? 0} active · ${keyLifecycle?.counts?.retired_keys ?? 0} retired · ${keyLifecycle?.counts?.missing_vault_keys ?? 0} missing · active v${activeKey?.version ?? '?'} · history preserved.` : 'Attestation key lifecycle unavailable.');
+  const checkpointRoot=String(checkpoint?.latest_checkpoint?.checkpoint_sha256 ?? '');
+  const checkpointMode=String(pulse?.provenance_checkpoint_source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' ');
+  const checkpointAge=typeof pulse?.provenance_checkpoint_fallback_age_minutes==='number' ? ` · snapshot ${pulse.provenance_checkpoint_fallback_age_minutes.toFixed(1)}m old` : '';
+  missionText('learningV110State', String(checkpoint?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV110Detail', checkpoint?.ok ? `${checkpoint?.counts?.checkpoints ?? 0} checkpoints · ${checkpoint?.counts?.chain_link_failures ?? 0} broken links · ${checkpoint?.counts?.hmac_failures ?? 0} HMAC failures · ${checkpoint?.counts?.uncheckpointed_attestations ?? 0} uncheckpointed · root ${checkpointRoot ? checkpointRoot.slice(0,12)+'…' : 'n/a'} · ${checkpointMode}${checkpointAge}` : 'Global provenance checkpoint unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
