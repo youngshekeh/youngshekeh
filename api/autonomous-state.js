@@ -44,6 +44,11 @@ async function canonicalState(){
   if(!r.ok||!r.response)return {ok:false,status:r.status,ms:r.ms,error:r.error??null};
   const body=await r.response.json().catch(()=>null);return {ok:!!body?.ok,status:r.status,ms:r.ms,body};
 }
+async function regimeMemory(){
+  const r=await timedFetch(`${SUPABASE_URL}/rest/v1/rpc/get_v89_market_regime_state`,{method:'POST',headers:{apikey:PUBLISHABLE_KEY,'Content-Type':'application/json',Accept:'application/json'},body:'{}'},3500);
+  if(!r.ok||!r.response)return {ok:false,status:r.status,ms:r.ms,error:r.error??null};
+  const body=await r.response.json().catch(()=>null);return {ok:!!body?.ok,status:r.status,ms:r.ms,body};
+}
 function ch(feed){return Number.isFinite(Number(feed?.change_pct))?Number(feed.change_pct):null}
 function shadowState(feeds,stale,marketState){
   if(marketState==='MARKET_CLOSED')return {state:'MARKET_CLOSED',hero_score:0,dragon_score:0,confidence:'WITHHELD'};
@@ -103,8 +108,15 @@ async function survivorState(upstream){
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
   try{
-    const upstream=await canonicalState();
-    const body=upstream.ok&&upstream.body?{...upstream.body,version:`${upstream.body.version}+vercel-bridge`,bridge:{canonical_upstream_ok:true,supabase_status:upstream.status,supabase_latency_ms:upstream.ms}}:await survivorState(upstream);
+    const [upstream,memory]=await Promise.all([canonicalState(),regimeMemory()]);
+    const body=upstream.ok&&upstream.body
+      ? {...upstream.body,version:`${upstream.body.version}+vercel-bridge`,
+          cross_asset_regime_memory:memory.ok&&memory.body?memory.body:{ok:false,state:'DB_MEMORY_UNAVAILABLE',status:memory.status},
+          bridge:{canonical_upstream_ok:true,supabase_status:upstream.status,supabase_latency_ms:upstream.ms}}
+      : await survivorState(upstream);
+    if(!body.cross_asset_regime_memory){
+      body.cross_asset_regime_memory=memory.ok&&memory.body?memory.body:{ok:false,state:'DB_GATED_SURVIVOR_MODE',status:memory.status};
+    }
     res.setHeader('Cache-Control','public, max-age=15, s-maxage=60, stale-while-revalidate=120');
     return res.status(200).json(body);
   }catch(error){
