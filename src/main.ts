@@ -747,6 +747,93 @@ async function loadQaMatrix() {
 }
 
 
+
+function renderAutonomousHealth(health: any) {
+  const rawState = String(health?.state ?? 'WITHHELD');
+  const state = rawState.replaceAll('_', ' ');
+  const summary = health?.summary ?? {};
+  const readinessValue = Number(health?.readiness_pct);
+  const readiness = Number.isFinite(readinessValue) ? Math.max(0, Math.min(100, readinessValue)) : null;
+  const readinessLabel = readiness === null ? 'n/a' : `${Math.round(readiness)}%`;
+
+  missionText('learningV113State', state);
+  missionText('learningV113Detail', `${readinessLabel} system readiness · ${summary?.critical_failures ?? 0} critical · ${summary?.gated ?? 0} gated · ${summary?.degraded ?? 0} degraded · ${summary?.survivor_fallbacks ?? 0} survivor · WAIT / 0R`);
+  updateMissionTapeItem('AUTONOMOUS HEALTH', `${state} · ${readinessLabel}`);
+
+  missionText('autonomyState', state);
+  missionText('autonomyReadiness', readiness === null ? '--%' : `${Math.round(readiness)}%`);
+  missionText('autonomyHealthy', summary?.healthy ?? '--');
+  missionText('autonomyGated', summary?.gated ?? '--');
+  missionText('autonomyDegraded', summary?.degraded ?? '--');
+  missionText('autonomyCritical', summary?.critical_failures ?? '--');
+  missionText('autonomyLaneCount', `${Array.isArray(health?.lanes) ? health.lanes.length : 0} lanes`);
+  missionText('autonomyUpdated', health?.version ? `${health.version} · governed snapshot` : 'Health evidence withheld');
+
+  const ring = document.querySelector<HTMLElement>('#autonomyReadinessRing');
+  if (ring) ring.style.setProperty('--autonomy-readiness', `${readiness === null ? 0 : readiness * 3.6}deg`);
+
+  const laneList = document.querySelector<HTMLElement>('#autonomyLaneList');
+  if (laneList) {
+    laneList.replaceChildren();
+    const lanes = Array.isArray(health?.lanes) ? health.lanes : [];
+    if (!lanes.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Health lanes unavailable. Authority remains fail-closed.';
+      laneList.appendChild(empty);
+    } else {
+      lanes.forEach((lane: any) => {
+        const row = document.createElement('div');
+        row.className = 'autonomy-lane';
+        const copy = document.createElement('div');
+        const name = document.createElement('strong');
+        const detail = document.createElement('small');
+        const badge = document.createElement('span');
+        name.textContent = String(lane?.id ?? 'UNKNOWN LANE').replaceAll('_', ' ');
+        detail.textContent = String(lane?.detail ?? 'No detail');
+        badge.textContent = String(lane?.state ?? 'WITHHELD').replaceAll('_', ' ');
+        badge.dataset.state = String(lane?.state ?? '');
+        if (lane?.critical) row.dataset.critical = 'true';
+        copy.append(name, detail);
+        row.append(copy, badge);
+        laneList.appendChild(row);
+      });
+    }
+  }
+
+  const renderEvents = (selector: string, events: any[], emptyText: string, kind: 'incident' | 'recovery') => {
+    const host = document.querySelector<HTMLElement>(selector);
+    if (!host) return;
+    host.replaceChildren();
+    if (!events.length) {
+      const clear = document.createElement('div');
+      clear.className = 'autonomy-event autonomy-event-clear';
+      const strong = document.createElement('strong');
+      const small = document.createElement('small');
+      strong.textContent = kind === 'incident' ? 'NO ACTIVE INCIDENTS' : 'NO RECOVERY ACTIONS';
+      small.textContent = emptyText;
+      clear.append(strong, small);
+      host.appendChild(clear);
+      return;
+    }
+    events.slice(0, 6).forEach((event: any) => {
+      const row = document.createElement('div');
+      row.className = 'autonomy-event';
+      const strong = document.createElement('strong');
+      const small = document.createElement('small');
+      const badge = document.createElement('span');
+      strong.textContent = String(event?.lane ?? event?.action ?? 'SYSTEM EVENT').replaceAll('_', ' ');
+      small.textContent = String(event?.detail ?? event?.containment ?? 'Governed action');
+      badge.textContent = String(event?.severity ?? event?.state ?? 'ACTIVE').replaceAll('_', ' ');
+      badge.dataset.state = String(event?.severity ?? event?.state ?? '');
+      row.append(strong, small, badge);
+      host.appendChild(row);
+    });
+  };
+
+  renderEvents('#autonomyIncidentList', Array.isArray(health?.incidents) ? health.incidents : [], 'All critical lanes are contained.', 'incident');
+  renderEvents('#autonomyRecoveryList', Array.isArray(health?.recovery_actions) ? health.recovery_actions : [], 'No bounded recovery action is currently required.', 'recovery');
+}
+
 async function loadMissionBrief() {
   try {
     const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -776,12 +863,7 @@ async function loadMissionBrief() {
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
-    const healthState = String(health?.state ?? 'WITHHELD').replaceAll('_', ' ');
-    const healthSummary = health?.summary ?? {};
-    const healthReadiness = typeof health?.readiness_pct === 'number' ? `${health.readiness_pct}%` : 'n/a';
-    missionText('learningV113State', healthState);
-    missionText('learningV113Detail', `${healthReadiness} system readiness · ${healthSummary?.critical_failures ?? 0} critical · ${healthSummary?.gated ?? 0} gated · ${healthSummary?.degraded ?? 0} degraded · ${healthSummary?.survivor_fallbacks ?? 0} survivor · WAIT / 0R`);
-    updateMissionTapeItem('AUTONOMOUS HEALTH', `${healthState} · ${healthReadiness}`);
+    renderAutonomousHealth(health);
 
     missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
