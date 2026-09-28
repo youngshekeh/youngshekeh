@@ -1402,11 +1402,43 @@ export default async function handler(req,res){
   if(breakoutState!=='WITHHELD')changeParts.push(label(breakoutState));
   if(mtf!=='WITHHELD')changeParts.push(label(mtf));
 
+  const releaseEnv=String(process.env.VERCEL_ENV??process.env.VERCEL_TARGET_ENV??'UNKNOWN');
+  const releaseBranch=String(process.env.VERCEL_GIT_COMMIT_REF??'UNKNOWN');
+  const releaseSha=String(process.env.VERCEL_GIT_COMMIT_SHA??'');
+  const releaseDeploymentId=String(process.env.VERCEL_DEPLOYMENT_ID??'');
+  const releaseMetadataComplete=releaseEnv!=='UNKNOWN'&&releaseBranch!=='UNKNOWN'&&/^[a-f0-9]{40}$/i.test(releaseSha);
+  const productionSourceVerified=releaseEnv==='production'
+    &&releaseBranch==='the-father-analytics-deploy'
+    &&/^[a-f0-9]{40}$/i.test(releaseSha);
+  const releaseState=releaseEnv==='production'
+    ? (productionSourceVerified?'PRODUCTION_SOURCE_VERIFIED':'PRODUCTION_SOURCE_MISMATCH')
+    : (releaseMetadataComplete?'NON_PRODUCTION_SOURCE':'METADATA_WITHHELD');
+  const releaseIntegrity={
+    ok:releaseEnv==='production'?productionSourceVerified:releaseMetadataComplete,
+    version:'v113.2-release-integrity-v1',
+    state:releaseState,
+    environment:releaseEnv,
+    git_branch:releaseBranch,
+    git_commit_sha:/^[a-f0-9]{40}$/i.test(releaseSha)?releaseSha:null,
+    git_commit_short:/^[a-f0-9]{40}$/i.test(releaseSha)?releaseSha.slice(0,12):null,
+    deployment_id:releaseDeploymentId||null,
+    expected_production_branch:'the-father-analytics-deploy',
+    build_policy:'GITHUB_CI_FEATURE_BRANCHES_THEN_VERCEL_PRODUCTION_BRANCH',
+    governance:{
+      release_metadata_can_grant_capital:false,
+      production_branch_mismatch_fails_closed:true,
+      automatic_execution:false,
+      capital_permission:'0R'
+    },
+    truth_label:'VERCEL_RUNTIME_RELEASE_PROVENANCE_NOT_CODE_CORRECTNESS_NOT_FORECAST_ACCURACY'
+  };
+
   const healthLane=(id,state,critical,detail)=>({id,state,critical:!!critical,detail});
   const healthGold=marketAssets.find(x=>x?.id==='gold');
   const healthFallbackCount=(freshnessCounts.survivor_fresh??0)+(freshnessCounts.survivor_aging??0)+(freshnessCounts.survivor_critical??0);
   const healthLanes=[
     healthLane('MISSION_COMPOSITION','HEALTHY',true,'Mission Brief assembled successfully.'),
+    healthLane('RELEASE_PROVENANCE',releaseIntegrity.ok?'HEALTHY':(releaseEnv==='production'?'FAIL':'GATED'),releaseEnv==='production',releaseIntegrity.ok?`${label(releaseIntegrity.state)} · ${releaseIntegrity.git_commit_short??'sha withheld'}`:`${label(releaseIntegrity.state)} · ${releaseBranch}`),
     healthLane('DATA_QUALITY',['PASS','PASS_WITH_WARNINGS'].includes(String(dataQuality))?'HEALTHY':'FAIL',true,`sentinel ${label(dataQuality)}`),
     healthLane('CAPITAL_FIREWALL','HEALTHY',true,'WAIT · 0R invariant locked'),
     healthLane('PROVENANCE_CHECKPOINT',checkpointState?.state==='GLOBAL_CHECKPOINT_VERIFIED'?'HEALTHY':'FAIL',true,`checkpoint ${label(checkpointState?.state)}`),
@@ -1422,7 +1454,7 @@ export default async function handler(req,res){
   const healthWeighted=healthLanes.reduce((sum,x)=>sum+(x.state==='HEALTHY'?1:x.state==='GATED'?.65:x.state==='DEGRADED'?.4:0),0);
   const autonomousHealth={
     ok:healthCriticalFailures.length===0,
-    version:'v113.0-autonomous-health-orchestrator-v2',
+    version:'v113.2-autonomous-health-orchestrator-v3',
     state:healthState,
     readiness_pct:Math.round(healthWeighted/healthLanes.length*100),
     summary:{
@@ -1556,7 +1588,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v113.1-unified-intelligence-experience-v2',
+    version:'v113.2-unified-intelligence-experience-v3',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -1578,6 +1610,7 @@ export default async function handler(req,res){
       {label:'DATA QUALITY',value:dataQuality},
       {label:'AUTONOMOUS QA',value:'VERIFYING SEPARATELY'},
       {label:'AUTONOMOUS HEALTH',value:'VERIFYING SEPARATELY'},
+      {label:'RELEASE',value:`${label(releaseIntegrity.state)} · ${releaseIntegrity.git_commit_short??'SHA WITHHELD'}`},
       {label:'GOLD PHASE',value:label(phase)},
       {label:'BREAKOUT',value:label(breakoutState)},
       {label:'MODEL CONSENSUS',value:label(consensus)},
@@ -1594,6 +1627,7 @@ export default async function handler(req,res){
     gold_seasonality_cycle_context:seasonality,
     quant_accountability:quantAccountability,
     autonomous_health:autonomousHealth,
+    release_integrity:releaseIntegrity,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
