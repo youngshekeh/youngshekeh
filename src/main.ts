@@ -1,5 +1,6 @@
 import './styles.css';
 import './autonomous.css';
+import './mission.css';
 
 const cleanRoute = new Set(['/access', '/member', '/owner', '/status']);
 if (cleanRoute.has(window.location.pathname)) {
@@ -129,3 +130,103 @@ async function loadAutonomousState() {
 
 void loadAutonomousState();
 window.setInterval(() => void loadAutonomousState(), 300_000);
+
+
+type MissionDesk = { name?: string; state?: string; detail?: string; href?: string };
+type MissionEngine = { name?: string; state?: string; detail?: string };
+
+function missionText(id: string, value: unknown) {
+  const node = document.querySelector<HTMLElement>(`#${id}`);
+  if (node) node.textContent = String(value ?? 'WITHHELD').replaceAll('_', ' ');
+}
+
+function renderMissionTape(items: Array<{label?: string; value?: string}>) {
+  const tape = document.querySelector<HTMLElement>('#missionTape');
+  if (!tape || !Array.isArray(items) || !items.length) return;
+  const doubled = [...items, ...items];
+  tape.replaceChildren();
+  for (const item of doubled) {
+    const span = document.createElement('span');
+    const bold = document.createElement('b');
+    bold.textContent = String(item.label ?? 'STATE');
+    span.append(bold, document.createTextNode(` ${String(item.value ?? 'WITHHELD').replaceAll('_', ' ')}`));
+    tape.appendChild(span);
+  }
+}
+
+function renderDesks(desks: MissionDesk[]) {
+  const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
+  if (!grid || !Array.isArray(desks)) return;
+  grid.replaceChildren();
+  desks.forEach((desk, index) => {
+    const card = document.createElement('a');
+    card.className = 'desk-card';
+    card.href = desk.href || '#';
+    card.innerHTML = `<span>${String(index + 1).padStart(2, '0')}</span><h3></h3><strong></strong><p></p><i>OPEN DESK ↗</i>`;
+    const h = card.querySelector('h3');
+    const s = card.querySelector('strong');
+    const p = card.querySelector('p');
+    if (h) h.textContent = desk.name || 'INTELLIGENCE DESK';
+    if (s) {
+      s.textContent = String(desk.state || 'WITHHELD').replaceAll('_', ' ');
+      s.dataset.state = String(desk.state || '');
+    }
+    if (p) p.textContent = desk.detail || 'Evidence-gated intelligence';
+    grid.appendChild(card);
+  });
+}
+
+function renderEngines(engines: MissionEngine[]) {
+  const grid = document.querySelector<HTMLElement>('#engineGrid');
+  if (!grid || !Array.isArray(engines)) return;
+  grid.replaceChildren();
+  engines.forEach((engine) => {
+    const chip = document.createElement('div');
+    chip.className = 'engine-chip';
+    const name = document.createElement('b');
+    const state = document.createElement('span');
+    const detail = document.createElement('small');
+    name.textContent = engine.name || 'ENGINE';
+    state.textContent = String(engine.state || 'WITHHELD').replaceAll('_', ' ');
+    state.dataset.state = String(engine.state || '');
+    detail.textContent = engine.detail || '';
+    chip.append(name, state, detail);
+    grid.appendChild(chip);
+  });
+  missionText('engineCount', `${engines.length} ENGINES`);
+}
+
+async function loadMissionBrief() {
+  try {
+    const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`mission_http_${response.status}`);
+    const brief = await response.json();
+    const changed = brief?.what_changed ?? {};
+    const calibration = brief?.calibration ?? {};
+    const generated = brief?.generated_at ? new Date(brief.generated_at) : null;
+
+    missionText('briefHeadline', changed?.headline ?? 'Governed intelligence brief unavailable.');
+    missionText('briefMatter', changed?.confluence_tension ?? 'Evidence remains gated until verified.');
+    missionText('briefQuality', changed?.data_quality ?? 'WITHHELD');
+    missionText('briefQA', changed?.qa_score ?? 'WITHHELD');
+    missionText('briefPhase', changed?.phase ?? 'WITHHELD');
+    missionText('briefTimestamp', generated && !Number.isNaN(generated.getTime()) ? generated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'WITHHELD');
+
+    renderMissionTape(brief?.command_tape ?? []);
+    renderDesks(brief?.six_desks ?? []);
+    renderEngines(brief?.engine_registry ?? []);
+
+    missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
+    missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
+    missionText('calibrationQA', calibration?.qa_score ?? '--');
+  } catch {
+    missionText('briefHeadline', 'Mission brief unavailable. The UI is failing closed.');
+    missionText('briefMatter', 'No live intelligence is promoted while the mission brief cannot be verified.');
+    missionText('briefQuality', 'WITHHELD');
+    missionText('briefQA', 'WITHHELD');
+    missionText('briefPhase', 'WITHHELD');
+  }
+}
+
+void loadMissionBrief();
+window.setInterval(() => void loadMissionBrief(), 60_000);
