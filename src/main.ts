@@ -532,6 +532,7 @@ function renderQuantAccountability(pulse: any) {
   const scenarioEv = pulse?.scenario_ev ?? {};
   const portfolioRisk = pulse?.portfolio_risk ?? {};
   const forecastCoverage = pulse?.forecast_coverage ?? {};
+  const evidenceFreshness = pulse?.evidence_freshness ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -636,6 +637,10 @@ function renderQuantAccountability(pulse: any) {
   const coverageAge=typeof pulse?.forecast_coverage_fallback_age_minutes==='number' ? ` · snapshot ${pulse.forecast_coverage_fallback_age_minutes.toFixed(1)}m old` : '';
   missionText('learningV104State', String(coverageGates?.generalization_readiness ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   missionText('learningV104Detail', forecastCoverage?.ok ? `${String(coverageGates.direction_coverage ?? 'WITHHELD').replaceAll('_',' ')} · ${String(coverageGates.horizon_coverage ?? 'WITHHELD').replaceAll('_',' ')} · ${String(coverageGates.confidence_band_coverage ?? 'WITHHELD').replaceAll('_',' ')} · largest horizon ${coverageMetrics.largest_horizon_share_pct ?? 'n/a'}% · ${coverageMode}${coverageAge}` : 'Forecast coverage evidence unavailable.');
+  const freshnessCounts=evidenceFreshness?.counts ?? {};
+  const nextExpiry=evidenceFreshness?.next_expiry ?? {};
+  missionText('learningV105State', String(evidenceFreshness?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV105Detail', evidenceFreshness?.version ? `${freshnessCounts.live ?? 0} live · ${(freshnessCounts.survivor_fresh ?? 0)+(freshnessCounts.survivor_aging ?? 0)+(freshnessCounts.survivor_critical ?? 0)} fallback · ${freshnessCounts.evidence_gated ?? 0} gated · next expiry ${typeof nextExpiry.remaining_minutes==='number'?nextExpiry.remaining_minutes.toFixed(1)+'m':'n/a'} · ${nextExpiry.id ?? 'no expiring lane'}` : 'Evidence freshness state unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
