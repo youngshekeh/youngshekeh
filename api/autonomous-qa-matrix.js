@@ -1,5 +1,5 @@
-const VERSION='v112.0-autonomous-regression-matrix-v3';
-const BASE='https://thefatheranalytics.com';
+const VERSION='v112.1-autonomous-regression-matrix-v4';
+const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
   const started=Date.now();
