@@ -637,6 +637,59 @@
             </div>
           </section>
 
+          <section class="autonomy-control-plane" id="autonomy-control-plane" data-reveal aria-labelledby="autonomy-title">
+            <div class="autonomy-head">
+              <div>
+                <span class="kicker">V113 · AUTONOMY CONTROL PLANE</span>
+                <h2 id="autonomy-title">The machine can see its own condition.</h2>
+                <p>Live health lanes, containment, survivor resilience and recovery actions. System readiness is operational health, not forecast accuracy.</p>
+              </div>
+              <div class="autonomy-state-badge">
+                <span>SYSTEM STATE</span>
+                <strong id="autonomyState">SYNCING</strong>
+                <small id="autonomyUpdated">Awaiting governed health snapshot</small>
+              </div>
+            </div>
+
+            <div class="autonomy-core-grid">
+              <article class="autonomy-orb-card">
+                <div class="autonomy-orb" id="autonomyReadinessRing" aria-hidden="true">
+                  <div><strong id="autonomyReadiness">--%</strong><span>READINESS</span></div>
+                </div>
+                <p>Readiness measures evidence and infrastructure health only. It never unlocks execution.</p>
+              </article>
+              <div class="autonomy-stat-grid">
+                <article><span>HEALTHY</span><strong id="autonomyHealthy">--</strong><small>verified lanes</small></article>
+                <article><span>GATED</span><strong id="autonomyGated">--</strong><small>contained lanes</small></article>
+                <article><span>DEGRADED</span><strong id="autonomyDegraded">--</strong><small>isolated weakness</small></article>
+                <article><span>CRITICAL</span><strong id="autonomyCritical">--</strong><small>fail-closed faults</small></article>
+              </div>
+            </div>
+
+            <div class="autonomy-detail-grid">
+              <article class="autonomy-panel">
+                <div class="autonomy-panel-title"><span>HEALTH LANES</span><small id="autonomyLaneCount">0 lanes</small></div>
+                <div class="autonomy-lane-list" id="autonomyLaneList"><p>Synchronizing health lanes…</p></div>
+              </article>
+              <article class="autonomy-panel">
+                <div class="autonomy-panel-title"><span>INCIDENTS</span><small>containment first</small></div>
+                <div class="autonomy-event-list" id="autonomyIncidentList"><p>No incident snapshot yet.</p></div>
+              </article>
+              <article class="autonomy-panel">
+                <div class="autonomy-panel-title"><span>RECOVERY ACTIONS</span><small>bounded autonomy</small></div>
+                <div class="autonomy-event-list" id="autonomyRecoveryList"><p>No recovery snapshot yet.</p></div>
+              </article>
+            </div>
+
+            <div class="autonomy-firewall-strip">
+              <span><b>WAIT</b><small>action permission</small></span>
+              <span><b>0R</b><small>capital permission</small></span>
+              <span><b>OFF</b><small>automatic execution</small></span>
+              <span><b>OFF</b><small>automatic promotion</small></span>
+              <p>Autonomy can observe, isolate and fail closed. It cannot grant itself money or execution authority.</p>
+            </div>
+          </section>
+
           <div class="adventure-institutional" data-reveal>
             <article class="adventure-map">
               <div>
