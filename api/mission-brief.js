@@ -89,9 +89,12 @@ function label(state){
 }
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [auto,qa,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
+  // Run the regression matrix before the fan-out. The QA endpoint itself exercises
+  // many downstream routes, so parallelizing it with the full dashboard can create
+  // artificial contention and a self-induced DEGRADED reading.
+  const qa=await read('/api/autonomous-qa-matrix',12000);
+  const [auto,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
     read('/api/autonomous-state'),
-    read('/api/autonomous-qa-matrix',12000),
     read('/api/gold-day-state'),
     read('/api/gold-mtf-confluence',11000),
     read('/api/gold-breakout-acceptance',11000),
