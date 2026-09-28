@@ -1,0 +1,115 @@
+name: TFA Provenance External Anchor
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/tfa-provenance-anchor.yml
+  schedule:
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tfa-provenance-external-anchor
+  cancel-in-progress: false
+
+jobs:
+  anchor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: the-father-analytics-audit
+          fetch-depth: 0
+
+      - name: Fetch and validate production checkpoint proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp)"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
+            'https://thefatheranalytics.com/api/mission-brief?proof=checkpoint' \
+            -o "$TMP"
+
+          PROOF_FILE="$TMP" node <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+
+          const proof = JSON.parse(fs.readFileSync(process.env.PROOF_FILE, 'utf8'));
+          const checkpoint = proof.checkpoint || {};
+          const integrity = proof.integrity || {};
+
+          if (proof.ok !== true) throw new Error('Source proof is not OK');
+          if (proof.version !== 'v111-external-anchor-proof-v1') throw new Error('Unexpected proof version');
+          if (proof.state !== 'GLOBAL_CHECKPOINT_VERIFIED') throw new Error('Checkpoint is not verified');
+          if (!/^[a-f0-9]{64}$/.test(String(checkpoint.checkpoint_sha256 || ''))) throw new Error('Invalid checkpoint root');
+
+          const failures =
+            Number(integrity.payload_hash_failures || 0) +
+            Number(integrity.hmac_failures || 0) +
+            Number(integrity.chain_link_failures || 0) +
+            Number(integrity.missing_historical_keys || 0) +
+            Number(integrity.uncheckpointed_attestations || 0);
+
+          if (failures !== 0) throw new Error('Checkpoint integrity gate failed');
+          if (proof.governance?.capital_permission !== '0R') throw new Error('Unexpected capital permission');
+
+          fs.mkdirSync('anchors', { recursive: true });
+
+          const root = checkpoint.checkpoint_sha256;
+          let existingRoot = null;
+          try {
+            existingRoot = JSON.parse(fs.readFileSync('anchors/latest.json', 'utf8'))?.checkpoint?.checkpoint_sha256 || null;
+          } catch {}
+
+          if (existingRoot === root) {
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_NEW=0\n');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'ROOT=' + root + '\n');
+            process.exit(0);
+          }
+
+          const proofSha256 = crypto.createHash('sha256')
+            .update(JSON.stringify(proof))
+            .digest('hex');
+
+          const anchored = {
+            ...proof,
+            external_anchor: {
+              provider: 'GitHub Actions',
+              repository: 'youngshekeh/youngshekeh',
+              branch: 'the-father-analytics-audit',
+              workflow: 'tfa-provenance-anchor',
+              anchored_at: new Date().toISOString(),
+              source_proof_sha256: proofSha256
+            }
+          };
+
+          const stamp = String(checkpoint.checkpointed_at || new Date().toISOString())
+            .replace(/[:.]/g, '-');
+          const immutableFile = 'anchors/' + stamp + '-' + root.slice(0, 16) + '.json';
+
+          if (!fs.existsSync(immutableFile)) {
+            fs.writeFileSync(immutableFile, JSON.stringify(anchored, null, 2) + '\n');
+          }
+          fs.writeFileSync('anchors/latest.json', JSON.stringify(anchored, null, 2) + '\n');
+
+          fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_NEW=1\n');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'ANCHOR_FILE=' + immutableFile + '\n');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'ROOT=' + root + '\n');
+          NODE
+
+      - name: Commit external anchor
+        if: env.ANCHOR_NEW == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "THE FATHER ANALYTICS Anchor Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add anchors/
+          git commit -m "Anchor checkpoint ${ROOT:0:16}"
+          git push origin HEAD:the-father-analytics-audit
