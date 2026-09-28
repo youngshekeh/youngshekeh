@@ -134,6 +134,7 @@ window.setInterval(() => void loadAutonomousState(), 300_000);
 
 type MissionDesk = { name?: string; state?: string; detail?: string; href?: string };
 type MissionEngine = { name?: string; state?: string; detail?: string };
+type MarketAsset = { id?: string; name?: string; symbol?: string; ok?: boolean; price?: number | null; change_pct?: number | null; direction?: string; freshness?: string; age_minutes?: number | null; observed_at?: string | null };
 
 function missionText(id: string, value: unknown) {
   const node = document.querySelector<HTMLElement>(`#${id}`);
@@ -152,6 +153,44 @@ function renderMissionTape(items: Array<{label?: string; value?: string}>) {
     span.append(bold, document.createTextNode(` ${String(item.value ?? 'WITHHELD').replaceAll('_', ' ')}`));
     tape.appendChild(span);
   }
+}
+
+
+function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any } | undefined) {
+  const grid = document.querySelector<HTMLElement>('#marketTileGrid');
+  const assets = Array.isArray(dashboard?.assets) ? dashboard?.assets ?? [] : [];
+  const breadth = dashboard?.breadth ?? {};
+  if (grid && assets.length) {
+    grid.replaceChildren();
+    for (const asset of assets) {
+      const card = document.createElement('article');
+      card.className = 'market-tile';
+      const top = document.createElement('div');
+      const name = document.createElement('span');
+      const fresh = document.createElement('i');
+      name.textContent = asset.name || asset.symbol || 'MARKET';
+      fresh.textContent = String(asset.freshness || 'UNAVAILABLE').replaceAll('_', ' ');
+      fresh.dataset.freshness = String(asset.freshness || '');
+      top.append(name, fresh);
+      const price = document.createElement('strong');
+      price.textContent = typeof asset.price === 'number' ? asset.price.toLocaleString(undefined, { maximumFractionDigits: 4 }) : 'WITHHELD';
+      const move = document.createElement('em');
+      const pct = typeof asset.change_pct === 'number' ? asset.change_pct : null;
+      move.textContent = pct === null ? 'change unavailable' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}% · ${String(asset.direction || 'MIXED').replaceAll('_', ' ')}`;
+      move.dataset.direction = String(asset.direction || '');
+      const meta = document.createElement('small');
+      meta.textContent = asset.freshness === 'MARKET_CLOSED_OR_STALE'
+        ? `Market closed / last verified ${Math.round(Number(asset.age_minutes || 0) / 60)}h ago`
+        : `Verified ${asset.age_minutes ?? 'n/a'}m ago`;
+      card.append(top, price, move, meta);
+      grid.appendChild(card);
+    }
+  }
+  missionText('marketPattern', breadth?.state ?? 'WITHHELD');
+  missionText('marketBreadth', `Breadth ${breadth?.breadth_score ?? 'n/a'} · ${breadth?.up ?? 0} up / ${breadth?.down ?? 0} down / ${breadth?.flat ?? 0} flat`);
+  missionText('marketUsdState', `USD ${breadth?.usd_state ?? 'MIXED'}`);
+  missionText('marketRiskState', `RISK ${breadth?.risk_state ?? 'MIXED'}`);
+  missionText('marketUsable', `${breadth?.usable_assets ?? 0}/7`);
 }
 
 function renderDesks(desks: MissionDesk[]) {
@@ -213,6 +252,7 @@ async function loadMissionBrief() {
     missionText('briefTimestamp', generated && !Number.isNaN(generated.getTime()) ? generated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'WITHHELD');
 
     renderMissionTape(brief?.command_tape ?? []);
+    renderGlobalMarkets(brief?.global_market_dashboard);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
