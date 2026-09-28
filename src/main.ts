@@ -535,6 +535,7 @@ function renderQuantAccountability(pulse: any) {
   const evidenceFreshness = pulse?.evidence_freshness ?? {};
   const provenanceManifest = pulse?.provenance_manifest ?? {};
   const receiptLedger = pulse?.provenance_receipt_ledger ?? {};
+  const attestation = pulse?.provenance_attestation ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -649,6 +650,8 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV106Detail', provenanceManifest?.version ? `${provenanceCounts.fingerprinted ?? 0}/${provenanceCounts.total ?? 0} SHA-256 fingerprints · ${provenanceManifest.algorithm ?? 'WITHHELD'} · ${firstFingerprint?.sha256 ? firstFingerprint.sha256.slice(0,12)+'…' : 'hash unavailable'} · content address, not signature` : 'Snapshot provenance unavailable.');
   missionText('learningV107State', String(receiptLedger?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   missionText('learningV107Detail', receiptLedger?.ok ? `${receiptLedger?.counts?.receipts ?? 0} receipts · ${receiptLedger?.counts?.modules ?? 0} modules · ${receiptLedger?.counts?.chain_link_failures ?? 0} broken links · hourly append-only chain.` : 'Provenance receipt ledger unavailable.');
+  missionText('learningV108State', String(attestation?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV108Detail', attestation?.ok ? `${attestation?.counts?.verified_attestations ?? 0}/${attestation?.counts?.attestations ?? 0} verified · ${attestation?.counts?.failed_attestations ?? 0} failed · ${attestation?.counts?.unattested_receipts ?? 0} unattested · Vault-backed HMAC · secret never exposed · not public-key signature.` : 'Server attestation evidence unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
