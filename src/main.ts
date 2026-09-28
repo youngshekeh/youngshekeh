@@ -747,29 +747,6 @@ async function loadQaMatrix() {
 }
 
 
-async function loadHealthOrchestrator() {
-  try {
-    const response = await fetch(`/api/autonomous-health-orchestrator?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-    if (!response.ok) throw new Error(`health_http_${response.status}`);
-    const health = await response.json();
-    const state = String(health?.state ?? 'WITHHELD');
-    const summary = health?.summary ?? {};
-    const readiness = typeof health?.readiness_pct === 'number' ? `${health.readiness_pct}%` : 'n/a';
-    const critical = Number(summary?.critical_failures ?? 0);
-    const gated = Number(summary?.gated ?? 0);
-    const degraded = Number(summary?.degraded ?? 0);
-    const recovered = Number(summary?.retry_recoveries ?? 0);
-    const display = state.replaceAll('_', ' ');
-    missionText('learningV113State', display);
-    missionText('learningV113Detail', `${readiness} system readiness · ${critical} critical · ${gated} gated · ${degraded} degraded · ${recovered} retry-recovered · WAIT / 0R`);
-    updateMissionTapeItem('AUTONOMOUS HEALTH', `${display} · ${readiness}`);
-  } catch {
-    missionText('learningV113State', 'FAIL CLOSED');
-    missionText('learningV113Detail', 'Health channel unavailable · authority remains WAIT / 0R.');
-    updateMissionTapeItem('AUTONOMOUS HEALTH', 'FAIL CLOSED');
-  }
-}
-
 async function loadMissionBrief() {
   try {
     const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -777,6 +754,7 @@ async function loadMissionBrief() {
     const brief = await response.json();
     const changed = brief?.what_changed ?? {};
     const calibration = brief?.calibration ?? {};
+    const health = brief?.autonomous_health ?? {};
     const generated = brief?.generated_at ? new Date(brief.generated_at) : null;
 
     missionText('briefHeadline', changed?.headline ?? 'Governed intelligence brief unavailable.');
@@ -798,6 +776,13 @@ async function loadMissionBrief() {
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
+    const healthState = String(health?.state ?? 'WITHHELD').replaceAll('_', ' ');
+    const healthSummary = health?.summary ?? {};
+    const healthReadiness = typeof health?.readiness_pct === 'number' ? `${health.readiness_pct}%` : 'n/a';
+    missionText('learningV113State', healthState);
+    missionText('learningV113Detail', `${healthReadiness} system readiness · ${healthSummary?.critical_failures ?? 0} critical · ${healthSummary?.gated ?? 0} gated · ${healthSummary?.degraded ?? 0} degraded · ${healthSummary?.survivor_fallbacks ?? 0} survivor · WAIT / 0R`);
+    updateMissionTapeItem('AUTONOMOUS HEALTH', `${healthState} · ${healthReadiness}`);
+
     missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
     missionText('calibrationQA', calibration?.qa_score ?? 'VERIFYING');
@@ -812,7 +797,7 @@ async function loadMissionBrief() {
 
 async function refreshMissionExperience() {
   await loadMissionBrief();
-  await Promise.all([loadQaMatrix(), loadHealthOrchestrator()]);
+  await loadQaMatrix();
 }
 void refreshMissionExperience();
 window.setInterval(() => void refreshMissionExperience(), 60_000);
