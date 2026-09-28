@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "version": "v111-external-anchor-proof-v1",
+  "generated_at": "2026-09-28T09:41:57.091Z",
+  "source": "THE_FATHER_ANALYTICS_PRODUCTION",
+  "source_mode": "VERIFIED_SNAPSHOT_FALLBACK",
+  "observed_at": "2026-09-28T09:30:35.488761Z",
+  "fallback_age_minutes": 11.4,
+  "fallback_expires_at": "2026-09-28T15:30:35.488Z",
+  "state": "GLOBAL_CHECKPOINT_VERIFIED",
+  "checkpoint": {
+    "checkpoint_id": 2,
+    "checkpointed_at": "2026-09-28T09:30:32.042967Z",
+    "checkpoint_sha256": "24b4694334e4bb2bfc5e4d4ee474c107ea2b880ebecd7cc390900c62b27c5de0",
+    "previous_checkpoint_sha256": "2d829cc019980e7902428eb78c54468876be811641aee7815a1c88ee88f10cb3",
+    "checkpoint_hmac_sha256": "f9f26fe9880ba834f9abcb53f6b10f999aaebec5f7b9f8762ad1f47c950d298f",
+    "key_name": "tfa_v108_attestation_hmac_v2",
+    "module_count": 8,
+    "receipt_count": 32,
+    "attestation_count": 32,
+    "latest_receipt_at": "2026-09-28T09:05:00.373877Z",
+    "latest_attestation_at": "2026-09-28T09:07:00.114438Z"
+  },
+  "integrity": {
+    "checkpoints": 2,
+    "payload_hash_failures": 0,
+    "hmac_failures": 0,
+    "chain_link_failures": 0,
+    "missing_historical_keys": 0,
+    "uncheckpointed_attestations": 0
+  },
+  "governance": {
+    "external_anchor_input_only": true,
+    "public_key_signature": false,
+    "append_only_source": true,
+    "action_permitted": "WAIT",
+    "capital_permission": "0R"
+  },
+  "truth_label": "PUBLIC_SAFE_V110_CHECKPOINT_PROOF_FOR_EXTERNAL_ANCHOR_NOT_PUBLIC_KEY_SIGNATURE",
+  "external_anchor": {
+    "provider": "GitHub Actions",
+    "repository": "youngshekeh/youngshekeh",
+    "branch": "the-father-analytics-audit",
+    "workflow": "tfa-provenance-anchor",
+    "anchored_at": "2026-09-28T09:41:57.291Z",
+    "source_proof_sha256": "375f07585236e5627618c8a63bc174d2ad68eefd9d5d7115f14a5dee6dad2b66"
+  }
+}
