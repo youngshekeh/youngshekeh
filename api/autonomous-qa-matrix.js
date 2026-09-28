@@ -1,4 +1,4 @@
-const VERSION='v113.0-autonomous-regression-matrix-v5';
+const VERSION='v113.1-autonomous-regression-matrix-v6';
 const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
@@ -67,11 +67,22 @@ export default async function handler(req,res){
   tests.push(result('v106_snapshot_fingerprints',q?.provenance_manifest?.state==='ALL_FINGERPRINTED',
     `state=${q?.provenance_manifest?.state}, fingerprinted=${q?.provenance_manifest?.counts?.fingerprinted ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v107_receipt_chain',q?.provenance_receipt_ledger?.state==='HASH_CHAIN_VERIFIED',
-    `state=${q?.provenance_receipt_ledger?.state}, failures=${q?.provenance_receipt_ledger?.counts?.chain_link_failures ?? 'n/a'}`,mission.latency_ms));
+    `state=${q?.provenance_receipt_ledger?.state}, failures=${q?.provenance_receipt_ledger?.counts?.chain_link_failures ?? 'n/a'}, mode=${q?.provenance_receipt_source_mode ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v108_server_attestation',q?.provenance_attestation?.state==='SERVER_ATTESTATION_VERIFIED',
-    `state=${q?.provenance_attestation?.state}, failed=${q?.provenance_attestation?.counts?.failed_attestations ?? 'n/a'}`,mission.latency_ms));
+    `state=${q?.provenance_attestation?.state}, failed=${q?.provenance_attestation?.counts?.failed_attestations ?? 'n/a'}, mode=${q?.provenance_attestation_source_mode ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v109_key_lifecycle',q?.attestation_key_lifecycle?.state==='KEY_LIFECYCLE_HEALTHY',
-    `state=${q?.attestation_key_lifecycle?.state}, missing=${q?.attestation_key_lifecycle?.counts?.missing_vault_keys ?? 'n/a'}`,mission.latency_ms));
+    `state=${q?.attestation_key_lifecycle?.state}, missing=${q?.attestation_key_lifecycle?.counts?.missing_vault_keys ?? 'n/a'}, mode=${q?.attestation_key_lifecycle_source_mode ?? 'n/a'}`,mission.latency_ms));
+  const provenanceModes=[
+    q?.provenance_receipt_source_mode,
+    q?.provenance_attestation_source_mode,
+    q?.attestation_key_lifecycle_source_mode
+  ];
+  const allowedProvenanceModes=['POSTGREST_RPC','VERIFIED_SNAPSHOT_FALLBACK','CHECKPOINT_VERIFIED_SURVIVOR'];
+  const bridgeUsed=provenanceModes.includes('CHECKPOINT_VERIFIED_SURVIVOR');
+  tests.push(result('v1131_provenance_survivor_truth',
+    provenanceModes.every(mode=>allowedProvenanceModes.includes(String(mode)))
+      &&(!bridgeUsed||q?.provenance_checkpoint?.state==='GLOBAL_CHECKPOINT_VERIFIED'),
+    `modes=${provenanceModes.join(',')}, checkpoint=${q?.provenance_checkpoint?.state}`,mission.latency_ms));
   tests.push(result('v110_checkpoint_chain',q?.provenance_checkpoint?.state==='GLOBAL_CHECKPOINT_VERIFIED',
     `state=${q?.provenance_checkpoint?.state}, broken=${q?.provenance_checkpoint?.counts?.chain_link_failures ?? 'n/a'}`,mission.latency_ms));
   tests.push(result('v111_external_root',anchor?.root_state==='MATCH'||anchor?.root_state==='PENDING_NEWER_CHECKPOINT',
