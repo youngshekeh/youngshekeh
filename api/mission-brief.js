@@ -90,20 +90,14 @@ function label(state){
 }
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  // Run the regression matrix before the fan-out. The QA endpoint itself exercises
-  // many downstream routes, so parallelizing it with the full dashboard can create
-  // artificial contention and a self-induced DEGRADED reading.
-  let qa=await read(`/api/autonomous-qa-matrix?brief=${Date.now()}`,12000);
-  if(qa.body?.state!=='PASS'){
-    await pause(300);
-    const qaRetry=await read(`/api/autonomous-qa-matrix?brief_retry=${Date.now()}`,12000);
-    const firstPassed=Number(qa.body?.summary?.passed??0);
-    const retryPassed=Number(qaRetry.body?.summary?.passed??0);
-    if(qaRetry.body?.state==='PASS'||retryPassed>firstPassed) qa=qaRetry;
-  }
-  let [auto,day,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
+
+  // Mission Brief consumes research state. It does not run the full regression
+  // suite internally; V78 is verified by a separate client-side channel.
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
+    read('/api/gold-liquidity-state-machine',10000),
+    read('/api/gold-mtf-zones',10000),
     read('/api/gold-mtf-confluence',11000),
     read('/api/gold-breakout-acceptance',11000),
     read('/api/research-model-tournament'),
@@ -119,26 +113,26 @@ export default async function handler(req,res){
       marketQuote({id:'usdngn',name:'USD/NGN',symbol:'NGN=X',kind:'fx',precision:2})
     ])
   ]);
-  if(quality.body?.state==='PASS' && confluence.body?.intraday?.phase==='DATA_GATED'){
-    await pause(250);
-    const confluenceRetry=await read(`/api/gold-mtf-confluence?brief_retry=${Date.now()}`,11000);
-    if(confluenceRetry.ok && confluenceRetry.body?.intraday?.phase && confluenceRetry.body.intraday.phase!=='DATA_GATED'){
-      confluence=confluenceRetry;
-    }
-  }
-  const phase=safe(confluence.body?.intraday?.phase,day.body?.day_state?.day_state);
-  const price=confluence.body?.price??day.body?.current?.price??null;
-  const breakoutState=safe(breakout.body?.dominant_state);
-  const mtf=safe(confluence.body?.multi_timeframe?.state);
-  const tension=safe(confluence.body?.confluence?.tension);
-  const qaPass=qa.body?.summary?.passed??0,qaTotal=qa.body?.summary?.total??0;
-  const qaState=safe(qa.body?.state);
+
   const dataQuality=safe(quality.body?.state);
+  if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
+    await pause(250);
+    const retry=await read(`/api/gold-liquidity-state-machine?brief_retry=${Date.now()}`,10000);
+    if(retry.ok && retry.body?.state?.phase && retry.body.state.phase!=='DATA_GATED') liquidity=retry;
+  }
+
+  const phase=safe(liquidity.body?.state?.phase,confluence.body?.intraday?.phase??day.body?.day_state?.day_state);
+  const price=liquidity.body?.price??confluence.body?.price??day.body?.current?.price??null;
+  const breakoutState=safe(breakout.body?.dominant_state);
+  const mtf=safe(zones.body?.composite?.state,confluence.body?.multi_timeframe?.state);
+  const confluenceGated=confluence.body?.intraday?.phase==='DATA_GATED';
+  const tension=confluenceGated?'CONFLUENCE_RECHECK_PENDING':safe(confluence.body?.confluence?.tension);
   const runtimeRestricted=quota.body?.restricted===true;
   const consensus=safe(tournament.body?.tournament?.consensus);
   const below=confluence.body?.confluence?.nearest_below_cluster??null;
   const above=confluence.body?.confluence?.nearest_above_cluster??null;
   const marketBreadthState=marketBreadth(marketAssets);
+
   const [worldGdp,worldInflation,nigeriaGdp,nigeriaInflation,ssaGdp,usdNgn]=macroEvidence;
   const pp=(a,b)=>a?.ok&&b?.ok&&a?.value!==null&&b?.value!==null?Number((a.value-b.value).toFixed(2)):null;
   const macroPulse={
@@ -160,10 +154,10 @@ export default async function handler(req,res){
   if(mtf!=='WITHHELD')changeParts.push(label(mtf));
 
   const desks=[
-    {id:'macro',name:'MACRO & WORLD ECONOMY',state:'ACTIVE SURFACE',detail:'Growth · inflation · rates · liquidity · fiscal · trade',href:'/world-economy/'},
-    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&qaState==='PASS'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
+    {id:'macro',name:'MACRO & WORLD ECONOMY',state:'ACTIVE SURFACE',detail:'World Bank structural evidence · FX proxy · growth · inflation · policy',href:'/world-economy/'},
+    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:'EVIDENCE-GATED',detail:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:qaState==='PASS'?'QA PASS':'WITHHELD',detail:`${qaPass}/${qaTotal} autonomous invariants · forecast ledger · Brier · MFE/MAE`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'ACTIVE SURFACE',detail:'AI · industry · culture · problem maps · solution lab',href:'/global-trends/'}
   ];
@@ -192,7 +186,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v90-unified-intelligence-experience-v1',
+    version:'v90-unified-intelligence-experience-v2',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -204,15 +198,15 @@ export default async function handler(req,res){
       multi_timeframe_state:mtf,
       confluence_tension:tension,
       data_quality:dataQuality,
-      qa_state:qaState,
-      qa_score:`${qaPass}/${qaTotal}`,
+      qa_state:'SEPARATE_CLIENT_CHANNEL',
+      qa_score:null,
       canonical_runtime:runtimeRestricted?'RESTRICTED':'AVAILABLE',
       nearest_below:below,
       nearest_above:above
     },
     command_tape:[
       {label:'DATA QUALITY',value:dataQuality},
-      {label:'AUTONOMOUS QA',value:`${qaPass}/${qaTotal} ${qaState}`},
+      {label:'AUTONOMOUS QA',value:'VERIFYING SEPARATELY'},
       {label:'GOLD PHASE',value:label(phase)},
       {label:'BREAKOUT',value:label(breakoutState)},
       {label:'MODEL CONSENSUS',value:label(consensus)},
@@ -227,7 +221,7 @@ export default async function handler(req,res){
     calibration:{
       public_accuracy:'WITHHELD',
       reason:'Empirical outcome samples have not reached publication thresholds.',
-      qa_score:`${qaPass}/${qaTotal}`,
+      qa_score:null,
       automatic_promotion:false,
       capital_permission:'0R'
     },
