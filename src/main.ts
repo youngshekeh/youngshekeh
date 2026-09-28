@@ -219,6 +219,32 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
 
 
 
+
+function renderSeasonality(pulse: any) {
+  const month=pulse?.month ?? {},quarter=pulse?.quarter ?? {};
+  const pct=(v: unknown) => typeof v==='number'?`${v>=0?'+':''}${v.toFixed(2)}%`:'WITHHELD';
+  const rate=(v: unknown,n: unknown) => typeof v==='number'?`${v.toFixed(1)}% · n=${n ?? '?'}`:'WITHHELD';
+  missionText('seasonWindow', pulse?.ok ? `${month.label ?? 'Month'} · ${quarter.label ?? 'Quarter'} · as of ${pulse.as_of ?? 'n/a'}` : 'WITHHELD');
+  missionText('seasonMonthLabel', month?.label ?? 'MONTH');
+  missionText('seasonMonthState', String(month?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('seasonMonthPositive', rate(month?.positive_rate_pct,month?.sample_size));
+  missionText('seasonMonthMedian', pct(month?.median_return_pct));
+  missionText('seasonMonthCurrent', pct(month?.current_return_pct));
+  missionText('seasonMonthPercentile', typeof month?.current_percentile==='number'?`P${month.current_percentile.toFixed(1)}`:'WITHHELD');
+  missionText('seasonMonthRange', typeof month?.q25_return_pct==='number'&&typeof month?.q75_return_pct==='number'
+    ?`Middle 50%: ${pct(month.q25_return_pct)} to ${pct(month.q75_return_pct)} · best ${pct(month.best_return_pct)} · worst ${pct(month.worst_return_pct)}`
+    :'Historical quartile range unavailable.');
+  missionText('seasonQuarterLabel', quarter?.label ?? 'QUARTER');
+  missionText('seasonQuarterState', String(quarter?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('seasonQuarterPositive', rate(quarter?.positive_rate_pct,quarter?.sample_size));
+  missionText('seasonQuarterMedian', pct(quarter?.median_return_pct));
+  missionText('seasonQuarterCurrent', pct(quarter?.current_return_pct));
+  missionText('seasonQuarterPercentile', typeof quarter?.current_percentile==='number'?`P${quarter.current_percentile.toFixed(1)}`:'WITHHELD');
+  missionText('seasonQuarterRange', typeof quarter?.q25_return_pct==='number'&&typeof quarter?.q75_return_pct==='number'
+    ?`Middle 50%: ${pct(quarter.q25_return_pct)} to ${pct(quarter.q75_return_pct)} · best ${pct(quarter.best_return_pct)} · worst ${pct(quarter.worst_return_pct)}`
+    :'Historical quartile range unavailable.');
+}
+
 function renderVolatility(pulse: any) {
   const x = pulse?.indices ?? {};
   const show = (prefix: string, item: any) => {
@@ -539,6 +565,7 @@ async function loadMissionBrief() {
 
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
+    renderSeasonality(brief?.gold_seasonality_cycle_context);
     renderVolatility(brief?.volatility_intelligence);
     renderRatesFunding(brief?.rates_funding_intelligence);
     renderMacroPulse(brief?.macro_evidence_pulse);
