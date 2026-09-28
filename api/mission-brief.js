@@ -50,6 +50,39 @@ async function worldBankLatest(country,indicator,label){
       source:'World Bank API',source_last_updated:meta?.lastupdated??null,frequency:'ANNUAL_STRUCTURAL'};
   }catch{return {ok:false,label,country,indicator,state:'UNAVAILABLE',source:'World Bank API'}}
 }
+function arxivStamp(d){
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getUTCFullYear()}${p(d.getUTCMonth()+1)}${p(d.getUTCDate())}${p(d.getUTCHours())}${p(d.getUTCMinutes())}`;
+}
+async function arxivActivity(category,label,days=7){
+  const end=new Date();
+  const start=new Date(end.getTime()-days*86400000);
+  const query=`cat:${category} AND submittedDate:[${arxivStamp(start)} TO ${arxivStamp(end)}]`;
+  const url=`https://export.arxiv.org/api/query?search_query=${encodeURIComponent(query)}&start=0&max_results=1`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/atom+xml','User-Agent':'THE-FATHER-ANALYTICS/91.0'},cache:'no-store',signal:AbortSignal.timeout(9000)});
+    const xml=await r.text();
+    const match=xml.match(/<opensearch:totalResults[^>]*>(\d+)<\/opensearch:totalResults>/i);
+    if(!r.ok||!match)return {ok:false,label,category,state:'UNAVAILABLE',source:'arXiv API'};
+    return {ok:true,label,category,count:Number(match[1]),window_days:days,window_start:start.toISOString(),window_end:end.toISOString(),
+      source:'arXiv API',truth_label:'ACTIVITY_COUNT_NOT_MOMENTUM'};
+  }catch{return {ok:false,label,category,state:'UNAVAILABLE',source:'arXiv API'}}
+}
+async function cryptoGlobal(){
+  try{
+    const r=await fetch('https://api.coingecko.com/api/v3/global',{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/91.0'},cache:'no-store',signal:AbortSignal.timeout(9000)});
+    const j=await r.json().catch(()=>null); const d=j?.data;
+    if(!r.ok||!d)return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'};
+    const change=num(d.market_cap_change_percentage_24h_usd);
+    return {ok:true,total_market_cap_usd:num(d.total_market_cap?.usd),total_volume_usd:num(d.total_volume?.usd),
+      market_cap_change_24h_pct:change,volume_change_24h_pct:num(d.volume_change_percentage_24h_usd),
+      btc_dominance_pct:num(d.market_cap_percentage?.btc),eth_dominance_pct:num(d.market_cap_percentage?.eth),
+      active_cryptocurrencies:num(d.active_cryptocurrencies),markets:num(d.markets),
+      observed_at:d.updated_at?new Date(Number(d.updated_at)*1000).toISOString():null,
+      state:change===null?'WITHHELD':change<=-3?'RISK_OFF_24H':change>=3?'EXPANSION_24H':'MIXED_24H',
+      source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
+  }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
+}
 function marketBreadth(rows){
   const live=rows.filter(x=>x.ok&&['FRESH','DELAYED'].includes(x.freshness));
   const by=id=>live.find(x=>x.id===id);
@@ -156,6 +189,13 @@ export default async function handler(req,res){
     truth_label:'OFFICIAL_STRUCTURAL_DATA_PLUS_SEPARATE_MARKET_PROXY',
     note:'World Bank values are annual structural observations, not current-month estimates.'
   };
+  const [aiResearch,roboticsResearch,crypto]=trendEvidence;
+  const trendsPulse={
+    research:[aiResearch,roboticsResearch],
+    digital_assets:crypto,
+    truth_label:'ACTIVITY_AND_MARKET_BREADTH_WITHOUT_SYNTHETIC_TREND_SCORE',
+    note:'Research counts describe seven-day publication activity. They do not claim acceleration without a historical baseline.'
+  };
 
   const [internetUsers,rdSpend,renewableOutput,residentPatents,nvda,botz,icln,btcTrend]=trendEvidence;
   const trendStructural=[internetUsers,rdSpend,renewableOutput,residentPatents];
@@ -253,6 +293,7 @@ export default async function handler(req,res){
     ],
     global_market_dashboard:{assets:marketAssets,breadth:marketBreadthState},
     macro_evidence_pulse:macroPulse,
+    global_trends_evidence_pulse:trendsPulse,
     global_trends_evidence_pulse:trendsPulse,
     six_desks:desks,
     engine_registry:engines,

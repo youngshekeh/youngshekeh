@@ -143,6 +143,7 @@ type MissionDesk = { id?: string; name?: string; state?: string; detail?: string
 type MissionEngine = { name?: string; state?: string; detail?: string };
 type MarketAsset = { id?: string; name?: string; symbol?: string; ok?: boolean; price?: number | null; change_pct?: number | null; direction?: string; freshness?: string; age_minutes?: number | null; observed_at?: string | null };
 type MacroMetric = { ok?: boolean; label?: string; country?: string; period?: string; value?: number | null; source?: string; source_last_updated?: string | null; frequency?: string };
+type ResearchActivity = { ok?: boolean; label?: string; category?: string; count?: number | null; window_days?: number; window_start?: string; window_end?: string; source?: string; truth_label?: string };
 
 function missionText(id: string, value: unknown) {
   const node = document.querySelector<HTMLElement>(`#${id}`);
