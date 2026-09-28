@@ -552,23 +552,38 @@ function checkpointSurvivorSnapshot(){
 }
 
 async function githubExternalAnchor(timeout=6000){
-  const url='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors/latest.json';
-  try{
-    const r=await fetch(url,{
-      headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/111.0'},
-      cache:'no-store',
-      signal:AbortSignal.timeout(timeout)
-    });
-    const body=await r.json().catch(()=>null);
-    const root=String(body?.checkpoint?.checkpoint_sha256??'');
-    const proofHash=String(body?.external_anchor?.source_proof_sha256??'');
-    if(!r.ok||!body||!/^[a-f0-9]{64}$/i.test(root)||!/^[a-f0-9]{64}$/i.test(proofHash)){
-      return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',http_status:r.status};
-    }
-    return {...body,ok:true,source_url:url};
-  }catch(error){
-    return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',error:String(error).slice(0,120)};
-  }
+  const base='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors';
+  const hourKey=(offsetHours=0)=>new Date(Date.now()-offsetHours*60*60*1000).toISOString().slice(0,13);
+  const readAnchor=async(url)=>{
+    try{
+      const r=await fetch(url,{
+        headers:{Accept:'application/json','Cache-Control':'no-cache','User-Agent':'THE-FATHER-ANALYTICS/112.1'},
+        cache:'no-store',
+        signal:AbortSignal.timeout(Math.min(timeout,3500))
+      });
+      const body=await r.json().catch(()=>null);
+      const root=String(body?.checkpoint?.checkpoint_sha256??'');
+      const proofHash=String(body?.external_anchor?.source_proof_sha256??'');
+      if(!r.ok||!body||!/^[a-f0-9]{64}$/i.test(root)||!/^[a-f0-9]{64}$/i.test(proofHash))return null;
+      return {...body,ok:true,source_url:url};
+    }catch{return null}
+  };
+
+  // Prefer immutable, deterministic hourly proofs. Current + prior two hours
+  // cover schedule jitter while keeping every object content-addressable by time.
+  const hourlyUrls=[0,1,2].map(offset=>`${base}/heartbeats/${hourKey(offset)}.json`);
+  const hourly=(await Promise.all(hourlyUrls.map(readAnchor)))
+    .filter(Boolean)
+    .sort((a,b)=>Date.parse(String(b?.external_anchor?.last_verified_at??''))-Date.parse(String(a?.external_anchor?.last_verified_at??'')));
+  if(hourly[0])return {...hourly[0],source_mode:'IMMUTABLE_HOURLY_HEARTBEAT'};
+
+  // Backwards-compatible fallback only. Freshness governance still fails closed
+  // if this mutable pointer is stale or lacks V112 heartbeat metadata.
+  const latestUrl=`${base}/latest.json?heartbeat_minute=${Math.floor(Date.now()/60000)}`;
+  const latest=await readAnchor(latestUrl);
+  if(latest)return {...latest,source_mode:'MUTABLE_LATEST_FALLBACK'};
+
+  return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH'};
 }
 
 async function supabaseRpc(name,timeout=5000){
@@ -845,35 +860,46 @@ export default async function handler(req,res){
     const currentCheckpointMs=Date.parse(String(current?.checkpointed_at??''));
     const anchorCheckpointMs=Date.parse(String(anchor?.checkpoint?.checkpointed_at??''));
     const anchoredAt=anchor?.external_anchor?.anchored_at??null;
+    const lastVerifiedAt=anchor?.external_anchor?.last_verified_at??anchoredAt;
     const anchoredMs=Date.parse(String(anchoredAt??''));
-    const ageMinutes=Number.isFinite(anchoredMs)?Math.max(0,(Date.now()-anchoredMs)/60000):null;
-    const expiresAt=Number.isFinite(anchoredMs)?new Date(anchoredMs+90*60*1000).toISOString():null;
+    const verifiedMs=Date.parse(String(lastVerifiedAt??''));
+    const anchorAgeMinutes=Number.isFinite(anchoredMs)?Math.max(0,(Date.now()-anchoredMs)/60000):null;
+    const ageMinutes=Number.isFinite(verifiedMs)?Math.max(0,(Date.now()-verifiedMs)/60000):null;
+    const expiresAt=Number.isFinite(verifiedMs)?new Date(verifiedMs+90*60*1000).toISOString():null;
     const sourceProofSha=String(anchor?.external_anchor?.source_proof_sha256??'');
     const metadataValid=Boolean(
       anchor?.ok &&
       /^[a-f0-9]{64}$/i.test(externalRoot) &&
       /^[a-f0-9]{64}$/i.test(sourceProofSha) &&
-      anchoredAt
+      anchoredAt &&
+      lastVerifiedAt
     );
 
-    let state='UNAVAILABLE';
+    let rootState='UNAVAILABLE';
     if(metadataValid){
-      if(ageMinutes!==null&&ageMinutes>90) state='STALE';
-      else if(externalRoot===currentRoot&&currentRoot) state='MATCH';
-      else if(Number.isFinite(anchorCheckpointMs)&&Number.isFinite(currentCheckpointMs)&&anchorCheckpointMs<currentCheckpointMs) state='PENDING_NEWER_CHECKPOINT';
-      else state='ROOT_MISMATCH';
+      if(externalRoot===currentRoot&&currentRoot) rootState='MATCH';
+      else if(Number.isFinite(anchorCheckpointMs)&&Number.isFinite(currentCheckpointMs)&&anchorCheckpointMs<currentCheckpointMs) rootState='PENDING_NEWER_CHECKPOINT';
+      else rootState='ROOT_MISMATCH';
     }
-
-    const healthy=state==='MATCH'||state==='PENDING_NEWER_CHECKPOINT';
+    const heartbeatState=metadataValid
+      ? (ageMinutes!==null&&ageMinutes<=90?'FRESH':'STALE')
+      : 'UNAVAILABLE';
+    const state=heartbeatState==='STALE'?'STALE':rootState;
+    const healthy=heartbeatState==='FRESH'&&(rootState==='MATCH'||rootState==='PENDING_NEWER_CHECKPOINT');
     return {
       ok:healthy,
-      version:'v111-external-github-anchor-state-v1',
+      version:'v112-external-anchor-heartbeat-state-v1',
       state,
+      root_state:rootState,
+      heartbeat_state:heartbeatState,
       provider:'GitHub Actions',
       repository:'youngshekeh/youngshekeh',
       branch:'the-father-analytics-audit',
       workflow:'TFA Provenance External Anchor',
       anchored_at:anchoredAt,
+      last_verified_at:lastVerifiedAt,
+      verification_count:Number(anchor?.external_anchor?.verification_count??0)||null,
+      anchor_age_minutes:anchorAgeMinutes===null?null:Number(anchorAgeMinutes.toFixed(1)),
       age_minutes:ageMinutes===null?null:Number(ageMinutes.toFixed(1)),
       freshness_expires_at:expiresAt,
       current_checkpoint:{
@@ -889,7 +915,9 @@ export default async function handler(req,res){
         checkpoint_hmac_sha256:anchor?.checkpoint?.checkpoint_hmac_sha256??null,
         key_name:anchor?.checkpoint?.key_name??null,
         source_proof_sha256:sourceProofSha||null,
-        anchored_at:anchoredAt
+        anchored_at:anchoredAt,
+        last_verified_at:lastVerifiedAt,
+        verification_count:Number(anchor?.external_anchor?.verification_count??0)||null
       },
       comparison:{
         roots_match:Boolean(currentRoot&&externalRoot&&currentRoot===externalRoot),
@@ -903,7 +931,7 @@ export default async function handler(req,res){
         stale_or_mismatch_fails_closed:true,
         capital_permission:'0R'
       },
-      truth_label:'GITHUB_SECOND_SYSTEM_TIMESTAMPED_CHECKPOINT_ANCHOR_NOT_PUBLIC_KEY_DIGITAL_SIGNATURE'
+      truth_label:'GITHUB_SECOND_SYSTEM_CHECKPOINT_ANCHOR_WITH_REVERIFICATION_HEARTBEAT_NOT_PUBLIC_KEY_DIGITAL_SIGNATURE'
     };
   })();
 
@@ -1091,7 +1119,7 @@ export default async function handler(req,res){
     freshnessModule('V108_SERVER_ATTESTATION',attestationSourceMode,attestationObservedAt,attestationFallbackExpiresAt,attestationFallbackAgeMinutes,Boolean(provenanceAttestationState?.ok)),
     freshnessModule('V109_KEY_LIFECYCLE',keyLifecycleSourceMode,keyLifecycleObservedAt,keyLifecycleFallbackExpiresAt,keyLifecycleFallbackAgeMinutes,Boolean(keyLifecycleState?.ok)),
     freshnessModule('V110_GLOBAL_CHECKPOINT',checkpointSourceMode,checkpointObservedAt,checkpointFallbackExpiresAt,checkpointFallbackAgeMinutes,Boolean(checkpointState?.ok)),
-    freshnessModule('V111_EXTERNAL_GITHUB_ANCHOR','GITHUB_EXTERNAL_ANCHOR',externalAnchorState.anchored_at,externalAnchorState.freshness_expires_at,externalAnchorState.age_minutes,Boolean(externalAnchorState.ok))
+    freshnessModule('V112_EXTERNAL_ANCHOR_HEARTBEAT','GITHUB_EXTERNAL_ANCHOR',externalAnchorState.last_verified_at,externalAnchorState.freshness_expires_at,externalAnchorState.age_minutes,Boolean(externalAnchorState.ok))
   ];
   const freshnessCounts={
     total:evidenceFreshnessModules.length,
@@ -1236,7 +1264,8 @@ export default async function handler(req,res){
       server_attestation:provenanceAttestationState?.state??'WITHHELD',
       attestation_key_lifecycle:keyLifecycleState?.state??'WITHHELD',
       provenance_checkpoint:checkpointState?.state??'WITHHELD',
-      external_anchor:externalAnchorState.state
+      external_anchor:externalAnchorState.root_state,
+      external_anchor_heartbeat:externalAnchorState.heartbeat_state
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -1252,7 +1281,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · V111 ${String(externalAnchorState.state).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · V111 ${String(externalAnchorState.root_state).replaceAll('_',' ')} · V112 ${String(externalAnchorState.heartbeat_state).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -1279,7 +1308,8 @@ export default async function handler(req,res){
     ['Server-Attested Provenance',provenanceAttestationState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceAttestationState?.ok?`${String(provenanceAttestationState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceAttestationState.counts?.verified_attestations??0}/${provenanceAttestationState.counts?.attestations??0} verified · Vault-backed HMAC · not public-key signature`:'Attestation evidence unavailable'],
     ['Attestation Key Lifecycle',keyLifecycleState?.ok?'ACTIVE':'EVIDENCE-GATED',keyLifecycleState?.ok?`${String(keyLifecycleState.state??'WITHHELD').replaceAll('_',' ')} · ${keyLifecycleState.counts?.keys??0} keys · ${keyLifecycleState.counts?.active_keys??0} active · ${keyLifecycleState.counts?.retired_keys??0} retired · history preserved`:'Key lifecycle unavailable'],
     ['Global Provenance Checkpoint',checkpointState?.ok?'ACTIVE':'EVIDENCE-GATED',checkpointState?.ok?`${String(checkpointState.state??'WITHHELD').replaceAll('_',' ')} · ${checkpointState.counts?.checkpoints??0} checkpoints · ${checkpointState.counts?.chain_link_failures??0} broken links · ${checkpointState.counts?.uncheckpointed_attestations??0} unattested heads · root ${String(checkpointState.latest_checkpoint?.checkpoint_sha256??'').slice(0,12)}…`:'Checkpoint evidence unavailable'],
-    ['External GitHub Checkpoint Anchor',externalAnchorState.ok?'ACTIVE':'EVIDENCE-GATED',`${String(externalAnchorState.state).replaceAll('_',' ')} · GitHub audit branch · anchor age ${externalAnchorState.age_minutes??'n/a'}m · root ${String(externalAnchorState.external_anchor?.checkpoint_sha256??'').slice(0,12)}… · second-system timestamp, not public-key signature`],
+    ['External GitHub Checkpoint Anchor',externalAnchorState.root_state==='MATCH'||externalAnchorState.root_state==='PENDING_NEWER_CHECKPOINT'?'ACTIVE':'EVIDENCE-GATED',`${String(externalAnchorState.root_state).replaceAll('_',' ')} · immutable anchor ${externalAnchorState.anchor_age_minutes??'n/a'}m old · root ${String(externalAnchorState.external_anchor?.checkpoint_sha256??'').slice(0,12)}… · second-system timestamp, not public-key signature`],
+    ['External Anchor Verification Heartbeat',externalAnchorState.heartbeat_state==='FRESH'?'ACTIVE':'EVIDENCE-GATED',`${String(externalAnchorState.heartbeat_state).replaceAll('_',' ')} · last verified ${externalAnchorState.age_minutes??'n/a'}m ago · ${externalAnchorState.verification_count??'n/a'} independent checks · stale after 90m · cannot grant capital`],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -1345,7 +1375,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v111-unified-intelligence-experience-v1',
+    version:'v112-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{

@@ -665,8 +665,10 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV110Detail', checkpoint?.ok ? `${checkpoint?.counts?.checkpoints ?? 0} checkpoints · ${checkpoint?.counts?.chain_link_failures ?? 0} broken links · ${checkpoint?.counts?.hmac_failures ?? 0} HMAC failures · ${checkpoint?.counts?.uncheckpointed_attestations ?? 0} uncheckpointed · root ${checkpointRoot ? checkpointRoot.slice(0,12)+'…' : 'n/a'} · ${checkpointMode}${checkpointAge}` : 'Global provenance checkpoint unavailable.');
   const externalRoot=String(externalAnchor?.external_anchor?.checkpoint_sha256 ?? '');
   const sourceProofHash=String(externalAnchor?.external_anchor?.source_proof_sha256 ?? '');
-  missionText('learningV111State', String(externalAnchor?.state ?? 'UNAVAILABLE').replaceAll('_',' '));
-  missionText('learningV111Detail', externalAnchor?.version ? `GitHub audit · ${externalAnchor?.age_minutes ?? 'n/a'}m old · root ${externalRoot ? externalRoot.slice(0,12)+'…' : 'n/a'} · proof ${sourceProofHash ? sourceProofHash.slice(0,12)+'…' : 'n/a'} · ${externalAnchor?.branch ?? 'audit branch'} · second-system timestamp, not public-key signature.` : 'External checkpoint anchor unavailable.');
+  missionText('learningV111State', String(externalAnchor?.root_state ?? externalAnchor?.state ?? 'UNAVAILABLE').replaceAll('_',' '));
+  missionText('learningV111Detail', externalAnchor?.version ? `Immutable GitHub anchor · ${externalAnchor?.anchor_age_minutes ?? 'n/a'}m old · root ${externalRoot ? externalRoot.slice(0,12)+'…' : 'n/a'} · proof ${sourceProofHash ? sourceProofHash.slice(0,12)+'…' : 'n/a'} · second-system checkpoint integrity.` : 'External checkpoint anchor unavailable.');
+  missionText('learningV112State', String(externalAnchor?.heartbeat_state ?? 'UNAVAILABLE').replaceAll('_',' '));
+  missionText('learningV112Detail', externalAnchor?.version ? `Last independently verified ${externalAnchor?.age_minutes ?? 'n/a'}m ago · checks ${externalAnchor?.verification_count ?? 'n/a'} · next stale gate ${externalAnchor?.freshness_expires_at ?? 'n/a'} · heartbeat cannot grant capital.` : 'External anchor heartbeat unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
