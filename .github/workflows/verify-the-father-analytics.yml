@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - the-father-analytics-deploy
+      - the-father-analytics-staging
   pull_request:
     branches:
       - the-father-analytics-deploy
+      - the-father-analytics-staging
 
 permissions:
   contents: read
