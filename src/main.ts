@@ -217,6 +217,39 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
 }
 
 
+
+function renderRatesFunding(pulse: any) {
+  const rates = pulse?.rates ?? {};
+  const funding = pulse?.treasury_funding ?? {};
+  const latest = funding?.latest ?? null;
+  const changes = rates?.daily_change_bps ?? {};
+  const pct = (v: unknown) => typeof v === 'number' ? `${v.toFixed(2)}%` : 'WITHHELD';
+  const bp = (v: unknown) => typeof v === 'number' ? `${v >= 0 ? '+' : ''}${v.toFixed(1)} bp` : 'WITHHELD';
+
+  missionText('ratesCompositeState', String(pulse?.composite?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('rateNominal', pct(rates?.aligned_values?.nominal_10y));
+  missionText('rateReal', pct(rates?.aligned_values?.real_10y));
+  missionText('rateBreakeven', pct(rates?.aligned_values?.breakeven_10y));
+  missionText('rateNominalMeta', rates?.aligned_date ? `${rates.aligned_date} · U.S. Treasury · aligned decomposition date` : 'FRED daily series unavailable');
+  missionText('rateRealMeta', rates?.aligned_date ? `${rates.aligned_date} · TIPS real yield · ${String(rates?.state ?? '').replaceAll('_',' ')}` : 'Real yield unavailable');
+  missionText('rateBreakevenMeta', rates?.aligned_date ? `${rates.aligned_date} · inflation compensation · decomposition gap ${rates?.decomposition_gap_bps ?? 'n/a'} bp` : 'Breakeven unavailable');
+
+  if (latest) {
+    missionText('auctionLatest', `${latest.term} · BTC ${latest.bid_to_cover ?? 'n/a'}`);
+    missionText('auctionLatestMeta', `${latest.auction_date} · high yield ${latest.high_yield ?? 'n/a'}% · prior BTC ${latest.prior_bid_to_cover ?? 'n/a'}`);
+    missionText('auctionIndirect', typeof latest.indirect_share_pct === 'number' ? `${latest.indirect_share_pct.toFixed(1)}% · ${latest.indirect_share_change_pp >= 0 ? '+' : ''}${latest.indirect_share_change_pp?.toFixed?.(1) ?? 'n/a'} pp` : 'WITHHELD');
+  } else {
+    missionText('auctionLatest', 'WITHHELD');
+    missionText('auctionLatestMeta', 'Treasury auction data unavailable');
+    missionText('auctionIndirect', 'WITHHELD');
+  }
+  missionText('nominalImpulse', bp(changes?.nominal));
+  missionText('realImpulse', bp(changes?.real));
+  missionText('breakevenImpulse', bp(changes?.breakeven));
+  missionText('auctionDemandState', String(funding?.summary?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('fundingSample', funding?.summary?.sample_size ?? 0);
+}
+
 function renderMacroPulse(pulse: { structural?: MacroMetric[]; market_proxy?: MarketAsset; comparisons?: any } | undefined) {
   const grid = document.querySelector<HTMLElement>('#macroCardGrid');
   const structural = Array.isArray(pulse?.structural) ? pulse?.structural ?? [] : [];
@@ -486,6 +519,7 @@ async function loadMissionBrief() {
 
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
+    renderRatesFunding(brief?.rates_funding_intelligence);
     renderMacroPulse(brief?.macro_evidence_pulse);
     renderTrendsPulse(brief?.global_trends_evidence_pulse);
     renderPositioningEvidence(brief?.flows_positioning_evidence);
