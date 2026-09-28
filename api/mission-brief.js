@@ -1,4 +1,6 @@
 const BASE='https://thefatheranalytics.com';
+const SUPABASE_URL='https://mpcelmjiycjpdyyflisn.supabase.co';
+const PUBLISHABLE_KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const MARKET_ASSETS=[
   {id:'gold',name:'Gold',symbol:'GC=F',kind:'futures',precision:1},
   {id:'dxy',name:'U.S. Dollar Index',symbol:'DX-Y.NYB',kind:'index',precision:3},
@@ -362,6 +364,21 @@ function marketBreadth(rows){
 }
 
 
+async function supabaseRpc(name,timeout=5000){
+  try{
+    const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
+      method:'POST',
+      headers:{apikey:PUBLISHABLE_KEY,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/97.0'},
+      body:'{}',
+      cache:'no-store',
+      signal:AbortSignal.timeout(timeout)
+    });
+    const body=await r.json().catch(()=>null);
+    if(!r.ok||!body)return {ok:false,state:'UNAVAILABLE',source:`Supabase RPC ${name}`,http_status:r.status};
+    return body;
+  }catch(error){return {ok:false,state:'UNAVAILABLE',source:`Supabase RPC ${name}`,error:String(error).slice(0,120)}}
+}
+
 async function read(path,timeout=9000){
   const started=Date.now();
   try{
@@ -386,7 +403,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -430,7 +447,9 @@ export default async function handler(req,res){
       cboeVolIndex('VVIX','Cboe VVIX'),
       cboeVolIndex('SKEW','Cboe SKEW')
     ]),
-    goldSeasonality()
+    goldSeasonality(),
+    supabaseRpc('get_v96_forecast_error_state'),
+    supabaseRpc('get_v97_execution_quality_state')
   ]);
 
   const dataQuality=safe(quality.body?.state);
@@ -577,6 +596,37 @@ export default async function handler(req,res){
     note:'VIX, GVZ, VVIX and SKEW describe different options markets. GVZ supplies a Gold ETF volatility scale; SKEW is an equity tail-risk index. None of these alone provides Gold direction probability or dealer gamma.'
   };
 
+  const forecastHorizons=Array.isArray(forecastErrorState?.horizons)?forecastErrorState.horizons:[];
+  const executionDelays=Array.isArray(executionQualityState?.delays)?executionQualityState.delays:[];
+  const forecastThreshold=Number(forecastErrorState?.sample_policy?.minimum_nonflat_sample_for_public_accuracy??20);
+  const latencyThreshold=Number(executionQualityState?.sample_policy?.minimum_sample_for_stable_latency_estimate??30);
+  const maxForecastSample=forecastHorizons.reduce((m,h)=>Math.max(m,Number(h?.nonflat_sample??0)),0);
+  const maxLatencySample=executionDelays.reduce((m,h)=>Math.max(m,Number(h?.sample_size??0)),0);
+  const forecastMature=forecastHorizons.length>0&&forecastHorizons.every(h=>Number(h?.nonflat_sample??0)>=forecastThreshold);
+  const latencyMature=executionDelays.length>0&&executionDelays.every(h=>Number(h?.sample_size??0)>=latencyThreshold);
+  const learningState=forecastErrorState?.ok&&executionQualityState?.ok
+    ? (forecastMature&&latencyMature?'MATURE_REVIEW_READY':'CLOSED_LOOP_EARLY_SAMPLE')
+    : 'LEARNING_EVIDENCE_GATED';
+  const quantAccountability={
+    state:learningState,
+    forecast_error:forecastErrorState,
+    execution_latency:executionQualityState,
+    publication_gates:{
+      public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
+      forecast_threshold:forecastThreshold,
+      max_nonflat_sample:maxForecastSample,
+      latency_stability:latencyMature?'REVIEW_READY':'EARLY_SAMPLE',
+      latency_threshold:latencyThreshold,
+      max_latency_sample:maxLatencySample,
+      brier:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
+      capital_permission:'0R',
+      learning_state:learningState,
+      brier_state:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES'
+    },
+    truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
+    note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
+  };
+
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
   changeParts.push(label(phase));
@@ -587,8 +637,8 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
-    {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 error attribution · V97 latency proxy · public accuracy ${forecastMature?'review-ready':'withheld'} · max n ${maxForecastSample}/${forecastThreshold}`,href:'/status/'},
+    {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:`Execution latency ${executionQualityState?.ok?'observed':'gated'} · realized costs excluded · capital permission 0R`,href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
 
@@ -603,8 +653,11 @@ export default async function handler(req,res){
     ['SMC / FVG / Order Blocks','FRAMEWORK','Proxy layer only where data supports it'],
     ['COT / Institutional Positioning',cotGold?.ok?'ACTIVE':'EVIDENCE-GATED',cotGold?.ok?`Gold report ${String(cotGold.report_date).slice(0,10)} · official weekly CFTC`:'No fabricated positioning'],
     ['Seasonality & Cycles',seasonality?.ok?'ACTIVE':'EVIDENCE-GATED',seasonality?.ok?`${seasonality.month.label} ${seasonality.month.state.replaceAll('_',' ')} · ${seasonality.quarter.label} ${seasonality.quarter.state.replaceAll('_',' ')}`:'Historical context unavailable'],
-    ['Forecast Ledger','ACTIVE','Immutable outcomes + calibration'],
-    ['Signal Reputation','LEARNING','Sample thresholds enforced'],
+    ['Forecast Ledger','ACTIVE',forecastErrorState?.ok?`V96 error reviews live · max non-flat n ${maxForecastSample}/${forecastThreshold}`:'Learning review unavailable'],
+    ['Signal Reputation','LEARNING',forecastErrorState?.ok?'Error categories + timing recovery · publication threshold enforced':'Evidence gated'],
+    ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
+    ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
+    ['Brier Calibration','GATED','No resolved probability outcomes are published yet'],
     ['Expected Value Engine','GATED','No EV without empirical inputs'],
     ['Portfolio Risk','GATED','Capital permission remains 0R'],
     ['Source Provenance','ACTIVE','Evidence trail + immutable snapshots'],
@@ -620,7 +673,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v95-unified-intelligence-experience-v1',
+    version:'v97-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -655,11 +708,12 @@ export default async function handler(req,res){
     rates_funding_intelligence:ratesFundingPulse,
     volatility_intelligence:volatilityIntelligence,
     gold_seasonality_cycle_context:seasonality,
+    quant_accountability:quantAccountability,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
-      public_accuracy:'WITHHELD',
-      reason:'Empirical outcome samples have not reached publication thresholds.',
+      public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
+      reason:forecastMature?'Forecast horizon samples crossed the minimum threshold; aggregate publication still requires review.':`Forecast error evidence is live, but public accuracy remains withheld until each horizon reaches n=${forecastThreshold}. Current maximum non-flat sample is n=${maxForecastSample}.`,
       qa_score:null,
       automatic_promotion:false,
       capital_permission:'0R'

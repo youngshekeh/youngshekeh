@@ -472,6 +472,84 @@ function renderPositioningEvidence(evidence: { gold_cot?: any } | undefined) {
   missionText('cotManaged3', typeof cot?.managed_money_3_report_net_change === 'number' ? `${cot.managed_money_3_report_net_change >= 0 ? '+' : ''}${Math.round(cot.managed_money_3_report_net_change).toLocaleString()}` : 'WITHHELD');
 }
 
+
+function renderQuantAccountability(pulse: any) {
+  const forecast = pulse?.forecast_error ?? {};
+  const execution = pulse?.execution_latency ?? {};
+  const gates = pulse?.publication_gates ?? {};
+  const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
+  const delays = Array.isArray(execution?.delays) ? execution.delays : [];
+  const forecastGrid = document.querySelector<HTMLElement>('#forecastErrorGrid');
+  const latencyGrid = document.querySelector<HTMLElement>('#latencyQualityGrid');
+
+  if (forecastGrid) {
+    forecastGrid.replaceChildren();
+    for (const h of horizons) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card';
+      const label = document.createElement('span');
+      label.textContent = `${h.horizon_minutes ?? '?'} MIN HORIZON`;
+      const value = document.createElement('strong');
+      value.textContent = `n=${h.nonflat_sample ?? 0}/${gates.forecast_threshold ?? 20}`;
+      const metrics = document.createElement('em');
+      const mfe = typeof h.avg_mfe_pct === 'number' ? h.avg_mfe_pct.toFixed(4) : 'n/a';
+      const mae = typeof h.avg_mae_pct === 'number' ? h.avg_mae_pct.toFixed(4) : 'n/a';
+      metrics.textContent = `MFE ${mfe}% · MAE ${mae}%`;
+      const meta = document.createElement('small');
+      meta.textContent = `${h.hits ?? 0} observed hits · ${h.misses ?? 0} misses · ${h.timing_recovered ?? 0} timing recoveries · accuracy withheld`;
+      card.append(label, value, metrics, meta);
+      forecastGrid.appendChild(card);
+    }
+    if (!horizons.length) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card';
+      card.textContent = 'Forecast error evidence unavailable';
+      forecastGrid.appendChild(card);
+    }
+  }
+
+  if (latencyGrid) {
+    latencyGrid.replaceChildren();
+    for (const d of delays) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card latency';
+      const label = document.createElement('span');
+      label.textContent = `${d.delay_minutes ?? '?'} MIN DELAY`;
+      const value = document.createElement('strong');
+      value.textContent = `n=${d.sample_size ?? 0}/${gates.latency_threshold ?? 30}`;
+      const metrics = document.createElement('em');
+      const signed = typeof d.avg_signed_shortfall_bps === 'number' ? `${d.avg_signed_shortfall_bps >= 0 ? '+' : ''}${d.avg_signed_shortfall_bps.toFixed(2)} bp` : 'WITHHELD';
+      metrics.textContent = `Avg signed shortfall ${signed}`;
+      const meta = document.createElement('small');
+      meta.textContent = `${d.adverse_count ?? 0} adverse / ${d.improved_count ?? 0} improved · max adverse ${typeof d.max_adverse_cost_bps === 'number' ? d.max_adverse_cost_bps.toFixed(2) : 'n/a'} bp · early sample`;
+      card.append(label, value, metrics, meta);
+      latencyGrid.appendChild(card);
+    }
+    if (!delays.length) {
+      const card = document.createElement('article');
+      card.className = 'quant-evidence-card latency';
+      card.textContent = 'Execution latency evidence unavailable';
+      latencyGrid.appendChild(card);
+    }
+  }
+
+  const cats = forecast?.categories ?? {};
+  const errorParts = [
+    typeof cats.CLEAN_DIRECTIONAL_HIT === 'number' ? `${cats.CLEAN_DIRECTIONAL_HIT} clean` : null,
+    typeof cats.TIMING_ERROR_RECOVERED_LATER === 'number' ? `${cats.TIMING_ERROR_RECOVERED_LATER} timing recovered` : null,
+    typeof cats.LOW_FOLLOW_THROUGH_UNRESOLVED === 'number' ? `${cats.LOW_FOLLOW_THROUGH_UNRESOLVED} low follow-through` : null,
+    typeof cats.ADVERSE_PATH_RISK === 'number' ? `${cats.ADVERSE_PATH_RISK} adverse path` : null
+  ].filter(Boolean);
+
+  missionText('quantLearningState', String(pulse?.state ?? 'WITHHELD').replaceAll('_',' '));
+  missionText('quantPublicationGate', gates?.public_accuracy ?? 'WITHHELD');
+  missionText('quantPublicationReason', `Max non-flat n=${gates?.max_nonflat_sample ?? 0}; threshold n=${gates?.forecast_threshold ?? 20} per horizon.`);
+  missionText('quantErrorMix', errorParts.length ? errorParts.join(' · ') : 'WITHHELD');
+  missionText('quantIntegrity', forecast?.data_integrity ? `${forecast.data_integrity.negative_mfe ?? 0} negative MFE · ${forecast.data_integrity.negative_mae ?? 0} negative MAE` : 'WITHHELD');
+  missionText('quantLatencyMaturity', `max n=${gates?.max_latency_sample ?? 0}/${gates?.latency_threshold ?? 30} · ${String(gates?.latency_stability ?? 'WITHHELD').replaceAll('_',' ')}`);
+  missionText('quantBrier', String(gates?.brier ?? 'WITHHELD').replaceAll('_',' '));
+}
+
 function renderDesks(desks: MissionDesk[]) {
   const grid = document.querySelector<HTMLElement>('#sixDeskGrid');
   if (!grid || !Array.isArray(desks)) return;
@@ -571,6 +649,7 @@ async function loadMissionBrief() {
     renderMacroPulse(brief?.macro_evidence_pulse);
     renderTrendsPulse(brief?.global_trends_evidence_pulse);
     renderPositioningEvidence(brief?.flows_positioning_evidence);
+    renderQuantAccountability(brief?.quant_accountability);
     renderDesks(brief?.six_desks ?? []);
     renderEngines(brief?.engine_registry ?? []);
 
