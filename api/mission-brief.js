@@ -83,6 +83,102 @@ async function cryptoGlobal(){
       source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
   }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
+async function fredRecent(series,label,lookbackDays=50){
+  const end=new Date();
+  const start=new Date(end.getTime()-lookbackDays*86400000);
+  const iso=d=>d.toISOString().slice(0,10);
+  const url=`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(series)}&cosd=${iso(start)}&coed=${iso(end)}`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'text/csv','User-Agent':'THE-FATHER-ANALYTICS/93.0'},cache:'no-store',signal:AbortSignal.timeout(8000)});
+    const text=await r.text();
+    const lines=text.trim().split(/\r?\n/).slice(1);
+    const rows=lines.map(line=>{
+      const parts=line.split(',');
+      const value=num(parts[1]);
+      return {date:parts[0],value};
+    }).filter(x=>x.date&&x.value!==null);
+    if(!r.ok||!rows.length)return {ok:false,series,label,state:'UNAVAILABLE',source:'FRED'};
+    const latest=rows.at(-1),prior=rows.at(-2)??null;
+    return {ok:true,series,label,date:latest.date,value:latest.value,
+      prior_date:prior?.date??null,prior_value:prior?.value??null,
+      change_bps:prior?Number(((latest.value-prior.value)*100).toFixed(1)):null,
+      observations:rows.slice(-12),source:'Federal Reserve Bank of St. Louis FRED',
+      truth_label:'DAILY_MARKET_RATE_SERIES'};
+  }catch{return {ok:false,series,label,state:'UNAVAILABLE',source:'FRED'}}
+}
+function canonicalTreasuryTerm(row){
+  const term=String(row?.security_term||'');
+  const type=String(row?.security_type||'');
+  if(type!=='Note'&&type!=='Bond')return null;
+  if(term==='2-Year'||term.startsWith('1-Year '))return '2Y';
+  if(term==='3-Year')return '3Y';
+  if(term==='5-Year')return '5Y';
+  if(term==='7-Year')return '7Y';
+  if(term.startsWith('9-Year'))return '10Y';
+  if(term.startsWith('19-Year'))return '20Y';
+  if(term.startsWith('29-Year'))return '30Y';
+  return term||null;
+}
+function auctionShares(row){
+  const total=num(row?.total_accepted);
+  const pct=v=>total&&num(v)!==null?Number((num(v)/total*100).toFixed(2)):null;
+  return {indirect_pct:pct(row?.indirect_bidder_accepted),direct_pct:pct(row?.direct_bidder_accepted),dealer_pct:pct(row?.primary_dealer_accepted)};
+}
+function compareAuction(latest,prior){
+  const btc=num(latest?.bid_to_cover_ratio),pbtc=num(prior?.bid_to_cover_ratio);
+  const ls=auctionShares(latest),ps=auctionShares(prior);
+  const btcChange=btc!==null&&pbtc!==null?Number((btc-pbtc).toFixed(2)):null;
+  const indirectChange=ls.indirect_pct!==null&&ps.indirect_pct!==null?Number((ls.indirect_pct-ps.indirect_pct).toFixed(2)):null;
+  const dealerChange=ls.dealer_pct!==null&&ps.dealer_pct!==null?Number((ls.dealer_pct-ps.dealer_pct).toFixed(2)):null;
+  let state='MIXED_OR_STABLE';
+  if((btcChange!==null&&btcChange<=-0.07&&indirectChange!==null&&indirectChange<=-2)||
+     (btcChange!==null&&btcChange<0&&dealerChange!==null&&dealerChange>=3)) state='DEMAND_SOFTENED';
+  else if((btcChange!==null&&btcChange>=0.07&&indirectChange!==null&&indirectChange>=2)||
+          (btcChange!==null&&btcChange>0&&dealerChange!==null&&dealerChange<=-3)) state='DEMAND_FIRMED';
+  return {state,bid_to_cover:btc,prior_bid_to_cover:pbtc,bid_to_cover_change:btcChange,
+    indirect_share_pct:ls.indirect_pct,indirect_share_change_pp:indirectChange,
+    direct_share_pct:ls.direct_pct,dealer_share_pct:ls.dealer_pct,dealer_share_change_pp:dealerChange};
+}
+async function treasuryFundingPulse(){
+  const fields='auction_date,security_type,security_term,bid_to_cover_ratio,high_yield,indirect_bidder_accepted,direct_bidder_accepted,primary_dealer_accepted,total_accepted,offering_amt';
+  const url='https://api.fiscaldata.treasury.gov/services/api/fiscal_service/v1/accounting/od/auctions_query?fields='+encodeURIComponent(fields)+'&sort=-auction_date&page%5Bsize%5D=100';
+  try{
+    const r=await fetch(url,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/93.0'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const j=await r.json().catch(()=>null);
+    const rows=Array.isArray(j?.data)?j.data.filter(x=>num(x?.bid_to_cover_ratio)!==null):[];
+    const coupons=rows.filter(x=>canonicalTreasuryTerm(x));
+    if(!r.ok||!coupons.length)return {ok:false,state:'UNAVAILABLE',source:'U.S. Treasury Fiscal Data'};
+    const buckets=new Map();
+    for(const row of coupons){
+      const key=canonicalTreasuryTerm(row);
+      if(!buckets.has(key))buckets.set(key,[]);
+      buckets.get(key).push(row);
+    }
+    const comparisons=[];
+    for(const [term,list] of buckets.entries()){
+      if(list.length<2)continue;
+      const latest=list[0],prior=list[1],cmp=compareAuction(latest,prior);
+      comparisons.push({
+        term,auction_date:latest.auction_date,prior_auction_date:prior.auction_date,
+        security_type:latest.security_type,security_term:latest.security_term,
+        high_yield:num(latest.high_yield),offering_amt:num(latest.offering_amt),
+        total_accepted:num(latest.total_accepted),...cmp
+      });
+    }
+    comparisons.sort((a,b)=>String(b.auction_date).localeCompare(String(a.auction_date)));
+    const latest=comparisons[0]??null;
+    const sample=comparisons.slice(0,7);
+    const soft=sample.filter(x=>x.state==='DEMAND_SOFTENED').length;
+    const firm=sample.filter(x=>x.state==='DEMAND_FIRMED').length;
+    const mixed=sample.length-soft-firm;
+    const broadState=soft>=3&&soft>firm?'BROAD_DEMAND_SOFTENING':
+      firm>=3&&firm>soft?'BROAD_DEMAND_FIRMING':'MIXED_AUCTION_DEMAND';
+    return {ok:true,latest,comparisons:sample,summary:{state:broadState,softened:soft,firmed:firm,mixed,sample_size:sample.length},
+      source:'U.S. Treasury Fiscal Data - Auctions Query',
+      truth_label:'OFFICIAL_AUCTION_RESULTS_RELATIVE_DEMAND_NOT_SYSTEMIC_STRESS',
+      note:'Auction demand is compared with the prior auction of the same maturity bucket. A softer auction is not by itself evidence of systemic funding stress.'};
+  }catch{return {ok:false,state:'UNAVAILABLE',source:'U.S. Treasury Fiscal Data'}}
+}
 async function cftcGoldPositioning(){
   const select=[
     'report_date_as_yyyy_mm_dd','market_and_exchange_names','open_interest_all','change_in_open_interest_all',
@@ -177,7 +273,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -209,7 +305,13 @@ export default async function handler(req,res){
       arxivActivity('cs.RO','Robotics research activity',7),
       cryptoGlobal()
     ]),
-    cftcGoldPositioning()
+    cftcGoldPositioning(),
+    Promise.all([
+      fredRecent('DGS10','10Y nominal Treasury'),
+      fredRecent('DFII10','10Y real yield'),
+      fredRecent('T10YIE','10Y breakeven inflation')
+    ]),
+    treasuryFundingPulse()
   ]);
 
   const dataQuality=safe(quality.body?.state);
@@ -277,6 +379,47 @@ export default async function handler(req,res){
     note:'Structural adoption, research activity, market attention and digital-asset breadth are separate evidence classes. Research activity is not momentum; market prices are not adoption proof.'
   };
 
+  const [nominal10y,real10y,breakeven10y]=ratesEvidence;
+  const commonDates=[nominal10y,real10y,breakeven10y]
+    .filter(x=>x?.ok)
+    .map(x=>new Map((x.observations||[]).map(r=>[r.date,r.value])));
+  let commonDate=null,commonNominal=null,commonReal=null,commonBreakeven=null,priorCommonDate=null,priorNominal=null,priorReal=null,priorBreakeven=null;
+  if(commonDates.length===3){
+    const dates=[...commonDates[0].keys()].filter(d=>commonDates[1].has(d)&&commonDates[2].has(d)).sort();
+    commonDate=dates.at(-1)??null;
+    priorCommonDate=dates.at(-2)??null;
+    if(commonDate){
+      commonNominal=commonDates[0].get(commonDate); commonReal=commonDates[1].get(commonDate); commonBreakeven=commonDates[2].get(commonDate);
+    }
+    if(priorCommonDate){
+      priorNominal=commonDates[0].get(priorCommonDate); priorReal=commonDates[1].get(priorCommonDate); priorBreakeven=commonDates[2].get(priorCommonDate);
+    }
+  }
+  const bps=(a,b)=>a!==null&&a!==undefined&&b!==null&&b!==undefined?Number(((a-b)*100).toFixed(1)):null;
+  const realImpulse=bps(commonReal,priorReal);
+  const nominalImpulse=bps(commonNominal,priorNominal);
+  const breakevenImpulse=bps(commonBreakeven,priorBreakeven);
+  const realYieldState=realImpulse===null?'WITHHELD':realImpulse>=5?'REAL_YIELD_TIGHTENING':realImpulse<=-5?'REAL_YIELD_EASING':'REAL_YIELD_STABLE';
+  const auctionState=treasuryFunding?.summary?.state??'UNAVAILABLE';
+  const fundingWatch=auctionState==='BROAD_DEMAND_SOFTENING'&&realYieldState==='REAL_YIELD_TIGHTENING'
+    ?'RATES_AND_AUCTION_PRESSURE_WATCH'
+    :auctionState==='BROAD_DEMAND_SOFTENING'?'AUCTION_DEMAND_SOFTENING_WATCH'
+      :realYieldState==='REAL_YIELD_TIGHTENING'?'REAL_YIELD_TIGHTENING':'NO_BROAD_PRESSURE_SIGNAL';
+  const ratesFundingPulse={
+    rates:{
+      nominal_10y:nominal10y,real_10y:real10y,breakeven_10y:breakeven10y,
+      aligned_date:commonDate,prior_aligned_date:priorCommonDate,
+      aligned_values:{nominal_10y:commonNominal,real_10y:commonReal,breakeven_10y:commonBreakeven},
+      daily_change_bps:{nominal:nominalImpulse,real:realImpulse,breakeven:breakevenImpulse},
+      decomposition_gap_bps:commonNominal!==null&&commonReal!==null&&commonBreakeven!==null?Number(((commonNominal-commonReal-commonBreakeven)*100).toFixed(1)):null,
+      state:realYieldState
+    },
+    treasury_funding:treasuryFunding,
+    composite:{state:fundingWatch},
+    truth_label:'FRED_RATE_DECOMPOSITION_PLUS_OFFICIAL_TREASURY_AUCTION_DEMAND',
+    note:'Real yields and breakevens are market-implied rate series. Auction demand comparisons are descriptive and do not by themselves establish systemic funding stress.'
+  };
+
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
   changeParts.push(label(phase));
@@ -284,7 +427,7 @@ export default async function handler(req,res){
   if(mtf!=='WITHHELD')changeParts.push(label(mtf));
 
   const desks=[
-    {id:'macro',name:'MACRO & WORLD ECONOMY',state:'ACTIVE SURFACE',detail:'World Bank structural evidence · FX proxy · growth · inflation · policy',href:'/world-economy/'},
+    {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
@@ -311,13 +454,15 @@ export default async function handler(req,res){
     ['Freshness Decay','ACTIVE','Stale inputs fail closed'],
     ['Adventure Map','ACTIVE SURFACE','Kid-friendly regime storytelling'],
     ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization'],
-    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth']
+    ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth'],
+    ['Real Yield & Breakeven','ACTIVE',commonDate?`10Y real ${commonReal}% · breakeven ${commonBreakeven}% · ${commonDate}`:'WITHHELD'],
+    ['Treasury Auction / Funding','ACTIVE',treasuryFunding?.latest?`${treasuryFunding.latest.term} BTC ${treasuryFunding.latest.bid_to_cover} · ${treasuryFunding.summary.state.replaceAll('_',' ')}`:'WITHHELD']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v92-unified-intelligence-experience-v1',
+    version:'v93-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -349,6 +494,7 @@ export default async function handler(req,res){
     macro_evidence_pulse:macroPulse,
     global_trends_evidence_pulse:trendsPulse,
     flows_positioning_evidence:{gold_cot:cotGold},
+    rates_funding_intelligence:ratesFundingPulse,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
