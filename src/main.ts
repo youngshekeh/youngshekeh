@@ -218,6 +218,26 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
 
 
 
+
+function renderVolatility(pulse: any) {
+  const x = pulse?.indices ?? {};
+  const show = (prefix: string, item: any) => {
+    missionText(`${prefix}Value`, typeof item?.value === 'number' ? item.value.toFixed(2) : 'WITHHELD');
+    missionText(`${prefix}Regime`, item?.ok ? `${String(item.regime ?? 'WITHHELD').replaceAll('_',' ')} · P${item.trailing_252_percentile ?? 'n/a'}` : 'WITHHELD');
+    missionText(`${prefix}Meta`, item?.ok ? `${item.date} · 1D ${item.change_1d_pct >= 0 ? '+' : ''}${item.change_1d_pct?.toFixed?.(2) ?? 'n/a'}% · 5D ${item.change_5d_pct >= 0 ? '+' : ''}${item.change_5d_pct?.toFixed?.(2) ?? 'n/a'}%` : 'Cboe series unavailable');
+  };
+  show('gvz', x?.gvz);
+  show('vix', x?.vix);
+  show('vvix', x?.vvix);
+  show('skew', x?.skew);
+  missionText('volCompositeState', String(pulse?.composite?.state ?? 'WITHHELD').replaceAll('_',' '));
+  const g = pulse?.gold_volatility_scale ?? {};
+  missionText('gvzDayScale', typeof g?.one_day_pct === 'number' ? `±${g.one_day_pct.toFixed(2)}%` : 'WITHHELD');
+  missionText('gvzWeekScale', typeof g?.one_week_pct === 'number' ? `±${g.one_week_pct.toFixed(2)}%` : 'WITHHELD');
+  missionText('gvzDayGold', typeof g?.one_day_gold_price_units === 'number' ? `≈ ±${g.one_day_gold_price_units.toFixed(1)} Gold price units around ${g.reference_gold_price}` : 'Approximate magnitude only');
+  missionText('gvzWeekGold', typeof g?.one_week_gold_price_units === 'number' ? `≈ ±${g.one_week_gold_price_units.toFixed(1)} Gold price units around ${g.reference_gold_price}` : 'Approximate magnitude only');
+}
+
 function renderRatesFunding(pulse: any) {
   const rates = pulse?.rates ?? {};
   const funding = pulse?.treasury_funding ?? {};
@@ -519,6 +539,7 @@ async function loadMissionBrief() {
 
     renderMissionTape(brief?.command_tape ?? []);
     renderGlobalMarkets(brief?.global_market_dashboard);
+    renderVolatility(brief?.volatility_intelligence);
     renderRatesFunding(brief?.rates_funding_intelligence);
     renderMacroPulse(brief?.macro_evidence_pulse);
     renderTrendsPulse(brief?.global_trends_evidence_pulse);

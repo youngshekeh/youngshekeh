@@ -83,6 +83,40 @@ async function cryptoGlobal(){
       source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
   }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
+async function cboeVolIndex(symbol,label){
+  const url=`https://cdn.cboe.com/api/global/us_indices/daily_prices/${symbol}_History.csv`;
+  try{
+    const r=await fetch(url,{headers:{Accept:'text/csv','User-Agent':'THE-FATHER-ANALYTICS/94.0'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const text=await r.text();
+    if(!r.ok||!text)return {ok:false,symbol,label,state:'UNAVAILABLE',source:'Cboe'};
+    const lines=text.trim().split(/\r?\n/);
+    const headers=lines.shift().split(',').map(x=>x.trim().toUpperCase());
+    const dateIdx=headers.indexOf('DATE');
+    const valueIdx=headers.indexOf('CLOSE')>=0?headers.indexOf('CLOSE'):headers.indexOf(symbol.toUpperCase());
+    if(dateIdx<0||valueIdx<0)return {ok:false,symbol,label,state:'SCHEMA_UNAVAILABLE',source:'Cboe'};
+    const rows=lines.map(line=>{
+      const parts=line.split(',');
+      const value=num(parts[valueIdx]);
+      const rawDate=String(parts[dateIdx]||'').trim();
+      if(!rawDate||value===null)return null;
+      const m=rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      const date=m?`${m[3]}-${m[1]}-${m[2]}`:rawDate;
+      return {date,value};
+    }).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
+    if(!rows.length)return {ok:false,symbol,label,state:'UNAVAILABLE',source:'Cboe'};
+    const latest=rows.at(-1),prior=rows.at(-2)??null,prior5=rows.at(-6)??null;
+    const trailing=rows.slice(-252).map(x=>x.value);
+    const pct=trailing.length?Number((trailing.filter(v=>v<=latest.value).length/trailing.length*100).toFixed(1)):null;
+    const change=(a,b)=>a!==null&&a!==undefined&&b?Number(((a/b)-1)*100).toFixed?.(2):null;
+    const change1=prior?Number((((latest.value/prior.value)-1)*100).toFixed(2)):null;
+    const change5=prior5?Number((((latest.value/prior5.value)-1)*100).toFixed(2)):null;
+    const regime=pct===null?'WITHHELD':pct>=90?'EXTREME':pct>=75?'ELEVATED':pct<=25?'SUPPRESSED':'NORMAL';
+    return {ok:true,symbol,label,date:latest.date,value:latest.value,prior_value:prior?.value??null,
+      change_1d_pct:change1,change_5d_pct:change5,trailing_252_percentile:pct,regime,
+      sample_size:trailing.length,source:'Cboe Global Indices - official historical daily prices',
+      truth_label:'OPTIONS_DERIVED_VOLATILITY_INDEX_DAILY_CLOSE'};
+  }catch{return {ok:false,symbol,label,state:'UNAVAILABLE',source:'Cboe'}}
+}
 async function treasuryCurve10Y(kind){
   const year=new Date().getUTCFullYear();
   const real=kind==='real';
@@ -281,7 +315,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -318,7 +352,13 @@ export default async function handler(req,res){
       treasuryCurve10Y('nominal'),
       treasuryCurve10Y('real')
     ]),
-    treasuryFundingPulse()
+    treasuryFundingPulse(),
+    Promise.all([
+      cboeVolIndex('VIX','Cboe VIX'),
+      cboeVolIndex('GVZ','Cboe Gold ETF Volatility Index'),
+      cboeVolIndex('VVIX','Cboe VVIX'),
+      cboeVolIndex('SKEW','Cboe SKEW')
+    ])
   ]);
 
   const dataQuality=safe(quality.body?.state);
@@ -431,6 +471,40 @@ export default async function handler(req,res){
     note:'Nominal and real yields come from official U.S. Treasury daily curves. Breakeven is the same-date nominal-minus-real difference. Auction demand is descriptive and does not by itself establish systemic funding stress.'
   };
 
+  const [vix,gvz,vvix,skew]=volEvidence;
+  const volScale=gvz?.ok&&typeof gvz.value==='number'?gvz.value:null;
+  const oneDayPct=volScale!==null?Number((volScale/Math.sqrt(252)).toFixed(2)):null;
+  const oneWeekPct=volScale!==null?Number((volScale*Math.sqrt(5/252)).toFixed(2)):null;
+  const goldOneDay=oneDayPct!==null&&price!==null?Number((price*oneDayPct/100).toFixed(1)):null;
+  const goldOneWeek=oneWeekPct!==null&&price!==null?Number((price*oneWeekPct/100).toFixed(1)):null;
+  const compositeVolState=gvz?.regime==='EXTREME'?'GOLD_VOL_EXTREME':
+    gvz?.regime==='ELEVATED'?'GOLD_VOL_ELEVATED':
+      vvix?.regime==='EXTREME'||vvix?.regime==='ELEVATED'?'VOL_OF_VOL_ELEVATED':
+        vix?.regime==='EXTREME'||vix?.regime==='ELEVATED'?'EQUITY_VOL_ELEVATED':
+          'VOLATILITY_NORMAL_OR_SUPPRESSED';
+  const volatilityIntelligence={
+    indices:{vix,gvz,vvix,skew},
+    gold_volatility_scale:{
+      annualized_pct:volScale,
+      one_day_pct:oneDayPct,
+      one_week_pct:oneWeekPct,
+      one_day_gold_price_units:goldOneDay,
+      one_week_gold_price_units:goldOneWeek,
+      reference_gold_price:price,
+      methodology:'GVZ annualized implied volatility divided by sqrt(252); weekly scale uses sqrt(5/252). Applied to Gold shadow price only as an approximate magnitude scale.',
+      truth_label:'VOLATILITY_SCALE_NOT_DIRECTIONAL_PROBABILITY'
+    },
+    composite:{state:compositeVolState},
+    unavailable:{
+      dealer_gamma:'WITHHELD_NO_VERIFIED_STRIKE_LEVEL_DEALER_POSITIONING',
+      gold_skew:'WITHHELD_NO_VERIFIED_GOLD_STRIKE_LEVEL_SKEW_FEED',
+      gold_term_structure:'WITHHELD_NO_VERIFIED_GOLD_EXPIRY_CURVE_FEED',
+      options_implied_direction_probability:'WITHHELD_NEEDS_STRIKE_LEVEL_OPTIONS_DISTRIBUTION'
+    },
+    truth_label:'OFFICIAL_CBOE_OPTIONS_DERIVED_VOLATILITY_INDICES',
+    note:'VIX, GVZ, VVIX and SKEW describe different options markets. GVZ supplies a Gold ETF volatility scale; SKEW is an equity tail-risk index. None of these alone provides Gold direction probability or dealer gamma.'
+  };
+
   const changeParts=[];
   if(price!==null)changeParts.push(`Gold shadow proxy ${Number(price).toFixed(1)}`);
   changeParts.push(label(phase));
@@ -439,7 +513,7 @@ export default async function handler(req,res){
 
   const desks=[
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
-    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE RESEARCH':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)}`,href:'/live-markets/'},
+    {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
     {id:'quant',name:'QUANT & CALIBRATION',state:'VERIFYING QA',detail:'Separate regression channel · forecast ledger · Brier · MFE/MAE',href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:'Scenario EV · position sizing · execution cost · capital permission',href:'/status/'},
@@ -467,13 +541,14 @@ export default async function handler(req,res){
     ['Institutional Matrix','ACTIVE SURFACE','Professional command visualization'],
     ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth'],
     ['Real Yield & Breakeven','ACTIVE',commonDate?`10Y real ${commonReal}% · breakeven ${commonBreakeven}% · ${commonDate}`:'WITHHELD'],
-    ['Treasury Auction / Funding','ACTIVE',treasuryFunding?.latest?`${treasuryFunding.latest.term} BTC ${treasuryFunding.latest.bid_to_cover} · ${treasuryFunding.summary.state.replaceAll('_',' ')}`:'WITHHELD']
+    ['Treasury Auction / Funding','ACTIVE',treasuryFunding?.latest?`${treasuryFunding.latest.term} BTC ${treasuryFunding.latest.bid_to_cover} · ${treasuryFunding.summary.state.replaceAll('_',' ')}`:'WITHHELD'],
+    ['Options / Volatility Intelligence','ACTIVE',gvz?.ok?`GVZ ${gvz.value} · ${gvz.regime} · ${compositeVolState.replaceAll('_',' ')}`:'WITHHELD']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v93-unified-intelligence-experience-v2',
+    version:'v94-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
@@ -506,6 +581,7 @@ export default async function handler(req,res){
     global_trends_evidence_pulse:trendsPulse,
     flows_positioning_evidence:{gold_cot:cotGold},
     rates_funding_intelligence:ratesFundingPulse,
+    volatility_intelligence:volatilityIntelligence,
     six_desks:desks,
     engine_registry:engines,
     calibration:{
