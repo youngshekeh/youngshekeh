@@ -1,10 +1,10 @@
-const VERSION='v78.1-autonomous-regression-matrix-v2';
+const VERSION='v112.0-autonomous-regression-matrix-v3';
 const BASE='https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
   const started=Date.now();
   try{
-    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/78.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
+    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/112.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
     const ct=r.headers.get('content-type')||'';
     const body=ct.includes('application/json')?await r.json().catch(()=>null):await r.text().catch(()=>null);
     return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body};
@@ -14,7 +14,7 @@ function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,lat
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
 export default async function handler(req,res){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self]=await Promise.all([
+  const [home,gold,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission]=await Promise.all([
     fetchAny('/'),
     fetchAny('/gold-live/'),
     fetchAny('/api/autonomous-state'),
@@ -28,7 +28,8 @@ export default async function handler(req,res){
     fetchAny('/api/gold-mtf-zones'),
     fetchAny('/api/gold-mtf-confluence'),
     fetchAny('/api/gold-breakout-acceptance'),
-    fetchAny('/api/gold-breakout-acceptance?selftest=1')
+    fetchAny('/api/gold-breakout-acceptance?selftest=1'),
+    fetchAny('/api/mission-brief',15000)
   ]);
   const tests=[];
   tests.push(result('homepage_http',home.status===200,`status=${home.status}`,home.latency_ms));
@@ -59,6 +60,25 @@ export default async function handler(req,res){
     `state=${v83.body?.dominant_state}, quality=${v83.body?.downside?.quality_score ?? v83.body?.upside?.quality_score ?? 'n/a'}`,v83.latency_ms));
   tests.push(result('v83_regression_selftest',v83self.body?.ok===true&&v83self.body?.self_test?.passed===true,
     `accepted=${v83self.body?.self_test?.accepted_state}, failed=${v83self.body?.self_test?.failed_state}`,v83self.latency_ms));
+
+  const q=mission.body?.quant_accountability??{};
+  const anchor=q?.external_anchor??{};
+  tests.push(result('v106_snapshot_fingerprints',q?.provenance_manifest?.state==='ALL_FINGERPRINTED',
+    `state=${q?.provenance_manifest?.state}, fingerprinted=${q?.provenance_manifest?.counts?.fingerprinted ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v107_receipt_chain',q?.provenance_receipt_ledger?.state==='HASH_CHAIN_VERIFIED',
+    `state=${q?.provenance_receipt_ledger?.state}, failures=${q?.provenance_receipt_ledger?.counts?.chain_link_failures ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v108_server_attestation',q?.provenance_attestation?.state==='SERVER_ATTESTATION_VERIFIED',
+    `state=${q?.provenance_attestation?.state}, failed=${q?.provenance_attestation?.counts?.failed_attestations ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v109_key_lifecycle',q?.attestation_key_lifecycle?.state==='KEY_LIFECYCLE_HEALTHY',
+    `state=${q?.attestation_key_lifecycle?.state}, missing=${q?.attestation_key_lifecycle?.counts?.missing_vault_keys ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v110_checkpoint_chain',q?.provenance_checkpoint?.state==='GLOBAL_CHECKPOINT_VERIFIED',
+    `state=${q?.provenance_checkpoint?.state}, broken=${q?.provenance_checkpoint?.counts?.chain_link_failures ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v111_external_root',anchor?.root_state==='MATCH'||anchor?.root_state==='PENDING_NEWER_CHECKPOINT',
+    `root_state=${anchor?.root_state}, roots_match=${anchor?.comparison?.roots_match}`,mission.latency_ms));
+  tests.push(result('v112_anchor_heartbeat',anchor?.heartbeat_state==='FRESH'&&Number(anchor?.age_minutes)<=90,
+    `heartbeat=${anchor?.heartbeat_state}, age=${anchor?.age_minutes}m, checks=${anchor?.verification_count ?? 'n/a'}`,mission.latency_ms));
+  tests.push(result('v112_capital_firewall',q?.publication_gates?.capital_permission==='0R'&&mission.body?.governance?.capital_permission==='0R',
+    `quant=${q?.publication_gates?.capital_permission}, mission=${mission.body?.governance?.capital_permission}`,mission.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
