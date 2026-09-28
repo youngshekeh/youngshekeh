@@ -531,6 +531,7 @@ function renderQuantAccountability(pulse: any) {
   const calibrationStructure = pulse?.calibration_structure ?? {};
   const scenarioEv = pulse?.scenario_ev ?? {};
   const portfolioRisk = pulse?.portfolio_risk ?? {};
+  const forecastCoverage = pulse?.forecast_coverage ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -629,6 +630,12 @@ function renderQuantAccountability(pulse: any) {
   missionText('learningV103Detail', calibrationStructure?.ok
     ? `${structureLedger.total ?? 0} forecasts · avg p ${structureLedger.average_probability ?? 'n/a'}% · ${structureLedger.up_forecasts ?? 0} up / ${structureLedger.down_forecasts ?? 0} down · largest horizon ${structureConcentration.largest_horizon_share_pct ?? 'n/a'}% · ${String(structureConcentration.direction_state ?? 'WITHHELD').replaceAll('_',' ')} · ${structureMode}${structureAge}`
     : 'Calibration structure evidence unavailable.');
+  const coverageGates=forecastCoverage?.coverage_gates ?? {};
+  const coverageMetrics=forecastCoverage?.concentration_metrics ?? {};
+  const coverageMode=String(pulse?.forecast_coverage_source_mode ?? 'EVIDENCE_GATED').replaceAll('_',' ');
+  const coverageAge=typeof pulse?.forecast_coverage_fallback_age_minutes==='number' ? ` · snapshot ${pulse.forecast_coverage_fallback_age_minutes.toFixed(1)}m old` : '';
+  missionText('learningV104State', String(coverageGates?.generalization_readiness ?? 'EVIDENCE_GATED').replaceAll('_',' '));
+  missionText('learningV104Detail', forecastCoverage?.ok ? `${String(coverageGates.direction_coverage ?? 'WITHHELD').replaceAll('_',' ')} · ${String(coverageGates.horizon_coverage ?? 'WITHHELD').replaceAll('_',' ')} · ${String(coverageGates.confidence_band_coverage ?? 'WITHHELD').replaceAll('_',' ')} · largest horizon ${coverageMetrics.largest_horizon_share_pct ?? 'n/a'}% · ${coverageMode}${coverageAge}` : 'Forecast coverage evidence unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {

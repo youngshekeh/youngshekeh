@@ -471,6 +471,11 @@ const RISK_STACK_MAX_AGE_MS=6*60*60*1000;
 const RISK_STACK_SNAPSHOT={scenario_ev:{ok:true,version:'v98-scenario-ev-proxy-v1',horizons:[{horizon_minutes:30,nonflat_sample:10,resolved_sample:14,execution_sample:14,readiness_state:'EARLY_SAMPLE_INPUTS_NOT_READY',publication_state:'WITHHELD_SAMPLE_THRESHOLDS',empirical_ev_proxy_bps:7.9097,avg_execution_adjusted_edge_bps:7.9097,execution_delay_minutes:5,avg_latency_shortfall_bps:2.7909},{horizon_minutes:60,nonflat_sample:12,resolved_sample:12,execution_sample:12,readiness_state:'EARLY_SAMPLE_INPUTS_NOT_READY',publication_state:'WITHHELD_SAMPLE_THRESHOLDS',empirical_ev_proxy_bps:20.1903,avg_execution_adjusted_edge_bps:20.1903,execution_delay_minutes:5,avg_latency_shortfall_bps:2.5039},{horizon_minutes:120,nonflat_sample:8,resolved_sample:8,execution_sample:8,readiness_state:'EARLY_SAMPLE_INPUTS_NOT_READY',publication_state:'WITHHELD_SAMPLE_THRESHOLDS',empirical_ev_proxy_bps:50.5747,avg_execution_adjusted_edge_bps:50.5747,execution_delay_minutes:5,avg_latency_shortfall_bps:2.5411}],governance:{action_permitted:'WAIT',capital_permission:'0R',empirical_ev_can_grant_capital:false},truth_label:'RESEARCH_EDGE_PROXY_NOT_REALIZED_PNL',excluded_costs:['bid_ask_spread','broker_slippage','commission','market_impact','fill_probability'],publication_policy:{forecast_nonflat_n:20,execution_latency_n:30},execution_delay_proxy_minutes:5},portfolio_risk:{ok:true,state:'OBSERVATION_ONLY_0R',version:'v99-portfolio-risk-readiness-v1',blockers:['CANONICAL_RUNTIME_RESTRICTED','FORECAST_ERROR_SAMPLE_INSUFFICIENT','EXECUTION_LATENCY_SAMPLE_INSUFFICIENT','SCENARIO_EV_PROXY_SAMPLE_INSUFFICIENT','MULTI_ASSET_PORTFOLIO_NOT_YET_CALIBRATED'],evidence:{qa_state:'PASS',quality_state:'PASS',canonical_runtime_state:'CANONICAL_PUBLIC_RUNTIME_RESTRICTED',multi_asset_portfolio_ready:false,reason_multi_asset_not_ready:'Cross-asset context exists, but independently calibrated multi-asset position models do not yet exist.',single_asset_research_assets:['GOLD']},passed_gates:['RESEARCH_ALIGNMENT','AUTONOMOUS_QA_PASS','DATA_QUALITY_PASS'],capital_permission:'0R',multi_asset_portfolio_ready:false,single_asset_human_review_eligible:false}};
 function riskStackSurvivorSnapshot(){const captured=Date.parse(RISK_STACK_CAPTURED_AT);if(!Number.isFinite(captured))return null;const ageMs=Math.max(0,Date.now()-captured);if(ageMs>RISK_STACK_MAX_AGE_MS)return null;return {ok:true,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:RISK_STACK_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+RISK_STACK_MAX_AGE_MS).toISOString(),scenario_ev:RISK_STACK_SNAPSHOT.scenario_ev,portfolio_risk:RISK_STACK_SNAPSHOT.portfolio_risk};}
 
+const FORECAST_COVERAGE_CAPTURED_AT='2026-09-28T07:42:00.472Z';
+const FORECAST_COVERAGE_MAX_AGE_MS=6*60*60*1000;
+const FORECAST_COVERAGE_SNAPSHOT={ok:true,version:'v104-forecast-coverage-governance-v1',as_of_date:'2026-09-28',ledger:{total:7,up_forecasts:7,down_forecasts:0,max_probability:95,min_probability:79,p90_plus_forecasts:3,average_probability:88.29,within_1y_forecasts:0,distinct_horizon_years:3,distinct_target_states:5,sub70_probability_forecasts:0},concentration_metrics:{horizon_hhi:0.551,direction_hhi:1,target_state_hhi:0.2245,probability_band_hhi:0.3878,largest_target_cluster:2,largest_horizon_cluster:5,largest_target_share_pct:28.57,largest_horizon_share_pct:71.43},coverage_gates:{horizon_coverage:'CONCENTRATED',direction_coverage:'ONE_SIDED_ONLY',target_state_coverage:'BROAD',confidence_band_coverage:'HIGH_CONFIDENCE_ONLY',generalization_readiness:'COVERAGE_INCOMPLETE',near_term_horizon_coverage:'MISSING_LT_1Y'},missing_coverage:{horizon_balance:'LARGEST_HORIZON_CLUSTER_EXCEEDS_60_PERCENT',counter_direction:'DOWN',near_term_horizon:'NO_FORECASTS_WITHIN_365_DAYS',lower_confidence_band:'NO_FORECASTS_BELOW_70_PERCENT'},governance:{descriptive_only:true,capital_permission:'0R',automatic_promotion:false,does_not_change_forecasts:true,does_not_publish_accuracy:true,does_not_create_counter_forecasts:true},truth_label:'FORECAST_BOOK_COVERAGE_AND_CONCENTRATION_NOT_FORECAST_VALIDITY'};
+function forecastCoverageSurvivorSnapshot(){const captured=Date.parse(FORECAST_COVERAGE_CAPTURED_AT);if(!Number.isFinite(captured))return null;const ageMs=Math.max(0,Date.now()-captured);if(ageMs>FORECAST_COVERAGE_MAX_AGE_MS)return null;return {...FORECAST_COVERAGE_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:FORECAST_COVERAGE_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+FORECAST_COVERAGE_MAX_AGE_MS).toISOString()};}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -531,7 +536,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -582,7 +587,8 @@ export default async function handler(req,res){
     supabaseRpc('get_v102_benchmark_reputation_state'),
     supabaseRpc('get_v103_calibration_structure_state'),
     supabaseRpc('get_v98_scenario_ev_state'),
-    supabaseRpc('get_v99_portfolio_risk_readiness')
+    supabaseRpc('get_v99_portfolio_risk_readiness'),
+    supabaseRpc('get_v104_forecast_coverage_governance_state')
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -650,6 +656,12 @@ export default async function handler(req,res){
   let riskStackFallbackAgeMinutes=null;
   let riskStackFallbackExpiresAt=null;
   if(!scenarioEvState?.ok || !portfolioRiskState?.ok){const fallback=riskStackSurvivorSnapshot();if(fallback?.ok){scenarioEvState=fallback.scenario_ev;portfolioRiskState=fallback.portfolio_risk;riskStackSourceMode=fallback.source_mode;riskStackObservedAt=fallback.observed_at;riskStackFallbackAgeMinutes=fallback.fallback_age_minutes;riskStackFallbackExpiresAt=fallback.fallback_expires_at;}else riskStackSourceMode='EVIDENCE_GATED';}
+
+  let forecastCoverageSourceMode='POSTGREST_RPC';
+  let forecastCoverageObservedAt=null;
+  let forecastCoverageFallbackAgeMinutes=null;
+  let forecastCoverageFallbackExpiresAt=null;
+  if(!forecastCoverageState?.ok){const fallback=forecastCoverageSurvivorSnapshot();if(fallback?.ok){forecastCoverageState=fallback;forecastCoverageSourceMode=fallback.source_mode;forecastCoverageObservedAt=fallback.observed_at;forecastCoverageFallbackAgeMinutes=fallback.fallback_age_minutes;forecastCoverageFallbackExpiresAt=fallback.fallback_expires_at;}else forecastCoverageSourceMode='EVIDENCE_GATED';}
 
   const dataQuality=safe(quality.body?.state);
   if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
@@ -835,6 +847,11 @@ export default async function handler(req,res){
     risk_stack_observed_at:riskStackObservedAt,
     risk_stack_fallback_age_minutes:riskStackFallbackAgeMinutes,
     risk_stack_fallback_expires_at:riskStackFallbackExpiresAt,
+    forecast_coverage:forecastCoverageState,
+    forecast_coverage_source_mode:forecastCoverageSourceMode,
+    forecast_coverage_observed_at:forecastCoverageObservedAt,
+    forecast_coverage_fallback_age_minutes:forecastCoverageFallbackAgeMinutes,
+    forecast_coverage_fallback_expires_at:forecastCoverageFallbackExpiresAt,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -846,7 +863,8 @@ export default async function handler(req,res){
       capital_permission:'0R',
       learning_state:learningState,
       brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
-      signal_reputation:benchmarkReputationState?.signal_reputation_state??'WITHHELD'
+      signal_reputation:benchmarkReputationState?.signal_reputation_state??'WITHHELD',
+      forecast_coverage:forecastCoverageState?.coverage_gates?.generalization_readiness??'WITHHELD'
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -862,7 +880,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:`Execution latency ${executionQualityState?.ok?'observed':'gated'} · realized costs excluded · capital permission 0R`,href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -882,6 +900,7 @@ export default async function handler(req,res){
     ['Signal Reputation',benchmarkReputationState?.signal_reputation_state==='WITHHELD_SAMPLE_TOO_SMALL'?'LEARNING':'ACTIVE',benchmarkReputationState?.ok?`${String(benchmarkReputationState.signal_reputation_state??'WITHHELD').replaceAll('_',' ')} · ${benchmarkReputationState.counts?.reputation_sample_reached??0}/${benchmarkReputationState.counts?.models??0} models at reputation sample`:'Evidence gated'],
     ['Benchmark / Baseline Comparison',benchmarkReputationState?.ok?'ACTIVE':'EVIDENCE-GATED',benchmarkReputationState?.ok?`${benchmarkReputationState.benchmark_policy?.baseline_name??'NO_SKILL_50'} ${benchmarkReputationState.benchmark_policy?.baseline_accuracy_pct??50}% · ${benchmarkReputationState.counts?.human_review_eligible??0} human-review eligible · ${String(benchmarkReputationState.benchmark_state??'WITHHELD').replaceAll('_',' ')}`:'Benchmark evidence unavailable'],
     ['Calibration Structure',calibrationStructureState?.ok?'ACTIVE':'EVIDENCE-GATED',calibrationStructureState?.ok?`${calibrationStructureState.ledger?.total??0} forecasts · avg p ${calibrationStructureState.ledger?.average_probability??'n/a'}% · ${String(calibrationStructureState.concentration?.direction_state??'WITHHELD').replaceAll('_',' ')} · ${String(calibrationStructureState.concentration?.horizon_state??'WITHHELD').replaceAll('_',' ')}`:'Calibration structure unavailable'],
+    ['Forecast Coverage Governance',forecastCoverageState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastCoverageState?.ok?`${String(forecastCoverageState.coverage_gates?.direction_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.horizon_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.confidence_band_coverage??'WITHHELD').replaceAll('_',' ')} · ${String(forecastCoverageState.coverage_gates?.generalization_readiness??'WITHHELD').replaceAll('_',' ')}`:'Coverage evidence unavailable'],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
