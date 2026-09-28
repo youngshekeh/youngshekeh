@@ -160,7 +160,7 @@
 
         <div class="autonomy-grid" data-reveal>
           <article class="autonomy-score-card">
-            <span class="label">SYSTEM SCORE</span>
+            <span class="label" id="autonomyScoreLabel">SURVIVOR SCORE</span>
             <strong id="autonomyScore">--</strong>
             <small id="autonomyUpdated">Waiting for governed state…</small>
           </article>
@@ -188,6 +188,30 @@
             <span class="label">CAPITAL FIREWALL</span>
             <strong id="autonomyPermission">WAIT · 0R</strong>
             <small>Autonomy cannot self-promote permission</small>
+          </article>
+        </div>
+
+        
+        <div class="autonomy-stack-grid" data-reveal aria-label="Autonomous machine stack">
+          <article>
+            <span class="stack-version">V70</span>
+            <strong>CONTROL</strong>
+            <small id="stackV70">INITIALIZING</small>
+          </article>
+          <article>
+            <span class="stack-version">V71</span>
+            <strong>LEARN</strong>
+            <small id="stackV71">INITIALIZING</small>
+          </article>
+          <article>
+            <span class="stack-version">V72</span>
+            <strong>GOVERN</strong>
+            <small id="stackV72">INITIALIZING</small>
+          </article>
+          <article>
+            <span class="stack-version">V73</span>
+            <strong>PROMOTION</strong>
+            <small id="stackV73">LOCKED</small>
           </article>
         </div>
 

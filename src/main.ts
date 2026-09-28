@@ -102,6 +102,12 @@ async function loadAutonomousState() {
     setAutonomyText('autonomyUpdated', generated && !Number.isNaN(generated.getTime()) ? `Governed state · ${generated.toLocaleString()}` : 'Governed state unavailable');
     renderTags('autonomyBlockers', state?.blockers ?? []);
     renderTags('autonomyActions', state?.autonomous_actions ?? []);
+    const stack = state?.autonomous_stack ?? {};
+    setAutonomyText('stackV70', stack?.v70?.state ?? state?.mode ?? 'UNAVAILABLE');
+    setAutonomyText('stackV71', stack?.v71?.state ?? 'WITHHELD');
+    setAutonomyText('stackV72', stack?.v72?.state ?? 'WITHHELD');
+    setAutonomyText('stackV73', stack?.v73?.state ?? 'LOCKED');
+    setAutonomyText('autonomyScoreLabel', state?.mode === 'VERCEL_SURVIVOR_NODE' ? 'SURVIVOR SCORE' : 'SYSTEM SCORE');
     const test = state?.survivor_test;
     const shadow = state?.shadow_market?.signal;
     if (test) {
