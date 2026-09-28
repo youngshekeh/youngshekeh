@@ -552,24 +552,38 @@ function checkpointSurvivorSnapshot(){
 }
 
 async function githubExternalAnchor(timeout=6000){
-  const url='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors/latest.json';
-  const requestUrl=`${url}?heartbeat_minute=${Math.floor(Date.now()/60000)}`;
-  try{
-    const r=await fetch(requestUrl,{
-      headers:{Accept:'application/json','Cache-Control':'no-cache','User-Agent':'THE-FATHER-ANALYTICS/112.0'},
-      cache:'no-store',
-      signal:AbortSignal.timeout(timeout)
-    });
-    const body=await r.json().catch(()=>null);
-    const root=String(body?.checkpoint?.checkpoint_sha256??'');
-    const proofHash=String(body?.external_anchor?.source_proof_sha256??'');
-    if(!r.ok||!body||!/^[a-f0-9]{64}$/i.test(root)||!/^[a-f0-9]{64}$/i.test(proofHash)){
-      return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',http_status:r.status};
-    }
-    return {...body,ok:true,source_url:url};
-  }catch(error){
-    return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',error:String(error).slice(0,120)};
-  }
+  const base='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors';
+  const hourKey=(offsetHours=0)=>new Date(Date.now()-offsetHours*60*60*1000).toISOString().slice(0,13);
+  const readAnchor=async(url)=>{
+    try{
+      const r=await fetch(url,{
+        headers:{Accept:'application/json','Cache-Control':'no-cache','User-Agent':'THE-FATHER-ANALYTICS/112.1'},
+        cache:'no-store',
+        signal:AbortSignal.timeout(Math.min(timeout,3500))
+      });
+      const body=await r.json().catch(()=>null);
+      const root=String(body?.checkpoint?.checkpoint_sha256??'');
+      const proofHash=String(body?.external_anchor?.source_proof_sha256??'');
+      if(!r.ok||!body||!/^[a-f0-9]{64}$/i.test(root)||!/^[a-f0-9]{64}$/i.test(proofHash))return null;
+      return {...body,ok:true,source_url:url};
+    }catch{return null}
+  };
+
+  // Prefer immutable, deterministic hourly proofs. Current + prior two hours
+  // cover schedule jitter while keeping every object content-addressable by time.
+  const hourlyUrls=[0,1,2].map(offset=>`${base}/heartbeats/${hourKey(offset)}.json`);
+  const hourly=(await Promise.all(hourlyUrls.map(readAnchor)))
+    .filter(Boolean)
+    .sort((a,b)=>Date.parse(String(b?.external_anchor?.last_verified_at??''))-Date.parse(String(a?.external_anchor?.last_verified_at??'')));
+  if(hourly[0])return {...hourly[0],source_mode:'IMMUTABLE_HOURLY_HEARTBEAT'};
+
+  // Backwards-compatible fallback only. Freshness governance still fails closed
+  // if this mutable pointer is stale or lacks V112 heartbeat metadata.
+  const latestUrl=`${base}/latest.json?heartbeat_minute=${Math.floor(Date.now()/60000)}`;
+  const latest=await readAnchor(latestUrl);
+  if(latest)return {...latest,source_mode:'MUTABLE_LATEST_FALLBACK'};
+
+  return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH'};
 }
 
 async function supabaseRpc(name,timeout=5000){
