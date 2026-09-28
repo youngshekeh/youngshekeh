@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Problem Lab | THE FATHER ANALYTICS</title>
+    <meta name="description" content="A transparent decision-intelligence workspace for defining complex problems, mapping root causes, testing scenarios, comparing solution levers and measuring outcomes." />
+    <meta name="keywords" content="problem solving framework, decision intelligence, root cause analysis, scenario analysis, solution design, policy analysis, global problems" />
+    <meta name="robots" content="index,follow,max-snippet:-1" />
+    <link rel="canonical" href="https://thefatheranalytics.com/problem-lab" />
+    <link rel="stylesheet" href="../src/styles.css" />
+  </head>
+  <body class="command-body">
+    <div class="ambient-grid" aria-hidden="true"></div>
+    <header class="topbar">
+      <a class="brand" href="../"><span class="brand-mark">TF</span><span><strong>THE FATHER</strong><small>ANALYTICS</small></span></a>
+      <nav class="topnav">
+        <a href="../solutions/">Solutions</a>
+        <a href="../world-economy/">World Economy</a>
+        <a href="../global-trends/">Trends</a>
+        <a href="../african-economy/">Africa</a>
+        <a class="nav-cta" href="../intelligence/">Intelligence</a>
+      </nav>
+    </header>
+    <main class="wrap seo-topic">
+      <div class="eyebrow">WORLD PROBLEM LAB · DECISION CANVAS</div>
+      <h1 class="command-title">Define the problem.<br /><span>Build a measurable solution path.</span></h1>
+      <p class="command-lede">This lab turns an unstructured problem into a transparent decision canvas. It does not claim to know the answer automatically. It exposes the evidence, assumptions, causal hypotheses, intervention levers, risks and metrics a serious solution would need.</p>
+
+      <div class="problem-lab-grid">
+        <form id="problem-form" class="problem-form">
+          <div class="field">
+            <label for="problem">Problem statement</label>
+            <textarea id="problem" placeholder="Example: Food prices are rising faster than household income in a major city."></textarea>
+          </div>
+          <div class="field">
+            <label for="domain">Primary domain</label>
+            <select id="domain">
+              <option value="cost-of-living">Cost of living</option>
+              <option value="growth-jobs">Growth & jobs</option>
+              <option value="food-energy">Food & energy security</option>
+              <option value="financial-stress">Financial stress</option>
+              <option value="africa-development">African development</option>
+              <option value="ai-transition">AI transition</option>
+              <option value="general">General systems problem</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="geography">Geography / population</label>
+            <input id="geography" placeholder="Country, city, region or population" />
+          </div>
+          <div class="field">
+            <label for="objective">Desired outcome</label>
+            <input id="objective" placeholder="What should improve, and for whom?" />
+          </div>
+          <div class="field">
+            <label for="horizon">Decision horizon</label>
+            <select id="horizon">
+              <option>0–3 months</option>
+              <option>3–12 months</option>
+              <option>1–3 years</option>
+              <option>3–10 years</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="evidence">Known evidence</label>
+            <textarea id="evidence" placeholder="Facts, measurements, sources, observations or known constraints."></textarea>
+          </div>
+          <div class="field">
+            <label for="constraints">Constraints</label>
+            <textarea id="constraints" placeholder="Budget, law, infrastructure, politics, time, behavior, technology or other hard limits."></textarea>
+          </div>
+          <div class="problem-actions">
+            <button type="submit">Build Decision Map</button>
+            <button id="reset-problem" class="secondary" type="button">Reset</button>
+          </div>
+          <div id="problem-message" class="problem-note">Framework-derived output. No external data is fetched from this form.</div>
+        </form>
+
+        <section id="problem-output" class="problem-output" aria-live="polite">
+          <div class="problem-empty">
+            <div>
+              <span class="kicker">WAITING FOR A PROBLEM</span>
+              <h2>Evidence before solutions.</h2>
+              <p>Describe a real problem on the left. The lab will build a five-stage decision map and save it locally in this browser.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="../src/problem-lab.ts"></script>
+  </body>
+</html>
