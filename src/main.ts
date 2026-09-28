@@ -58,9 +58,6 @@ if ('IntersectionObserver' in window && !reducedMotion.matches) {
 const year = document.querySelector<HTMLElement>('#copyright-year');
 if (year) year.textContent = ` © ${new Date().getFullYear()} THE FATHER ANALYTICS.`;
 
-const SUPABASE_URL = 'https://mpcelmjiycjpdyyflisn.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
-
 function setAutonomyText(id: string, value: unknown) {
   const node = document.querySelector<HTMLElement>(`#${id}`);
   if (node) node.textContent = String(value ?? 'UNAVAILABLE');
@@ -82,14 +79,10 @@ async function loadAutonomousState() {
   const modeNode = document.querySelector<HTMLElement>('#autonomyMode');
   if (!modeNode) return;
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_v70_autonomous_state`, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      body: '{}'
+    const response = await fetch('/api/autonomous-state', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      cache: 'no-store'
     });
     if (!response.ok) throw new Error(`autonomy_http_${response.status}`);
     const state = await response.json();
