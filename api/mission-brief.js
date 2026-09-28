@@ -551,6 +551,26 @@ function checkpointSurvivorSnapshot(){
   return {...CHECKPOINT_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:CHECKPOINT_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+CHECKPOINT_SURVIVOR_MAX_AGE_MS).toISOString()};
 }
 
+async function githubExternalAnchor(timeout=6000){
+  const url='https://raw.githubusercontent.com/youngshekeh/youngshekeh/the-father-analytics-audit/anchors/latest.json';
+  try{
+    const r=await fetch(url,{
+      headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/111.0'},
+      cache:'no-store',
+      signal:AbortSignal.timeout(timeout)
+    });
+    const body=await r.json().catch(()=>null);
+    const root=String(body?.checkpoint?.checkpoint_sha256??'');
+    const proofHash=String(body?.external_anchor?.source_proof_sha256??'');
+    if(!r.ok||!body||!/^[a-f0-9]{64}$/i.test(root)||!/^[a-f0-9]{64}$/i.test(proofHash)){
+      return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',http_status:r.status};
+    }
+    return {...body,ok:true,source_url:url};
+  }catch(error){
+    return {ok:false,state:'UNAVAILABLE',source:'GITHUB_AUDIT_BRANCH',error:String(error).slice(0,120)};
+  }
+}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -625,7 +645,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState,provenanceReceiptState,provenanceAttestationState,keyLifecycleState,checkpointState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState,provenanceReceiptState,provenanceAttestationState,keyLifecycleState,checkpointState,externalAnchorRaw]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -681,7 +701,8 @@ export default async function handler(req,res){
     supabaseRpc('get_v107_provenance_ledger_state'),
     supabaseRpc('get_v108_provenance_attestation_state'),
     supabaseRpc('get_v109_attestation_key_lifecycle_state'),
-    supabaseRpc('get_v110_provenance_checkpoint_state')
+    supabaseRpc('get_v110_provenance_checkpoint_state'),
+    githubExternalAnchor()
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -815,6 +836,76 @@ export default async function handler(req,res){
       checkpointFallbackExpiresAt=fallback.fallback_expires_at;
     }else checkpointSourceMode='EVIDENCE_GATED';
   }
+
+  const externalAnchorState=(()=>{
+    const current=checkpointState?.latest_checkpoint??{};
+    const anchor=externalAnchorRaw?.ok?externalAnchorRaw:null;
+    const currentRoot=String(current?.checkpoint_sha256??'');
+    const externalRoot=String(anchor?.checkpoint?.checkpoint_sha256??'');
+    const currentCheckpointMs=Date.parse(String(current?.checkpointed_at??''));
+    const anchorCheckpointMs=Date.parse(String(anchor?.checkpoint?.checkpointed_at??''));
+    const anchoredAt=anchor?.external_anchor?.anchored_at??null;
+    const anchoredMs=Date.parse(String(anchoredAt??''));
+    const ageMinutes=Number.isFinite(anchoredMs)?Math.max(0,(Date.now()-anchoredMs)/60000):null;
+    const expiresAt=Number.isFinite(anchoredMs)?new Date(anchoredMs+90*60*1000).toISOString():null;
+    const sourceProofSha=String(anchor?.external_anchor?.source_proof_sha256??'');
+    const metadataValid=Boolean(
+      anchor?.ok &&
+      /^[a-f0-9]{64}$/i.test(externalRoot) &&
+      /^[a-f0-9]{64}$/i.test(sourceProofSha) &&
+      anchoredAt
+    );
+
+    let state='UNAVAILABLE';
+    if(metadataValid){
+      if(ageMinutes!==null&&ageMinutes>90) state='STALE';
+      else if(externalRoot===currentRoot&&currentRoot) state='MATCH';
+      else if(Number.isFinite(anchorCheckpointMs)&&Number.isFinite(currentCheckpointMs)&&anchorCheckpointMs<currentCheckpointMs) state='PENDING_NEWER_CHECKPOINT';
+      else state='ROOT_MISMATCH';
+    }
+
+    const healthy=state==='MATCH'||state==='PENDING_NEWER_CHECKPOINT';
+    return {
+      ok:healthy,
+      version:'v111-external-github-anchor-state-v1',
+      state,
+      provider:'GitHub Actions',
+      repository:'youngshekeh/youngshekeh',
+      branch:'the-father-analytics-audit',
+      workflow:'TFA Provenance External Anchor',
+      anchored_at:anchoredAt,
+      age_minutes:ageMinutes===null?null:Number(ageMinutes.toFixed(1)),
+      freshness_expires_at:expiresAt,
+      current_checkpoint:{
+        checkpoint_id:current?.id??null,
+        checkpointed_at:current?.checkpointed_at??null,
+        checkpoint_sha256:currentRoot||null
+      },
+      external_anchor:{
+        checkpoint_id:anchor?.checkpoint?.checkpoint_id??null,
+        checkpointed_at:anchor?.checkpoint?.checkpointed_at??null,
+        checkpoint_sha256:externalRoot||null,
+        previous_checkpoint_sha256:anchor?.checkpoint?.previous_checkpoint_sha256??null,
+        checkpoint_hmac_sha256:anchor?.checkpoint?.checkpoint_hmac_sha256??null,
+        key_name:anchor?.checkpoint?.key_name??null,
+        source_proof_sha256:sourceProofSha||null,
+        anchored_at:anchoredAt
+      },
+      comparison:{
+        roots_match:Boolean(currentRoot&&externalRoot&&currentRoot===externalRoot),
+        anchor_is_older_checkpoint:Boolean(Number.isFinite(anchorCheckpointMs)&&Number.isFinite(currentCheckpointMs)&&anchorCheckpointMs<currentCheckpointMs),
+        expected_schedule_gap_minutes:5
+      },
+      governance:{
+        second_system_timestamp:true,
+        public_key_signature:false,
+        external_anchor_can_grant_capital:false,
+        stale_or_mismatch_fails_closed:true,
+        capital_permission:'0R'
+      },
+      truth_label:'GITHUB_SECOND_SYSTEM_TIMESTAMPED_CHECKPOINT_ANCHOR_NOT_PUBLIC_KEY_DIGITAL_SIGNATURE'
+    };
+  })();
 
   const dataQuality=safe(quality.body?.state);
   if(dataQuality==='PASS' && liquidity.body?.state?.phase==='DATA_GATED'){
@@ -974,6 +1065,12 @@ export default async function handler(req,res){
   const freshnessModule=(id,sourceMode,observedAt,expiresAt,fallbackAgeMinutes,ok=true)=>{
     const mode=String(sourceMode??'EVIDENCE_GATED');
     if(!ok||mode==='EVIDENCE_GATED')return {id,state:'EVIDENCE_GATED',source_mode:mode,observed_at:observedAt??null,expires_at:expiresAt??null,age_minutes:fallbackAgeMinutes??null,remaining_minutes:null};
+    if(mode==='GITHUB_EXTERNAL_ANCHOR'){
+      const expiryMs=Date.parse(expiresAt??'');
+      const remaining=Number.isFinite(expiryMs)?Math.max(0,(expiryMs-Date.now())/60000):0;
+      const age=Number(fallbackAgeMinutes??0);
+      return {id,state:remaining>0?'LIVE':'EVIDENCE_GATED',source_mode:mode,observed_at:observedAt??null,expires_at:expiresAt??null,age_minutes:Number(age.toFixed(1)),remaining_minutes:Number(remaining.toFixed(1))};
+    }
     if(mode!=='VERIFIED_SNAPSHOT_FALLBACK')return {id,state:'LIVE',source_mode:mode,observed_at:observedAt??null,expires_at:null,age_minutes:null,remaining_minutes:null};
     const expiryMs=Date.parse(expiresAt??'');
     const remaining=Number.isFinite(expiryMs)?Math.max(0,(expiryMs-Date.now())/60000):0;
@@ -993,7 +1090,8 @@ export default async function handler(req,res){
     freshnessModule('V107_PROVENANCE_RECEIPT_LEDGER',receiptLedgerSourceMode,receiptLedgerObservedAt,receiptLedgerFallbackExpiresAt,receiptLedgerFallbackAgeMinutes,Boolean(provenanceReceiptState?.ok)),
     freshnessModule('V108_SERVER_ATTESTATION',attestationSourceMode,attestationObservedAt,attestationFallbackExpiresAt,attestationFallbackAgeMinutes,Boolean(provenanceAttestationState?.ok)),
     freshnessModule('V109_KEY_LIFECYCLE',keyLifecycleSourceMode,keyLifecycleObservedAt,keyLifecycleFallbackExpiresAt,keyLifecycleFallbackAgeMinutes,Boolean(keyLifecycleState?.ok)),
-    freshnessModule('V110_GLOBAL_CHECKPOINT',checkpointSourceMode,checkpointObservedAt,checkpointFallbackExpiresAt,checkpointFallbackAgeMinutes,Boolean(checkpointState?.ok))
+    freshnessModule('V110_GLOBAL_CHECKPOINT',checkpointSourceMode,checkpointObservedAt,checkpointFallbackExpiresAt,checkpointFallbackAgeMinutes,Boolean(checkpointState?.ok)),
+    freshnessModule('V111_EXTERNAL_GITHUB_ANCHOR','GITHUB_EXTERNAL_ANCHOR',externalAnchorState.anchored_at,externalAnchorState.freshness_expires_at,externalAnchorState.age_minutes,Boolean(externalAnchorState.ok))
   ];
   const freshnessCounts={
     total:evidenceFreshnessModules.length,
@@ -1118,6 +1216,7 @@ export default async function handler(req,res){
     provenance_checkpoint_observed_at:checkpointObservedAt,
     provenance_checkpoint_fallback_age_minutes:checkpointFallbackAgeMinutes,
     provenance_checkpoint_fallback_expires_at:checkpointFallbackExpiresAt,
+    external_anchor:externalAnchorState,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -1136,7 +1235,8 @@ export default async function handler(req,res){
       provenance_receipt_chain:provenanceReceiptState?.state??'WITHHELD',
       server_attestation:provenanceAttestationState?.state??'WITHHELD',
       attestation_key_lifecycle:keyLifecycleState?.state??'WITHHELD',
-      provenance_checkpoint:checkpointState?.state??'WITHHELD'
+      provenance_checkpoint:checkpointState?.state??'WITHHELD',
+      external_anchor:externalAnchorState.state
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -1152,7 +1252,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok&&benchmarkReputationState?.ok&&forecastCoverageState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 settlement · V102 ${String(benchmarkReputationState?.benchmark_state??'gated').replaceAll('_',' ')} · V104 ${String(forecastCoverageState?.coverage_gates?.generalization_readiness??'gated').replaceAll('_',' ')} · V105 ${String(evidenceFreshnessState).replaceAll('_',' ')} · V106 ${String(provenanceIntegrityState).replaceAll('_',' ')} · V110 ${String(checkpointState?.state??'gated').replaceAll('_',' ')} · V111 ${String(externalAnchorState.state).replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:portfolioRiskState?.ok?'OBSERVATION ONLY · 0R':'EVIDENCE-GATED',detail:portfolioRiskState?.ok?`${portfolioRiskState.blockers?.length??0} active blockers · multi-asset ${portfolioRiskState.multi_asset_portfolio_ready?'ready':'not calibrated'} · capital 0R`:'Risk readiness unavailable',href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -1179,6 +1279,7 @@ export default async function handler(req,res){
     ['Server-Attested Provenance',provenanceAttestationState?.ok?'ACTIVE':'EVIDENCE-GATED',provenanceAttestationState?.ok?`${String(provenanceAttestationState.state??'WITHHELD').replaceAll('_',' ')} · ${provenanceAttestationState.counts?.verified_attestations??0}/${provenanceAttestationState.counts?.attestations??0} verified · Vault-backed HMAC · not public-key signature`:'Attestation evidence unavailable'],
     ['Attestation Key Lifecycle',keyLifecycleState?.ok?'ACTIVE':'EVIDENCE-GATED',keyLifecycleState?.ok?`${String(keyLifecycleState.state??'WITHHELD').replaceAll('_',' ')} · ${keyLifecycleState.counts?.keys??0} keys · ${keyLifecycleState.counts?.active_keys??0} active · ${keyLifecycleState.counts?.retired_keys??0} retired · history preserved`:'Key lifecycle unavailable'],
     ['Global Provenance Checkpoint',checkpointState?.ok?'ACTIVE':'EVIDENCE-GATED',checkpointState?.ok?`${String(checkpointState.state??'WITHHELD').replaceAll('_',' ')} · ${checkpointState.counts?.checkpoints??0} checkpoints · ${checkpointState.counts?.chain_link_failures??0} broken links · ${checkpointState.counts?.uncheckpointed_attestations??0} unattested heads · root ${String(checkpointState.latest_checkpoint?.checkpoint_sha256??'').slice(0,12)}…`:'Checkpoint evidence unavailable'],
+    ['External GitHub Checkpoint Anchor',externalAnchorState.ok?'ACTIVE':'EVIDENCE-GATED',`${String(externalAnchorState.state).replaceAll('_',' ')} · GitHub audit branch · anchor age ${externalAnchorState.age_minutes??'n/a'}m · root ${String(externalAnchorState.external_anchor?.checkpoint_sha256??'').slice(0,12)}… · second-system timestamp, not public-key signature`],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
     ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
@@ -1244,7 +1345,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v110-unified-intelligence-experience-v1',
+    version:'v111-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{

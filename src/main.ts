@@ -538,6 +538,7 @@ function renderQuantAccountability(pulse: any) {
   const attestation = pulse?.provenance_attestation ?? {};
   const keyLifecycle = pulse?.attestation_key_lifecycle ?? {};
   const checkpoint = pulse?.provenance_checkpoint ?? {};
+  const externalAnchor = pulse?.external_anchor ?? {};
   const gates = pulse?.publication_gates ?? {};
   const horizons = Array.isArray(forecast?.horizons) ? forecast.horizons : [];
   const delays = Array.isArray(execution?.delays) ? execution.delays : [];
@@ -662,6 +663,10 @@ function renderQuantAccountability(pulse: any) {
   const checkpointAge=typeof pulse?.provenance_checkpoint_fallback_age_minutes==='number' ? ` · snapshot ${pulse.provenance_checkpoint_fallback_age_minutes.toFixed(1)}m old` : '';
   missionText('learningV110State', String(checkpoint?.state ?? 'EVIDENCE_GATED').replaceAll('_',' '));
   missionText('learningV110Detail', checkpoint?.ok ? `${checkpoint?.counts?.checkpoints ?? 0} checkpoints · ${checkpoint?.counts?.chain_link_failures ?? 0} broken links · ${checkpoint?.counts?.hmac_failures ?? 0} HMAC failures · ${checkpoint?.counts?.uncheckpointed_attestations ?? 0} uncheckpointed · root ${checkpointRoot ? checkpointRoot.slice(0,12)+'…' : 'n/a'} · ${checkpointMode}${checkpointAge}` : 'Global provenance checkpoint unavailable.');
+  const externalRoot=String(externalAnchor?.external_anchor?.checkpoint_sha256 ?? '');
+  const sourceProofHash=String(externalAnchor?.external_anchor?.source_proof_sha256 ?? '');
+  missionText('learningV111State', String(externalAnchor?.state ?? 'UNAVAILABLE').replaceAll('_',' '));
+  missionText('learningV111Detail', externalAnchor?.version ? `GitHub audit · ${externalAnchor?.age_minutes ?? 'n/a'}m old · root ${externalRoot ? externalRoot.slice(0,12)+'…' : 'n/a'} · proof ${sourceProofHash ? sourceProofHash.slice(0,12)+'…' : 'n/a'} · ${externalAnchor?.branch ?? 'audit branch'} · second-system timestamp, not public-key signature.` : 'External checkpoint anchor unavailable.');
 }
 
 function renderDesks(desks: MissionDesk[]) {
