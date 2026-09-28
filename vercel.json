@@ -5,5 +5,5 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"the-father-analytics-deploy\" ]; then exit 1; else exit 0; fi"
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"the-father-analytics-deploy\" ]; then exit 0; fi; case \"$VERCEL_GIT_COMMIT_MESSAGE\" in *\"[deploy]\"*) exit 1 ;; *) exit 0 ;; esac"
 }
