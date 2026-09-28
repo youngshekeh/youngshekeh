@@ -142,11 +142,14 @@ async function loadLiveMarkets() {
 }
 
 async function loadGold() {
-  const [gold, core, evidence, day] = await Promise.all([
+  const [gold, core, evidence, day, v79, v81, v82] = await Promise.all([
     read('public-gold-live-api', 4500),
     read('public-v63-structural-core-fabric', 5000),
     read('public-v65-model-evidence-fabric', 5000),
     readLocal('/api/gold-day-state', 7000),
+    readLocal('/api/gold-liquidity-state-machine', 9000),
+    readLocal('/api/gold-mtf-zones', 9000),
+    readLocal('/api/gold-mtf-confluence', 10000),
   ]);
 
   const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
@@ -216,6 +219,37 @@ async function loadGold() {
     set('v75-profile', profile?.poc == null ? null : `VAL ${profile.val} · POC ${profile.poc} · VAH ${profile.vah}`);
   } else {
     for (const id of ['v75-day-state','v75-range','v75-breakout-quality','v75-prior-high','v75-prior-low','v75-vwap','v75-poc','v75-opening-range','v75-liquidity','v75-profile']) set(id, null);
+  }
+
+  if (v79?.ok) {
+    set('v79-phase', first(v79?.state?.phase, 'WITHHELD'));
+    set('v79-phase-copy', `${first(v79?.state?.direction, 'NONE')} · ${first(v79?.state?.acceptance, 'WITHHELD')} · extension ${first(v79?.state?.extension_state, 'n/a')}.`);
+    set('v79-pressure', v79?.state?.pressure_score == null ? null : `${v79.state.pressure_score}`);
+    set('v79-risk-copy', `Failed-break risk ${first(v79?.state?.failed_break_risk, 'n/a')} · exhaustion ${first(v79?.state?.exhaustion_risk, 'n/a')}.`);
+    set('v79-invalidation', v79?.state?.invalidation_level);
+  }
+
+  if (v81?.ok) {
+    set('v81-composite', first(v81?.composite?.state, 'WITHHELD'));
+    set('v81-composite-copy', v81?.composite?.average_position_pct == null ? 'Multi-timeframe position unavailable.' : `Average current-range position ${v81.composite.average_position_pct}% · framework-derived, not a forecast.`);
+    const tfMap = new Map((Array.isArray(v81?.zones) ? v81.zones : []).map((x: AnyJson) => [String(x?.timeframe), x]));
+    for (const tf of ['daily','weekly','monthly','quarterly','yearly']) {
+      const z: AnyJson = tfMap.get(tf) || {};
+      set(`v81-${tf}`, z?.location ? `${z.location.position_pct}% · ${z.location.zone}` : null);
+    }
+  }
+
+  if (v82?.ok) {
+    set('v82-tension', first(v82?.confluence?.tension, 'WITHHELD'));
+    set('v82-tension-copy', `Countertrend risk ${first(v82?.confluence?.countertrend_risk, 'n/a')} · intraday ${first(v82?.intraday?.phase, 'n/a')}.`);
+    const below = v82?.confluence?.nearest_below_cluster;
+    const above = v82?.confluence?.nearest_above_cluster;
+    set('v82-clusters', below || above ? `${below?.center ?? 'n/a'} ↔ ${above?.center ?? 'n/a'}` : null);
+    set('v82-clusters-copy', `Below strength ${below?.strength ?? 0}: ${Array.isArray(below?.labels) ? below.labels.join(', ') : 'none'} · above strength ${above?.strength ?? 0}: ${Array.isArray(above?.labels) ? above.labels.join(', ') : 'none'}.`);
+    set('v82-dragon', first(v82?.scenarios?.continuation?.name, 'WITHHELD'));
+    set('v82-dragon-copy', first(v82?.scenarios?.continuation?.condition, 'Continuation condition withheld.'));
+    set('v82-hero', first(v82?.scenarios?.repair?.name, 'WITHHELD'));
+    set('v82-hero-copy', first(v82?.scenarios?.repair?.condition, 'Repair condition withheld.'));
   }
 }
 
