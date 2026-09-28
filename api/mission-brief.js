@@ -408,6 +408,34 @@ function quantSurvivorSnapshot(){
   };
 }
 
+const SETTLEMENT_SURVIVOR_CAPTURED_AT='2026-09-28T07:22:20.539Z';
+const SETTLEMENT_SURVIVOR_MAX_AGE_MS=6*60*60*1000;
+const SETTLEMENT_SURVIVOR_SNAPSHOT={
+  ok:true,version:'v101-forecast-settlement-readiness-v1',as_of_date:'2026-09-28',
+  counts:{open:7,total:7,due_today:0,brier_scored:0,overdue_open:0,frozen_with_hash:7,resolved_or_closed:0,publication_integrity_verified:7},
+  nearest_open_horizon:'2027-12-31',days_to_nearest_horizon:459,settlement_state:'NO_FORECASTS_DUE',
+  publication_integrity_state:'ALL_PUBLICATIONS_VERIFIED',brier_publication_state:'WITHHELD_NO_RESOLVED_OUTCOMES',
+  scheduler:{history_mutation:false,forecast_ledger_qa:'DAILY_06_UTC'},
+  forecasts:[
+    {forecast_code:'GTI-F001',probability:94,horizon_date:'2027-12-31',days_remaining:459,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F006',probability:83,horizon_date:'2028-12-31',days_remaining:825,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F002',probability:93,horizon_date:'2030-12-31',days_remaining:1555,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F003',probability:88,horizon_date:'2030-12-31',days_remaining:1555,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F004',probability:95,horizon_date:'2030-12-31',days_remaining:1555,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F005',probability:86,horizon_date:'2030-12-31',days_remaining:1555,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'},
+    {forecast_code:'GTI-F007',probability:79,horizon_date:'2030-12-31',days_remaining:1555,status:'open',maturity_state:'OPEN_NOT_DUE',publication_integrity:'VERIFIED',brier_state:'PENDING_OUTCOME'}
+  ],
+  governance:{public_accuracy:'SAMPLE_AND_OUTCOME_GATED',capital_permission:'0R',outcome_mutation_by_this_function:false,early_settlement_allowed_without_verified_evidence:false},
+  truth_label:'IMMUTABLE_PUBLICATION_PLUS_MATURITY_READINESS_NOT_OUTCOME_JUDGMENT'
+};
+function settlementSurvivorSnapshot(){
+  const captured=Date.parse(SETTLEMENT_SURVIVOR_CAPTURED_AT);
+  if(!Number.isFinite(captured))return null;
+  const ageMs=Math.max(0,Date.now()-captured);
+  if(ageMs>SETTLEMENT_SURVIVOR_MAX_AGE_MS)return null;
+  return {...SETTLEMENT_SURVIVOR_SNAPSHOT,source_mode:'VERIFIED_SNAPSHOT_FALLBACK',observed_at:SETTLEMENT_SURVIVOR_CAPTURED_AT,fallback_age_minutes:Number((ageMs/60000).toFixed(1)),fallback_expires_at:new Date(captured+SETTLEMENT_SURVIVOR_MAX_AGE_MS).toISOString()};
+}
+
 async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
@@ -468,7 +496,7 @@ export default async function handler(req,res){
 
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
-  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState]=await Promise.all([
+  let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState]=await Promise.all([
     read('/api/autonomous-state'),
     read('/api/gold-day-state'),
     read('/api/gold-liquidity-state-machine',10000),
@@ -514,7 +542,8 @@ export default async function handler(req,res){
     ]),
     goldSeasonality(),
     supabaseRpc('get_v96_forecast_error_state'),
-    supabaseRpc('get_v97_execution_quality_state')
+    supabaseRpc('get_v97_execution_quality_state'),
+    supabaseRpc('get_v101_forecast_settlement_state')
   ]);
 
   let accountabilitySourceMode='POSTGREST_RPC';
@@ -539,6 +568,21 @@ export default async function handler(req,res){
         accountabilitySourceMode='EVIDENCE_GATED';
       }
     }
+  }
+
+  let settlementSourceMode='POSTGREST_RPC';
+  let settlementObservedAt=null;
+  let settlementFallbackAgeMinutes=null;
+  let settlementFallbackExpiresAt=null;
+  if(!forecastSettlementState?.ok){
+    const fallback=settlementSurvivorSnapshot();
+    if(fallback?.ok){
+      forecastSettlementState=fallback;
+      settlementSourceMode=fallback.source_mode;
+      settlementObservedAt=fallback.observed_at;
+      settlementFallbackAgeMinutes=fallback.fallback_age_minutes;
+      settlementFallbackExpiresAt=fallback.fallback_expires_at;
+    }else settlementSourceMode='EVIDENCE_GATED';
   }
 
   const dataQuality=safe(quality.body?.state);
@@ -704,6 +748,11 @@ export default async function handler(req,res){
     fallback_expires_at:accountabilitySourceMode==='VERIFIED_SNAPSHOT_FALLBACK'?new Date(Date.parse(QUANT_SURVIVOR_CAPTURED_AT)+QUANT_SURVIVOR_MAX_AGE_MS).toISOString():null,
     forecast_error:forecastErrorState,
     execution_latency:executionQualityState,
+    settlement_readiness:forecastSettlementState,
+    settlement_source_mode:settlementSourceMode,
+    settlement_observed_at:settlementObservedAt,
+    settlement_fallback_age_minutes:settlementFallbackAgeMinutes,
+    settlement_fallback_expires_at:settlementFallbackExpiresAt,
     publication_gates:{
       public_accuracy:forecastMature?'REVIEW_READY':'WITHHELD',
       forecast_threshold:forecastThreshold,
@@ -711,10 +760,10 @@ export default async function handler(req,res){
       latency_stability:latencyMature?'REVIEW_READY':'EARLY_SAMPLE',
       latency_threshold:latencyThreshold,
       max_latency_sample:maxLatencySample,
-      brier:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
+      brier:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES',
       capital_permission:'0R',
       learning_state:learningState,
-      brier_state:'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES'
+      brier_state:forecastSettlementState?.brier_publication_state??'WITHHELD_PENDING_RESOLVED_PROBABILITY_OUTCOMES'
     },
     truth_label:'EMPIRICAL_FORECAST_ERROR_PLUS_EXECUTION_LATENCY_PROXY',
     note:'Observed learning evidence is descriptive and sample-gated. Execution latency is a signal-to-later-price proxy, not realized broker slippage, spread, commission, market impact or fill quality.'
@@ -730,7 +779,7 @@ export default async function handler(req,res){
     {id:'macro',name:'MACRO & WORLD ECONOMY',state:'RATES + MACRO LIVE',detail:`10Y real ${commonReal??'n/a'}% · breakeven ${commonBreakeven??'n/a'}% · ${fundingWatch.replaceAll('_',' ')}`,href:'/world-economy/'},
     {id:'markets',name:'GLOBAL MARKETS',state:dataQuality==='PASS'&&phase!=='DATA_GATED'&&phase!=='WITHHELD'?'LIVE + VOL':'EVIDENCE-GATED',detail:`${label(phase)} · ${label(breakoutState)} · ${compositeVolState.replaceAll('_',' ')}`,href:'/live-markets/'},
     {id:'flows',name:'FLOWS & POSITIONING',state:cotGold?.ok?'COT VERIFIED':'EVIDENCE-GATED',detail:cotGold?.ok?`Gold COT ${String(cotGold.report_date).slice(0,10)} · Managed net ${cotGold.groups?.[0]?.net?.toLocaleString?.()??'n/a'}`:'COT · systematic flows · seasonality · money flow',href:'/live-markets/'},
-    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 error attribution · V97 latency proxy · public accuracy ${forecastMature?'review-ready':'withheld'} · max n ${maxForecastSample}/${forecastThreshold}`,href:'/status/'},
+    {id:'quant',name:'QUANT & CALIBRATION',state:forecastErrorState?.ok&&executionQualityState?.ok&&forecastSettlementState?.ok?'EVIDENCE LEARNING':'EVIDENCE-GATED',detail:`V96 errors · V97 latency · V101 ${String(forecastSettlementState?.settlement_state??'gated').replaceAll('_',' ')} · accuracy ${forecastMature?'review-ready':'withheld'}`,href:'/status/'},
     {id:'risk',name:'RISK & PORTFOLIO',state:'0R FIREWALL',detail:`Execution latency ${executionQualityState?.ok?'observed':'gated'} · realized costs excluded · capital permission 0R`,href:'/status/'},
     {id:'solutions',name:'TRENDS & SOLUTIONS',state:'EVIDENCE PULSE',detail:`${trendStructural.filter(x=>x?.ok).length}/4 structural · ${trendResearch.filter(x=>x?.ok).length}/2 research feeds · ${usableTrendProxies.length}/4 fresh proxies`,href:'/global-trends/'}
   ];
@@ -750,7 +799,8 @@ export default async function handler(req,res){
     ['Signal Reputation','LEARNING',forecastErrorState?.ok?'Error categories + timing recovery · publication threshold enforced':'Evidence gated'],
     ['Forecast Error Attribution',forecastErrorState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastErrorState?.ok?`${forecastHorizons.length} horizons · MFE/MAE integrity checks · public accuracy withheld`:'No verified review'],
     ['Execution Latency Quality',executionQualityState?.ok?'ACTIVE':'EVIDENCE-GATED',executionQualityState?.ok?`${executionDelays.length} delay buckets · max n ${maxLatencySample}/${latencyThreshold} · realized costs excluded`:'No verified review'],
-    ['Brier Calibration','GATED','No resolved probability outcomes are published yet'],
+    ['Forecast Settlement Readiness',forecastSettlementState?.ok?'ACTIVE':'EVIDENCE-GATED',forecastSettlementState?.ok?`${forecastSettlementState.counts?.publication_integrity_verified??0}/${forecastSettlementState.counts?.total??0} publications verified · nearest ${forecastSettlementState.days_to_nearest_horizon??'n/a'}d · ${String(forecastSettlementState.settlement_state??'WITHHELD').replaceAll('_',' ')}`:'Settlement evidence unavailable'],
+    ['Brier Calibration',forecastSettlementState?.counts?.brier_scored>0?'ACTIVE':'GATED',String(forecastSettlementState?.brier_publication_state??'WITHHELD_NO_RESOLVED_OUTCOMES').replaceAll('_',' ')],
     ['Expected Value Engine','GATED','No EV without empirical inputs'],
     ['Portfolio Risk','GATED','Capital permission remains 0R'],
     ['Source Provenance','ACTIVE','Evidence trail + immutable snapshots'],
@@ -766,7 +816,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v100-unified-intelligence-experience-v1',
+    version:'v101-unified-intelligence-experience-v1',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
