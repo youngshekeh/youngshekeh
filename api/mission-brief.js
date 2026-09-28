@@ -83,28 +83,36 @@ async function cryptoGlobal(){
       source:'CoinGecko Global API',truth_label:'CURRENT_MARKET_BREADTH'};
   }catch{return {ok:false,state:'UNAVAILABLE',source:'CoinGecko Global API'}}
 }
-async function fredRecent(series,label,lookbackDays=50){
-  const end=new Date();
-  const start=new Date(end.getTime()-lookbackDays*86400000);
-  const iso=d=>d.toISOString().slice(0,10);
-  const url=`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${encodeURIComponent(series)}&cosd=${iso(start)}&coed=${iso(end)}`;
+async function treasuryCurve10Y(kind){
+  const year=new Date().getUTCFullYear();
+  const real=kind==='real';
+  const data=real?'daily_treasury_real_yield_curve':'daily_treasury_yield_curve';
+  const valueTag=real?'TC_10YEAR':'BC_10YEAR';
+  const label=real?'10Y real yield':'10Y nominal Treasury';
+  const url=`https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=${data}&field_tdr_date_value=${year}`;
   try{
-    const r=await fetch(url,{headers:{Accept:'text/csv','User-Agent':'THE-FATHER-ANALYTICS/93.0'},cache:'no-store',signal:AbortSignal.timeout(8000)});
-    const text=await r.text();
-    const lines=text.trim().split(/\r?\n/).slice(1);
-    const rows=lines.map(line=>{
-      const parts=line.split(',');
-      const value=num(parts[1]);
-      return {date:parts[0],value};
-    }).filter(x=>x.date&&x.value!==null);
-    if(!r.ok||!rows.length)return {ok:false,series,label,state:'UNAVAILABLE',source:'FRED'};
+    const r=await fetch(url,{headers:{Accept:'application/xml,text/xml;q=0.9,*/*;q=0.1','User-Agent':'THE-FATHER-ANALYTICS/93.1'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    const xml=await r.text();
+    if(!r.ok||!xml)return {ok:false,series:valueTag,label,state:'UNAVAILABLE',source:'U.S. Treasury'};
+    const blocks=[...xml.matchAll(/<m:properties>([\s\S]*?)<\/m:properties>/gi)].map(m=>m[1]);
+    const rows=[];
+    for(const block of blocks){
+      const dm=block.match(/<d:NEW_DATE[^>]*>([^<]+)<\/d:NEW_DATE>/i);
+      const vm=block.match(new RegExp('<d:'+valueTag+'[^>]*>([^<]+)<\\/d:'+valueTag+'>','i'));
+      if(!dm||!vm)continue;
+      const value=num(vm[1]);
+      if(value===null)continue;
+      rows.push({date:String(dm[1]).slice(0,10),value});
+    }
+    rows.sort((a,b)=>a.date.localeCompare(b.date));
+    if(!rows.length)return {ok:false,series:valueTag,label,state:'UNAVAILABLE',source:'U.S. Treasury'};
     const latest=rows.at(-1),prior=rows.at(-2)??null;
-    return {ok:true,series,label,date:latest.date,value:latest.value,
+    return {ok:true,series:valueTag,label,date:latest.date,value:latest.value,
       prior_date:prior?.date??null,prior_value:prior?.value??null,
       change_bps:prior?Number(((latest.value-prior.value)*100).toFixed(1)):null,
-      observations:rows.slice(-12),source:'Federal Reserve Bank of St. Louis FRED',
-      truth_label:'DAILY_MARKET_RATE_SERIES'};
-  }catch{return {ok:false,series,label,state:'UNAVAILABLE',source:'FRED'}}
+      observations:rows.slice(-20),source:'U.S. Treasury Daily Treasury Yield Curve',
+      truth_label:real?'OFFICIAL_TREASURY_REAL_YIELD_CURVE':'OFFICIAL_TREASURY_NOMINAL_YIELD_CURVE'};
+  }catch{return {ok:false,series:valueTag,label,state:'UNAVAILABLE',source:'U.S. Treasury'}}
 }
 function canonicalTreasuryTerm(row){
   const term=String(row?.security_term||'');
@@ -307,9 +315,8 @@ export default async function handler(req,res){
     ]),
     cftcGoldPositioning(),
     Promise.all([
-      fredRecent('DGS10','10Y nominal Treasury'),
-      fredRecent('DFII10','10Y real yield'),
-      fredRecent('T10YIE','10Y breakeven inflation')
+      treasuryCurve10Y('nominal'),
+      treasuryCurve10Y('real')
     ]),
     treasuryFundingPulse()
   ]);
@@ -379,22 +386,26 @@ export default async function handler(req,res){
     note:'Structural adoption, research activity, market attention and digital-asset breadth are separate evidence classes. Research activity is not momentum; market prices are not adoption proof.'
   };
 
-  const [nominal10y,real10y,breakeven10y]=ratesEvidence;
-  const commonDates=[nominal10y,real10y,breakeven10y]
-    .filter(x=>x?.ok)
-    .map(x=>new Map((x.observations||[]).map(r=>[r.date,r.value])));
-  let commonDate=null,commonNominal=null,commonReal=null,commonBreakeven=null,priorCommonDate=null,priorNominal=null,priorReal=null,priorBreakeven=null;
-  if(commonDates.length===3){
-    const dates=[...commonDates[0].keys()].filter(d=>commonDates[1].has(d)&&commonDates[2].has(d)).sort();
-    commonDate=dates.at(-1)??null;
-    priorCommonDate=dates.at(-2)??null;
-    if(commonDate){
-      commonNominal=commonDates[0].get(commonDate); commonReal=commonDates[1].get(commonDate); commonBreakeven=commonDates[2].get(commonDate);
-    }
-    if(priorCommonDate){
-      priorNominal=commonDates[0].get(priorCommonDate); priorReal=commonDates[1].get(priorCommonDate); priorBreakeven=commonDates[2].get(priorCommonDate);
-    }
-  }
+  const [nominal10y,real10y]=ratesEvidence;
+  const nominalMap=new Map((nominal10y?.observations||[]).map(r=>[r.date,r.value]));
+  const realMap=new Map((real10y?.observations||[]).map(r=>[r.date,r.value]));
+  const commonDates=[...nominalMap.keys()].filter(d=>realMap.has(d)).sort();
+  const commonDate=commonDates.at(-1)??null;
+  const priorCommonDate=commonDates.at(-2)??null;
+  const commonNominal=commonDate?nominalMap.get(commonDate):null;
+  const commonReal=commonDate?realMap.get(commonDate):null;
+  const priorNominal=priorCommonDate?nominalMap.get(priorCommonDate):null;
+  const priorReal=priorCommonDate?realMap.get(priorCommonDate):null;
+  const commonBreakeven=commonNominal!==null&&commonNominal!==undefined&&commonReal!==null&&commonReal!==undefined
+    ?Number((commonNominal-commonReal).toFixed(2)):null;
+  const priorBreakeven=priorNominal!==null&&priorNominal!==undefined&&priorReal!==null&&priorReal!==undefined
+    ?Number((priorNominal-priorReal).toFixed(2)):null;
+  const breakeven10y=commonDate?{
+    ok:true,label:'10Y breakeven inflation',date:commonDate,value:commonBreakeven,
+    prior_date:priorCommonDate,prior_value:priorBreakeven,
+    source:'Derived: U.S. Treasury nominal 10Y minus Treasury real 10Y',
+    truth_label:'DERIVED_SAME_DATE_NOMINAL_MINUS_REAL'
+  }:{ok:false,label:'10Y breakeven inflation',state:'UNAVAILABLE',source:'Derived from U.S. Treasury curves'};
   const bps=(a,b)=>a!==null&&a!==undefined&&b!==null&&b!==undefined?Number(((a-b)*100).toFixed(1)):null;
   const realImpulse=bps(commonReal,priorReal);
   const nominalImpulse=bps(commonNominal,priorNominal);
@@ -416,8 +427,8 @@ export default async function handler(req,res){
     },
     treasury_funding:treasuryFunding,
     composite:{state:fundingWatch},
-    truth_label:'FRED_RATE_DECOMPOSITION_PLUS_OFFICIAL_TREASURY_AUCTION_DEMAND',
-    note:'Real yields and breakevens are market-implied rate series. Auction demand comparisons are descriptive and do not by themselves establish systemic funding stress.'
+    truth_label:'US_TREASURY_RATE_DECOMPOSITION_PLUS_OFFICIAL_AUCTION_DEMAND',
+    note:'Nominal and real yields come from official U.S. Treasury daily curves. Breakeven is the same-date nominal-minus-real difference. Auction demand is descriptive and does not by itself establish systemic funding stress.'
   };
 
   const changeParts=[];
@@ -462,7 +473,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
   return res.status(200).json({
     ok:true,
-    version:'v93-unified-intelligence-experience-v1',
+    version:'v93-unified-intelligence-experience-v2',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{

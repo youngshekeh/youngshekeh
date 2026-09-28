@@ -230,7 +230,7 @@ function renderRatesFunding(pulse: any) {
   missionText('rateNominal', pct(rates?.aligned_values?.nominal_10y));
   missionText('rateReal', pct(rates?.aligned_values?.real_10y));
   missionText('rateBreakeven', pct(rates?.aligned_values?.breakeven_10y));
-  missionText('rateNominalMeta', rates?.aligned_date ? `${rates.aligned_date} · FRED · aligned decomposition date` : 'FRED daily series unavailable');
+  missionText('rateNominalMeta', rates?.aligned_date ? `${rates.aligned_date} · U.S. Treasury · aligned decomposition date` : 'FRED daily series unavailable');
   missionText('rateRealMeta', rates?.aligned_date ? `${rates.aligned_date} · TIPS real yield · ${String(rates?.state ?? '').replaceAll('_',' ')}` : 'Real yield unavailable');
   missionText('rateBreakevenMeta', rates?.aligned_date ? `${rates.aligned_date} · inflation compensation · decomposition gap ${rates?.decomposition_gap_bps ?? 'n/a'} bp` : 'Breakeven unavailable');
 
