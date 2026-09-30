@@ -59,6 +59,8 @@ jobs:
       - name: Verify V143 stability confirmation invariants
         run: |
           test -f api/stability-confirmation.js
+          test -f supabase/recovery/v143-stability-confirmation.sql
+          test -f supabase/functions/runtime-v143-stability-confirmation/index.ts
           grep -q 'v143-stability-confirmation-bridge-v1' api/stability-confirmation.js
           grep -q "capital_permission:'0R'" api/stability-confirmation.js
           grep -q "live_order_routing:false" api/stability-confirmation.js
