@@ -530,6 +530,112 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadGoldRiskChallengerEvaluation() {
+  const lab = await read('public-gold-risk-challenger-evaluation', 9000);
+  const matchHost = byId('v138-match-list');
+  const progress = byId('v138-progress-fill') as HTMLElement | null;
+
+  if (!lab?.ok) {
+    set('v138-state', 'CHALLENGER LAB · FAIL CLOSED');
+    set('v138-copy', 'Prospective comparison telemetry is unavailable. No policy conclusion is inferred.');
+    for (const id of ['v138-matched','v138-public-gate','v138-mature-gate','v138-control-performance','v138-challenger-performance','v138-control-alloc','v138-challenger-alloc','v138-control-only','v138-challenger-only']) set(id, null);
+    set('v138-verdict', 'WITHHELD');
+    set('v138-orb', 'LOCK');
+    if (progress) progress.style.width = '0%';
+    matchHost?.replaceChildren();
+    set('v138-detail', 'Fail closed: no winner selection, no policy promotion, live execution OFF, real capital 0R.');
+    return;
+  }
+
+  const cohort = lab?.cohort ?? {};
+  const release = lab?.release ?? {};
+  const stats = lab?.matched_statistics ?? null;
+  const recent = Array.isArray(lab?.recent_matches) ? lab.recent_matches : [];
+  const matched = Number(cohort?.matched_resolved || 0);
+  const publicFloor = Number(release?.public_sample_floor || 10);
+  const matureFloor = Number(release?.mature_sample_floor || 30);
+  const publicProgress = publicFloor > 0 ? Math.min(100, (matched / publicFloor) * 100) : 0;
+
+  set('v138-state', `CHALLENGER LAB · ${first(lab?.state, 'WITHHELD')}`);
+  set('v138-copy',
+    release?.statistics_withheld
+      ? `Matched prospective sample is ${matched}/${publicFloor}. Performance statistics remain withheld until the release floor is earned.`
+      : `Matched prospective evidence is public. Descriptive statistics remain non-authoritative and cannot auto-promote a policy.`
+  );
+  set('v138-matched', matched);
+  set('v138-public-gate', `${matched} / ${publicFloor}`);
+  set('v138-mature-gate', `${matched} / ${matureFloor}`);
+  set('v138-verdict', 'WITHHELD · NO AUTO WINNER');
+  set('v138-orb', `${matched}/${publicFloor}`);
+  if (progress) progress.style.width = `${publicProgress}%`;
+
+  set('v138-control-alloc', cohort?.control_allocations_post_launch ?? 0);
+  set('v138-challenger-alloc', cohort?.challenger_allocations_post_launch ?? 0);
+  set('v138-control-only', cohort?.control_only_allocations ?? 0);
+  set('v138-challenger-only', cohort?.challenger_only_allocations ?? 0);
+
+  if (stats) {
+    const controlR = Number(stats?.control_cumulative_gross_r);
+    const challengerR = Number(stats?.challenger_cumulative_gross_r);
+    const controlDd = Number(stats?.control_max_drawdown_r);
+    const challengerDd = Number(stats?.challenger_max_drawdown_r);
+    set('v138-control-performance',
+      Number.isFinite(controlR) && Number.isFinite(controlDd)
+        ? `${controlR >= 0 ? '+' : ''}${controlR.toFixed(2)}R · DD ${controlDd.toFixed(2)}R`
+        : null
+    );
+    set('v138-challenger-performance',
+      Number.isFinite(challengerR) && Number.isFinite(challengerDd)
+        ? `${challengerR >= 0 ? '+' : ''}${challengerR.toFixed(2)}R · DD ${challengerDd.toFixed(2)}R`
+        : null
+    );
+    set('v138-control-copy', 'Matched prospective fixed-1R control evidence. Gross R, not money P&L.');
+    set('v138-challenger-copy', 'Matched prospective adaptive-risk evidence. No automatic winner or capital promotion.');
+  } else {
+    set('v138-control-performance', 'WITHHELD · SMALL N');
+    set('v138-challenger-performance', 'WITHHELD · SMALL N');
+    set('v138-control-copy', `Waiting for ${release?.resolved_until_public_statistics ?? Math.max(0, publicFloor - matched)} more matched resolved outcomes before public statistics.`);
+    set('v138-challenger-copy', 'The challenger cannot use historical outcomes to select itself. Only forward matched evidence counts.');
+  }
+
+  if (matchHost) {
+    matchHost.replaceChildren();
+    if (!recent.length) {
+      const empty = document.createElement('article');
+      empty.className = 'challenger-match challenger-match-empty';
+      const title = document.createElement('strong');
+      title.textContent = 'WAITING FOR FIRST PROSPECTIVE MATCH';
+      const copy = document.createElement('small');
+      copy.textContent = 'A row is created only after both control and challenger allocated the same forward signal and its outcome resolved.';
+      empty.append(title, copy);
+      matchHost.appendChild(empty);
+    } else {
+      for (const row of recent.slice(0, 4)) {
+        const card = document.createElement('article');
+        card.className = 'challenger-match';
+        const top = document.createElement('div');
+        const side = document.createElement('strong');
+        side.textContent = `${row?.side ?? '?'} · INTENT #${row?.intent_id ?? 'n/a'}`;
+        const state = document.createElement('span');
+        state.textContent = row?.outcome_consistent ? 'MATCHED' : 'CHECK';
+        top.append(side, state);
+        const detail = document.createElement('small');
+        const control = Number(row?.control_portfolio_gross_r);
+        const challenger = Number(row?.challenger_portfolio_gross_r);
+        detail.textContent = Number.isFinite(control) && Number.isFinite(challenger)
+          ? `Control ${control >= 0 ? '+' : ''}${control.toFixed(2)}R · Challenger ${challenger >= 0 ? '+' : ''}${challenger.toFixed(2)}R · ${row?.resolution_code ?? 'resolved'}`
+          : 'Matched outcome recorded.';
+        card.append(top, detail);
+        matchHost.appendChild(card);
+      }
+    }
+  }
+
+  set('v138-detail',
+    `Scope MATCHED PROSPECTIVE ONLY · matched ${cohort?.matched_allocations ?? 0} allocated / ${matched} resolved · control-only ${cohort?.control_only_allocations ?? 0} · challenger-only ${cohort?.challenger_only_allocations ?? 0} · automatic winner NO · automatic promotion NO · live orders OFF · real capital 0R.`
+  );
+}
+
 async function loadGoldAdaptivePaperRisk() {
   const adaptive = await read('public-gold-adaptive-paper-risk', 9000);
 
@@ -1382,6 +1488,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldRiskChallengerEvaluation(),
       loadGoldAdaptivePaperRisk(),
       loadGoldExecutionFirewall(),
       loadGoldOpportunityGovernor(),
