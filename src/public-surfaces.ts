@@ -528,6 +528,99 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+async function loadGoldOpportunityGovernor() {
+  const governor = await read('public-gold-opportunity-governor', 10000);
+  const host = byId('v135-prereq-grid');
+  if (!governor?.ok) {
+    set('v135-state', 'OPPORTUNITY GOVERNOR · FAIL CLOSED');
+    set('v135-copy', 'Governor evidence is unavailable. Paper allocation and live execution are treated as locked.');
+    for (const id of ['v135-paper-action','v135-slot','v135-sample','v135-blockers','v135-position','v135-entry','v135-mark','v135-stop','v135-target','v135-paper-r','v135-rr','v135-lab','v135-infra']) set(id, null);
+    set('v135-orb', 'LOCK');
+    set('v135-live-action', 'LOCKED');
+    set('v135-capital', '0R');
+    host?.replaceChildren();
+    set('v135-detail', 'Fail closed: no live route, no real order, no automatic real capital.');
+    return;
+  }
+
+  const decision = governor?.decision ?? {};
+  const paper = governor?.paper_portfolio ?? {};
+  const evidence = governor?.evidence ?? {};
+  const governance = governor?.governance ?? {};
+  const position = paper?.current_position ?? null;
+  const prereqs = governor?.production_prerequisites ?? {};
+  const blockers = Array.isArray(governor?.blocker_codes) ? governor.blocker_codes : [];
+
+  set('v135-state', `OPPORTUNITY GOVERNOR · ${first(governor?.state, 'LOCKED')}`);
+  set('v135-copy',
+    decision?.autonomous_mode === 'PAPER_ONLY'
+      ? position
+        ? `Paper autonomy is holding one ${position.side} Gold slot while live execution remains locked behind ${blockers.length} prerequisites.`
+        : `Paper autonomy is armed for the next eligible event. Live execution remains locked behind ${blockers.length} prerequisites.`
+      : 'Governor is fail-closed. No autonomous allocation or live action is permitted.'
+  );
+  set('v135-paper-action', first(decision?.paper_action, 'PAPER_LOCKED'));
+  set('v135-slot', position ? `OCCUPIED · ${first(position?.side, '?')}` : 'FREE');
+  set('v135-sample', `${evidence?.resolved_shadow_sample ?? 0} / ${evidence?.mature_sample_required ?? 30}`);
+  set('v135-blockers', blockers.length);
+  set('v135-position', position ? `${first(position?.side, '?')} · ${first(position?.strategy_code, 'SHADOW EVENT')}` : 'NO OPEN PAPER POSITION');
+  set('v135-position-detail',
+    position
+      ? `Intent #${position?.intent_id ?? 'n/a'} · 1-slot policy · paper risk ${position?.paper_risk_r ?? 'n/a'}R · executable quote NO.`
+      : 'The one-slot paper portfolio is free. Overlapping opportunities are still prevented.'
+  );
+  set('v135-entry', position?.entry_price ?? 'n/a');
+  set('v135-mark', position?.delayed_mark == null ? 'n/a' : `${position.delayed_mark} · DELAYED`);
+  set('v135-stop', position?.stop_price ?? 'n/a');
+  set('v135-target', position?.target_price ?? 'n/a');
+  set('v135-paper-r',
+    position?.unrealized_paper_r == null
+      ? 'WITHHELD'
+      : `${Number(position.unrealized_paper_r) >= 0 ? '+' : ''}${position.unrealized_paper_r}R`
+  );
+  set('v135-rr', position?.reference_rr == null ? 'n/a' : `${position.reference_rr}R`);
+  set('v135-lab', `${evidence?.broker_lab_tests_passed ?? 0}/${evidence?.broker_lab_tests_total ?? 6} · SIM`);
+  set('v135-infra', `${evidence?.infrastructure_verified ?? 0}/${evidence?.infrastructure_total ?? 6}`);
+  set('v135-live-action', first(decision?.live_action, 'LOCKED'));
+  set('v135-capital', first(governance?.real_capital_permission, '0R'));
+  set('v135-orb', decision?.autonomous_mode === 'PAPER_ONLY' ? 'PAPER' : 'LOCK');
+
+  if (host) {
+    host.replaceChildren();
+    const labels = {
+      mature_research_sample: 'MATURE RESEARCH SAMPLE',
+      execution_blockers_zero: 'ZERO EXECUTION BLOCKERS',
+      all_infrastructure_verified: 'INFRASTRUCTURE VERIFIED',
+      production_broker_verified: 'PRODUCTION BROKER VERIFIED',
+      real_broker_connected: 'REAL BROKER CONNECTED',
+      live_order_route_present: 'LIVE ORDER ROUTE',
+      execution_grade_quote_available: 'EXECUTION-GRADE QUOTE',
+      measured_spread_available: 'MEASURED SPREAD',
+      measured_slippage_available: 'MEASURED SLIPPAGE',
+      human_release_review_complete: 'HUMAN RELEASE REVIEW'
+    };
+    for (const [key, labelText] of Object.entries(labels)) {
+      const passed = prereqs?.[key] === true;
+      const card = document.createElement('article');
+      card.className = `governor-prereq ${passed ? 'governor-prereq-pass' : 'governor-prereq-block'}`;
+      const dot = document.createElement('span');
+      dot.className = 'governor-prereq-dot';
+      const copy = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = labelText;
+      const state = document.createElement('small');
+      state.textContent = passed ? 'VERIFIED' : 'LOCKED';
+      copy.append(label, state);
+      card.append(dot, copy);
+      host.appendChild(card);
+    }
+  }
+
+  set('v135-detail',
+    `Mode ${first(decision?.autonomous_mode, 'LOCKED')} · paper ${first(decision?.paper_action, 'LOCKED')} · live ${first(decision?.live_action, 'LOCKED')} · production broker ${first(evidence?.production_broker_readiness, 'NOT_TESTED')} · human release required ${governance?.human_control_required_for_any_future_live_release ? 'YES' : 'CHECK'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+}
+
 async function loadGoldBrokerAdapterLab() {
   const lab = await read('public-gold-broker-adapter-lab', 7000);
   const host = byId('v134-tests-grid');
@@ -1125,6 +1218,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
       loadGoldExecutionReality(),
       loadGoldAutonomousShadowTrader(),
