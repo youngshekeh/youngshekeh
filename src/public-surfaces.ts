@@ -528,6 +528,66 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+async function loadGoldShadowPortfolioBrain() {
+  const brain = await read('public-gold-shadow-portfolio-brain', 7000);
+  if (!brain?.ok) {
+    set('v133-state', 'SHADOW PORTFOLIO · UNAVAILABLE');
+    set('v133-copy', 'Portfolio routing telemetry is unavailable. No virtual allocation is inferred.');
+    for (const id of ['v133-decisions','v133-allocated','v133-skipped','v133-resolved','v133-slot','v133-current','v133-mark','v133-r','v133-stats','v133-broker']) set(id, null);
+    set('v133-detail', 'Fail closed: portfolio brain unavailable · live orders OFF · real capital 0R.');
+    return;
+  }
+
+  const pipeline = brain?.pipeline ?? {};
+  const policy = brain?.policy ?? {};
+  const performance = brain?.performance ?? {};
+  const governance = brain?.governance ?? {};
+  const open = Array.isArray(brain?.open_positions) ? brain.open_positions : [];
+  const current = open[0] || null;
+
+  set('v133-state', `SHADOW PORTFOLIO · ${first(brain?.state, 'COLLECTING')}`);
+  set('v133-copy',
+    current
+      ? `One virtual slot is occupied by ${current.side} intent #${current.intent_id}; ${pipeline?.skipped_overlap ?? 0} overlapping studies were denied a second slot.`
+      : 'The single virtual Gold slot is currently free. The next eligible V132 level event may claim it.'
+  );
+  set('v133-decisions', pipeline?.total_decisions ?? 0);
+  set('v133-allocated', pipeline?.allocated ?? 0);
+  set('v133-skipped', pipeline?.skipped_overlap ?? 0);
+  set('v133-resolved', pipeline?.resolved_allocations ?? 0);
+
+  set('v133-slot', current ? `OCCUPIED · ${current.side}` : 'FREE');
+  set('v133-current',
+    current
+      ? `${first(current?.strategy_code, 'SHADOW EVENT')} · entry ${current?.entry_price ?? 'n/a'} · stop ${current?.stop_price ?? 'n/a'} · target ${current?.target_price ?? 'n/a'}`
+      : 'No shadow portfolio allocation is open.'
+  );
+  set('v133-mark', current?.latest_delayed_mark == null ? 'n/a' : `${current.latest_delayed_mark} · DELAYED`);
+  set('v133-r',
+    current?.unrealized_portfolio_r == null
+      ? 'WITHHELD'
+      : `${Number(current.unrealized_portfolio_r) >= 0 ? '+' : ''}${current.unrealized_portfolio_r}R`
+  );
+  set('v133-stats',
+    performance?.statistics_withheld
+      ? `WITHHELD · n<${pipeline?.minimum_public_sample ?? 10}`
+      : performance?.public_statistics
+        ? `AVG ${performance.public_statistics.average_gross_r}R · CUM ${performance.public_statistics.cumulative_gross_r}R`
+        : 'WITHHELD'
+  );
+  set('v133-broker', first(governance?.broker_adapter_state, 'NOT_CONNECTED'));
+  set('v133-detail',
+    `Policy ${first(policy?.version, 'WITHHELD')} · max positions ${policy?.max_concurrent_positions ?? 1} · paper risk budget ${policy?.shadow_risk_budget_r ?? 1}R · pyramiding ${policy?.pyramiding ? 'ON' : 'OFF'} · simultaneous long/short ${policy?.simultaneous_long_short ? 'ON' : 'OFF'} · future performance selection ${policy?.future_performance_used ? 'ON' : 'OFF'} · live orders ${governance?.order_submission_enabled ? 'ON' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+
+  const slotCard = byId('v133-slot-card');
+  if (slotCard) {
+    slotCard.classList.toggle('portfolio-slot-occupied', Boolean(current));
+    slotCard.classList.toggle('portfolio-slot-free', !current);
+  }
+  set('v133-slot-glyph', current ? String(current?.side || '?').slice(0,1) : '1');
+}
+
 async function loadGoldAutonomousShadowTrader() {
   const shadow = await read('public-gold-autonomous-shadow-trader', 7000);
   if (!shadow?.ok) {
@@ -980,6 +1040,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldShadowPortfolioBrain(),
       loadGoldAutonomousShadowTrader(),
       loadGoldReviewFreshness(),
       loadGoldReviewPriority(),
