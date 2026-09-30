@@ -1717,3 +1717,187 @@ body[data-surface="gold-live"] .command-card:hover {
   .shadow-ring-b,
   .shadow-core { animation: none !important; }
 }
+
+
+/* V133.1 Execution Reality · gated autonomy vault */
+.execution-reality-cockpit {
+  border-color: rgba(243,200,107,.24);
+  background:
+    radial-gradient(circle at 84% 14%, rgba(243,200,107,.10), transparent 23%),
+    radial-gradient(circle at 13% 88%, rgba(114,240,173,.07), transparent 26%),
+    radial-gradient(circle at 55% 118%, rgba(156,115,255,.09), transparent 30%),
+    linear-gradient(145deg, rgba(255,255,255,.038), rgba(255,255,255,.007));
+}
+.execution-reality-cockpit::after {
+  background: linear-gradient(90deg, transparent, rgba(243,200,107,.75), rgba(114,240,173,.46), transparent);
+  filter: drop-shadow(0 0 10px rgba(243,200,107,.32));
+}
+.execution-gate-orb {
+  position: relative;
+  width: 136px;
+  aspect-ratio: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+.execution-gate-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(243,200,107,.30);
+  box-shadow: 0 0 28px rgba(243,200,107,.07);
+}
+.gate-ring-a {
+  width: 128px;
+  height: 64px;
+  transform: rotateX(68deg) rotateZ(24deg);
+  animation: executionOrbitA 11s linear infinite;
+}
+.gate-ring-b {
+  width: 92px;
+  height: 126px;
+  border-color: rgba(114,240,173,.26);
+  transform: rotateY(66deg) rotateZ(-18deg);
+  animation: executionOrbitB 14s linear infinite reverse;
+}
+.execution-lock-core {
+  width: 76px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(243,200,107,.44);
+  background:
+    radial-gradient(circle at 34% 27%, rgba(255,255,255,.14), transparent 16%),
+    radial-gradient(circle, rgba(243,200,107,.13), rgba(10,9,14,.97) 68%);
+  box-shadow:
+    inset 0 0 32px rgba(243,200,107,.07),
+    0 0 46px rgba(243,200,107,.09),
+    0 0 92px rgba(156,115,255,.05);
+  animation: executionVaultPulse 4.2s ease-in-out infinite;
+}
+.execution-lock-core span {
+  color: var(--amber);
+  font-size: 21px;
+  font-weight: 1000;
+  letter-spacing: -.04em;
+}
+.execution-lock-core small {
+  margin-top: 2px;
+  color: #8d8390;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .2em;
+}
+.execution-gate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 26px 2px 12px;
+}
+.execution-gate-head span {
+  color: #ddd6e2;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: .15em;
+}
+.execution-gate-head small {
+  max-width: 560px;
+  text-align: right;
+  font-size: 9px;
+}
+.execution-gate-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+}
+.execution-gate {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 14px;
+  background: rgba(0,0,0,.15);
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+.execution-gate:hover {
+  transform: translateY(-2px);
+}
+.execution-gate-dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 15px currentColor;
+}
+.execution-gate div {
+  min-width: 0;
+}
+.execution-gate strong,
+.execution-gate small {
+  display: block;
+}
+.execution-gate strong {
+  color: #eee9f0;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.execution-gate small {
+  margin-top: 4px;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .13em;
+}
+.execution-gate-pass {
+  color: var(--green);
+  border-color: rgba(114,240,173,.22);
+  background: rgba(114,240,173,.035);
+}
+.execution-gate-block {
+  color: var(--amber);
+  border-color: rgba(243,200,107,.18);
+  background: rgba(243,200,107,.025);
+}
+.execution-readiness-bar {
+  position: relative;
+  height: 7px;
+  margin-top: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 999px;
+  background: rgba(0,0,0,.24);
+}
+.execution-readiness-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(243,200,107,.85), rgba(114,240,173,.85));
+  box-shadow: 0 0 18px rgba(243,200,107,.22);
+  transition: width .8s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes executionOrbitA { to { transform: rotateX(68deg) rotateZ(384deg); } }
+@keyframes executionOrbitB { to { transform: rotateY(66deg) rotateZ(342deg); } }
+@keyframes executionVaultPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+@media (max-width: 760px) {
+  .execution-gate-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .execution-gate-head { align-items: flex-start; flex-direction: column; }
+  .execution-gate-head small { text-align: left; }
+}
+@media (max-width: 520px) {
+  .execution-gate-grid { grid-template-columns: 1fr; }
+  .execution-gate-orb { width: 112px; justify-self: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-ring-a,.gate-ring-b,.execution-lock-core { animation: none !important; }
+  .execution-readiness-fill { transition: none !important; }
+}
