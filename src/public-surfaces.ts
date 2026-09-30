@@ -529,6 +529,87 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 }
 
 
+async function loadGoldPaperRiskGovernor() {
+  const governor = await read('public-gold-paper-risk-governor', 8000);
+  const reasonsHost = byId('v137-reasons');
+  const ladder = byId('v137-risk-ladder');
+
+  if (!governor?.ok) {
+    set('v137-state', 'PAPER RISK GOVERNOR · FAIL CLOSED');
+    set('v137-copy', 'Risk-governor telemetry is unavailable. No paper-risk increase is inferred.');
+    for (const id of ['v137-next-risk','v137-reduction','v137-drawdown','v137-loss-streak','v137-current-position','v137-resolved','v137-gross-r','v137-sample-band']) set(id, null);
+    set('v137-max-positions', '1');
+    set('v137-orb', 'LOCK');
+    reasonsHost?.replaceChildren();
+    ladder?.querySelectorAll('[data-risk]').forEach((node) => node.classList.remove('risk-ladder-active'));
+    set('v137-detail', 'Fail closed: one paper slot maximum, no pyramiding, no live trading, no real capital.');
+    return;
+  }
+
+  const risk = governor?.risk ?? {};
+  const evidence = governor?.evidence ?? {};
+  const current = governor?.current_position ?? null;
+  const control = governor?.control ?? {};
+  const governance = governor?.governance ?? {};
+  const nextRisk = Number(risk?.recommended_next_paper_r);
+  const grossR = Number(evidence?.cumulative_gross_r);
+  const maxDd = Number(evidence?.max_drawdown_r);
+  const reasons = Array.isArray(evidence?.reason_codes) ? evidence.reason_codes : [];
+
+  set('v137-state', `RISK GOVERNOR · ${first(governor?.state, 'LOCKED')}`);
+  set('v137-copy',
+    Number.isFinite(nextRisk)
+      ? `Next eligible paper allocation is capped at ${nextRisk.toFixed(2)}R. The governor adapts only forward risk and cannot rewrite the open position.`
+      : 'Next paper-risk recommendation is withheld.'
+  );
+  set('v137-next-risk', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : null);
+  set('v137-reduction', risk?.reduction_from_baseline_pct == null ? null : `-${risk.reduction_from_baseline_pct}% vs 1R`);
+  set('v137-drawdown', Number.isFinite(maxDd) ? `${maxDd.toFixed(2)}R` : null);
+  set('v137-loss-streak', evidence?.loss_streak ?? 0);
+  set('v137-resolved', evidence?.resolved_paper_trades ?? 0);
+  set('v137-gross-r', Number.isFinite(grossR) ? `${grossR >= 0 ? '+' : ''}${grossR.toFixed(2)}R · GROSS` : null);
+  set('v137-sample-band', first(evidence?.sample_band, 'WITHHELD'));
+  set('v137-max-positions', risk?.max_concurrent_positions ?? 1);
+  set('v137-orb', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : 'LOCK');
+
+  if (current) {
+    set('v137-current-position', `${first(current?.side, '?')} · ${current?.allocated_risk_r ?? 'n/a'}R`);
+    set('v137-current-detail',
+      current?.predates_v137
+        ? `Decision #${current?.decision_id ?? 'n/a'} predates V137. Its risk stays unchanged; the next free slot will use the adaptive governor.`
+        : `Decision #${current?.decision_id ?? 'n/a'} · governed by ${first(current?.risk_governor_version, 'V137')}.`
+    );
+  } else {
+    set('v137-current-position', 'NO OPEN PAPER POSITION');
+    set('v137-current-detail', 'The next eligible free slot can use the current adaptive paper-risk recommendation.');
+  }
+
+  if (ladder) {
+    ladder.querySelectorAll<HTMLElement>('[data-risk]').forEach((node) => {
+      const level = Number(node.dataset.risk);
+      node.classList.toggle('risk-ladder-active', Number.isFinite(nextRisk) && Math.abs(level - nextRisk) < 0.001);
+    });
+  }
+
+  if (reasonsHost) {
+    reasonsHost.replaceChildren();
+    for (const reason of reasons) {
+      const card = document.createElement('article');
+      card.className = 'risk-reason';
+      const dot = document.createElement('span');
+      dot.className = 'risk-reason-dot';
+      const label = document.createElement('strong');
+      label.textContent = String(reason).replaceAll('_', ' ');
+      card.append(dot, label);
+      reasonsHost.appendChild(card);
+    }
+  }
+
+  set('v137-detail',
+    `Next slot ${Number.isFinite(nextRisk) ? nextRisk.toFixed(2) + 'R' : 'WITHHELD'} · resolved ${evidence?.resolved_paper_trades ?? 0} · max drawdown ${Number.isFinite(maxDd) ? maxDd.toFixed(2) + 'R' : 'n/a'} · loss streak ${evidence?.loss_streak ?? 0} · current position retroactively changed ${control?.current_open_position_risk_is_not_retroactively_changed ? 'NO' : 'CHECK'} · live orders ${governance?.order_submission_enabled ? 'CHECK' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+}
+
 async function loadGoldExecutionFirewall() {
   const firewall = await read('public-gold-execution-firewall', 9000);
   const host = byId('v136-checks-grid');
@@ -1313,6 +1394,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldPaperRiskGovernor(),
       loadGoldExecutionFirewall(),
       loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
