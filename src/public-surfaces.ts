@@ -52,6 +52,65 @@ function first<T>(...values: T[]) {
   return values.find((value) => value !== null && value !== undefined && value !== '');
 }
 
+function setupBrokerGoldBridge(desk: AnyJson) {
+  const button = byId('v118-translate') as HTMLButtonElement | null;
+  if (!button) return;
+
+  const translate = () => {
+    const bidInput = byId('v118-broker-bid') as HTMLInputElement | null;
+    const askInput = byId('v118-broker-ask') as HTMLInputElement | null;
+    const bid = Number(bidInput?.value);
+    const ask = Number(askInput?.value);
+    const futures = Number(desk?.market?.price);
+
+    if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0 || ask <= 0 || ask < bid) {
+      set('v118-bridge-message', 'Enter a valid broker bid and ask. Ask must be greater than or equal to bid.');
+      return;
+    }
+    if (!Number.isFinite(futures) || futures <= 0) {
+      set('v118-bridge-message', 'The COMEX structural reference is unavailable, so XAUUSD translation is withheld.');
+      return;
+    }
+
+    const brokerMid = (bid + ask) / 2;
+    const spread = ask - bid;
+    const basis = futures - brokerMid;
+    const spot = (level: unknown) => {
+      const value = Number(level);
+      return Number.isFinite(value) ? value - basis : null;
+    };
+    const f2 = (value: number | null) => value == null ? 'n/a' : value.toFixed(2);
+
+    const long = desk?.scenarios?.long_continuation ?? {};
+    const short = desk?.scenarios?.failed_break_short ?? {};
+    const longLow = spot(long?.retest_zone?.low);
+    const longHigh = spot(long?.retest_zone?.high);
+    const shortTrigger = spot(short?.failure_threshold);
+
+    set('v118-basis', basis.toFixed(2));
+    set('v118-spread', spread.toFixed(2));
+    set('v118-long-zone', longLow == null || longHigh == null ? null : `${f2(longLow)} → ${f2(longHigh)}`);
+    set('v118-short-trigger', shortTrigger == null ? null : f2(shortTrigger));
+    set('v118-long-map',
+      `STOP ${f2(spot(long?.structural_invalidation))} · T1 ${f2(spot(long?.primary_target))} · T2 ${f2(spot(long?.extension_target))}`
+    );
+    set('v118-short-map',
+      `STOP ${f2(spot(short?.structural_invalidation))} · T1 ${f2(spot(short?.primary_target))} · T2 ${f2(spot(short?.extension_target))}`
+    );
+    set('v118-long-map-copy',
+      `Translated from COMEX using futures − broker-mid basis. Structural state: ${first(long?.state, 'UNKNOWN')}.`
+    );
+    set('v118-short-map-copy',
+      `Translated from COMEX using the same contemporaneous basis. Structural state: ${first(short?.state, 'UNKNOWN')}.`
+    );
+    set('v118-bridge-message',
+      `Broker mid ${brokerMid.toFixed(2)} · basis ${basis.toFixed(2)} · translated at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}. Re-enter your quote before acting if the broker price changes.`
+    );
+  };
+
+  button.addEventListener('click', translate);
+}
+
 function reportSummary(report: AnyJson) {
   const payload = report?.report || report?.latest_report || report?.data || null;
   if (!payload) {
@@ -238,6 +297,8 @@ async function loadGold() {
     for (const id of ['v117-desk-state','v117-feed-state','v117-broker-feed','v117-session','v117-long-state','v117-long-zone','v117-long-stop','v117-long-targets','v117-long-rr','v117-short-state','v117-short-trigger','v117-short-stop','v117-short-targets','v117-short-rr','v117-decision']) set(id, null);
     set('v117-decision-copy', 'The V117 live desk is unavailable. The existing Gold firewall remains authoritative.');
   }
+
+  setupBrokerGoldBridge(desk);
 
   if (day?.ok) {
     const state = day?.day_state ?? {};
