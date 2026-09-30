@@ -457,6 +457,49 @@ async function loadGold() {
   }
 }
 
+async function loadGoldReviewFreshness() {
+  const freshness = await read('public-gold-review-freshness', 7000);
+  if (!freshness?.ok) {
+    set('v131-freshness-state', 'UNAVAILABLE');
+    set('v131-freshness-copy', 'Review freshness telemetry is unavailable. Queue age is not inferred.');
+    for (const id of ['v131-pending','v131-over','v131-p1-over','v131-oldest-p1','v131-p1-target','v131-p2-target','v131-latency','v131-capital']) set(id, null);
+    set('v131-detail', 'Unavailable review freshness cannot grant execution or capital authority.');
+    return;
+  }
+
+  const pipeline = freshness?.pipeline ?? {};
+  const governance = freshness?.governance ?? {};
+  const methodology = freshness?.methodology ?? {};
+  const targets = methodology?.targets_minutes ?? {};
+  const latency = freshness?.response_latency ?? {};
+
+  set('v131-freshness-state', `REVIEW FRESHNESS · ${first(freshness?.state, 'COLLECTING')}`);
+  set('v131-freshness-copy',
+    freshness?.state === 'P1_OVER_TARGET'
+      ? `${pipeline?.over_target_p1 ?? 0} P1 review items are beyond the operational attention target.`
+      : freshness?.state === 'REVIEW_QUEUE_AGING'
+        ? `${pipeline?.over_target_total ?? 0} review items are beyond their operational attention targets.`
+        : 'Review queue is currently within operational attention targets.'
+  );
+  set('v131-pending', pipeline?.pending_directional_reviews ?? 0);
+  set('v131-over', pipeline?.over_target_total ?? 0);
+  set('v131-p1-over', pipeline?.over_target_p1 ?? 0);
+  set('v131-oldest-p1', pipeline?.oldest_p1_minutes == null ? 'n/a' : `${pipeline.oldest_p1_minutes}m`);
+  set('v131-p1-target', `${targets?.P1_HIGH_ATTENTION ?? 30}m`);
+  set('v131-p2-target', `${targets?.P2_PRIORITY ?? 60}m`);
+  set('v131-latency',
+    latency?.statistics_withheld
+      ? `WITHHELD · n<${latency?.minimum_public_sample ?? 5}`
+      : latency?.public_statistics
+        ? `AVG ${latency.public_statistics.average_minutes}m · n=${latency.public_statistics.sample_count}`
+        : 'WITHHELD'
+  );
+  set('v131-capital', first(governance?.capital_permission, '0R'));
+  set('v131-detail',
+    `Target type: operational attention only · oldest-first ${methodology?.oldest_first_within_equal_priority ? 'ON' : 'OFF'} · performance data ${methodology?.performance_evidence_used ? 'ON' : 'OFF'} · future market data ${methodology?.market_future_data_used ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldReviewPriority() {
   const priority = await read('public-gold-review-priority', 7000);
   if (!priority?.ok) {
@@ -816,6 +859,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldReviewFreshness(),
       loadGoldReviewPriority(),
       loadGoldContextualDisagreement(),
       loadGoldDisagreementIntelligence(),
