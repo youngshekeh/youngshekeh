@@ -117,6 +117,67 @@
 
 
 
+      <section id="v138-risk-challenger-lab" class="command-card autonomy-cockpit challenger-lab-cockpit">
+        <div class="challenger-lab-head">
+          <div>
+            <span class="kicker">V138 · PROSPECTIVE RISK CHALLENGER LAB</span>
+            <h3 id="v138-state">CHECKING</h3>
+            <p id="v138-copy">Comparing V133 fixed-1R control with V137 adaptive sizing only on signals both engines actually allocated prospectively.</p>
+          </div>
+          <div class="challenger-lab-orb" aria-hidden="true">
+            <div class="challenger-lab-ring challenger-ring-a"></div>
+            <div class="challenger-lab-ring challenger-ring-b"></div>
+            <div class="challenger-lab-core"><span id="v138-orb">0/10</span><small>MATCHED N</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">CONTROL · FIXED 1R</span>
+          <span class="autonomy-chip autonomy-chip-on">CHALLENGER · ADAPTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO WINNER · DISABLED</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>MATCHED RESOLVED</span><strong id="v138-matched">CHECKING</strong></article>
+          <article><span>PUBLIC GATE</span><strong id="v138-public-gate">CHECKING</strong></article>
+          <article><span>MATURE GATE</span><strong id="v138-mature-gate">CHECKING</strong></article>
+          <article><span>VERDICT</span><strong id="v138-verdict">WITHHELD</strong></article>
+        </section>
+
+        <div class="challenger-progress-shell">
+          <div class="challenger-progress"><span id="v138-progress-fill"></span></div>
+          <div class="challenger-progress-labels"><span>0 · START</span><span>10 · STATS</span><span>30 · REVIEW</span></div>
+        </div>
+
+        <section class="command-grid two">
+          <article class="command-card compact-card challenger-control-card">
+            <span class="kicker">CONTROL · V133</span>
+            <h3 id="v138-control-performance">WITHHELD</h3>
+            <p id="v138-control-copy">Fixed 1R. Matched-cohort performance stays hidden until the release floor is reached.</p>
+          </article>
+          <article class="command-card compact-card challenger-adaptive-card">
+            <span class="kicker">CHALLENGER · V137</span>
+            <h3 id="v138-challenger-performance">WITHHELD</h3>
+            <p id="v138-challenger-copy">Adaptive risk. No retrospective selection and no automatic promotion.</p>
+          </article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CONTROL ALLOCATIONS</span><strong id="v138-control-alloc">0</strong></article>
+          <article><span>CHALLENGER ALLOCATIONS</span><strong id="v138-challenger-alloc">0</strong></article>
+          <article><span>CONTROL ONLY</span><strong id="v138-control-only">0</strong></article>
+          <article><span>CHALLENGER ONLY</span><strong id="v138-challenger-only">0</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>RECENT MATCHED OUTCOMES</span>
+          <small>Only prospective, outcome-consistent matches enter the experiment ledger.</small>
+        </div>
+        <div id="v138-match-list" class="challenger-match-list"></div>
+
+        <p id="v138-detail" class="autonomy-detail">No policy is promoted automatically. The experiment must earn a matched prospective sample before descriptive statistics are released.</p>
+      </section>
+
       <section id="v137-adaptive-risk" class="command-card autonomy-cockpit adaptive-risk-cockpit">
         <div class="adaptive-risk-head">
           <div>
