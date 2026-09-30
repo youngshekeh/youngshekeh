@@ -557,11 +557,13 @@ async function loadGoldAdaptivePaperRisk() {
 
   set('v137-risk-state', `ADAPTIVE RISK · ${state}`);
   set('v137-risk-copy',
-    state === 'DRAWDOWN_DEFENSE'
+    state === 'DRAWDOWN_DEFENSE' || state === 'CONSENSUS_DEFENSE'
       ? 'Paper risk is throttled because resolved evidence shows drawdown or a defensive loss streak. The throttle affects only future V137 challenger decisions.'
-      : state === 'DEEP_DRAWDOWN_DEFENSE'
-        ? 'Paper risk is at the defensive floor. The challenger remains active for learning while real capital stays locked.'
-        : 'The challenger is sizing future paper opportunities from resolved evidence and sample maturity.'
+      : state === 'DEEP_DRAWDOWN_DEFENSE' || state === 'CONSENSUS_DEEP_DEFENSE'
+        ? 'Both independent risk models are at the defensive floor. The challenger stays available for learning while real capital remains locked.'
+        : state === 'MODEL_DISAGREEMENT_DEFENSE'
+          ? 'The independent risk models disagree, so the consensus firewall automatically uses the smaller paper risk.'
+          : 'The challenger is sizing future paper opportunities from resolved evidence and sample maturity.'
   );
   set('v137-next-risk', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : null);
   set('v137-risk-orb', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : '0R');
@@ -593,8 +595,9 @@ async function loadGoldAdaptivePaperRisk() {
   set('v137-risk-memory-copy',
     `Resolved evidence ${ch?.resolved_events ?? 0} · loss streak ${loss} · max drawdown ${Number.isFinite(dd) ? dd.toFixed(2) + 'R' : 'n/a'}. Gross R is not money P&L; measured execution costs are still required for net R.`
   );
+  const consensus = adaptive?.risk_consensus ?? {};
   set('v137-detail',
-    `Adaptive challenger: next risk ${Number.isFinite(nextRisk) ? nextRisk.toFixed(2) + 'R' : 'withheld'} · decisions ${ch?.total_decisions ?? 0} · open ${ch?.open_allocations ?? 0} · retroactive allocation OFF · existing-position resize OFF · live execution OFF · real capital ${first(gov?.real_capital_permission, '0R')}.`
+    `Adaptive challenger: next risk ${Number.isFinite(nextRisk) ? nextRisk.toFixed(2) + 'R' : 'withheld'} · models ${consensus?.models_agree ? 'AGREE' : 'DISAGREEMENT→MIN'} · adaptive ${consensus?.adaptive_model_r ?? 'n/a'}R · independent ${consensus?.independent_model_r ?? 'n/a'}R · decisions ${ch?.total_decisions ?? 0} · open ${ch?.open_allocations ?? 0} · retroactive allocation OFF · live execution OFF · real capital ${first(gov?.real_capital_permission, '0R')}.`
   );
 }
 
