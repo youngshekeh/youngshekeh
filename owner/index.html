@@ -48,6 +48,20 @@
           Verify MFA
         </button>
       </section>
+      <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V127 · REVIEW INTELLIGENCE</div>
+        <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>
+        <p id="reviewIntelDetail" class="muted">
+          Future evidence is measured only after each human review is frozen and anchored.
+        </p>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card" style="min-width: 150px"><div class="label">POST-REVIEW ANCHORS</div><div id="reviewIntelAnchors" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">RESOLVED WINDOWS</div><div id="reviewIntelOutcomes" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">MAX SCORABLE N</div><div id="reviewIntelSample" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">CAPITAL</div><div id="reviewIntelCapital" class="value">0R</div></div>
+        </div>
+        <div id="reviewIntelHorizons" style="margin-top: 12px"></div>
+      </section>
       <section id="reviewInbox" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V126 · HUMAN REVIEW INBOX</div>
         <div id="reviewState" class="value wait">LOCKED UNTIL AAL2</div>

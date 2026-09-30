@@ -457,6 +457,45 @@ async function loadGold() {
   }
 }
 
+async function loadGoldReviewIntelligence() {
+  const review = await read('public-gold-review-intelligence', 7000);
+  if (!review?.ok) {
+    set('v127-review-state', 'UNAVAILABLE');
+    set('v127-review-copy', 'Review Intelligence is unavailable. No reviewer evidence is inferred.');
+    for (const id of ['v127-reviews','v127-anchors','v127-outcomes','v127-sample','v127-15m','v127-30m','v127-public-stats','v127-capital']) set(id, null);
+    set('v127-detail', 'Human evidence remains separate from execution authority.');
+    return;
+  }
+
+  const pipeline = review?.pipeline ?? {};
+  const governance = review?.governance ?? {};
+  const horizons = Array.isArray(review?.horizons) ? review.horizons : [];
+  const h15 = horizons.find((x) => Number(x?.horizon_minutes) === 15) || {};
+  const h30 = horizons.find((x) => Number(x?.horizon_minutes) === 30) || {};
+  const maxN = Number(pipeline?.max_scorable_sample || 0);
+  const floor = Number(h15?.minimum_public_sample || h30?.minimum_public_sample || 10);
+
+  set('v127-review-state', `REVIEW INTELLIGENCE · ${first(review?.state, 'WAITING_FOR_HUMAN_REVIEW')}`);
+  set('v127-review-copy',
+    review?.state === 'WAITING_FOR_HUMAN_REVIEW'
+      ? 'No human evidence judgment has been recorded yet. The system will not fabricate one.'
+      : maxN < floor
+        ? `Prospective review outcomes are collecting. Public reviewer statistics remain withheld until n≥${floor}.`
+        : 'Review evidence crossed the public sample floor. Statistics remain descriptive and cannot grant capital.'
+  );
+  set('v127-reviews', pipeline?.human_review_events ?? 0);
+  set('v127-anchors', pipeline?.post_review_anchors ?? 0);
+  set('v127-outcomes', pipeline?.resolved_review_outcomes ?? 0);
+  set('v127-sample', maxN);
+  set('v127-15m', `n=${h15?.scorable_count ?? 0} · ${h15?.statistics_withheld ? 'WITHHELD' : 'AVAILABLE'}`);
+  set('v127-30m', `n=${h30?.scorable_count ?? 0} · ${h30?.statistics_withheld ? 'WITHHELD' : 'AVAILABLE'}`);
+  set('v127-public-stats', maxN < floor ? 'WITHHELD · SMALL N' : 'DESCRIPTIVE ONLY');
+  set('v127-capital', first(governance?.capital_permission, '0R'));
+  set('v127-detail',
+    `Post-review anchor ${review?.methodology?.post_review_server_capture_anchor ? 'ON' : 'OFF'} · identity public ${review?.methodology?.reviewer_identity_public ? 'YES' : 'NO'} · notes public ${review?.methodology?.reviewer_notes_public ? 'YES' : 'NO'} · auto weighting ${governance?.automatic_weighting ? 'ON' : 'OFF'} · auto promotion ${governance?.automatic_promotion ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldSignalReputation() {
   const reputation = await read('public-gold-signal-reputation', 7000);
   if (!reputation?.ok) {
@@ -657,6 +696,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldReviewIntelligence(),
       loadGoldSignalReputation(),
       loadGoldTriggerWatch(),
       loadGoldTransitions(),

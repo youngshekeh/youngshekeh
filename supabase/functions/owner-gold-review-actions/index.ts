@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const SUPA=Deno.env.get("SUPABASE_URL")!;
 const CLASSIFIER="v125.3-event-aware-v2";
-const VERSION="v126-owner-gold-review-actions-v1";
+const VERSION="v127-owner-gold-review-actions-v2";
 const DECISIONS=new Set([
   "EVIDENCE_SUPPORTIVE",
   "EVIDENCE_CONTRADICTORY",
@@ -129,6 +129,29 @@ Deno.serve(async(req:Request)=>{
         order:"event_at.desc",
         limit:"200"
       });
+      const [anchors,reviewOutcomes,intelligence]=await Promise.all([
+        restRows(service,"gold_human_review_anchors",{
+          select:"id,review_event_id,anchor_delay_seconds,created_at",
+          reviewer_user_id:`eq.${user.id}`,
+          classifier_version:`eq.${CLASSIFIER}`,
+          order:"id.desc",
+          limit:"200"
+        }),
+        restRows(service,"gold_human_review_outcomes",{
+          select:"id,horizon_minutes,human_alignment_state,human_alignment_score,resolved_at",
+          reviewer_user_id:`eq.${user.id}`,
+          classifier_version:`eq.${CLASSIFIER}`,
+          order:"id.desc",
+          limit:"1000"
+        }),
+        restRows(service,"gold_reviewer_intelligence_snapshots",{
+          select:"id,evaluated_at,horizon_minutes,total_outcomes,scorable_count,aligned_count,contradicted_count,neutral_count,unscored_count,supportive_count,contradictory_count,human_alignment_rate_pct,human_wilson_lower_pct,baseline_signal_favorable_rate_pct,observed_value_add_pp,intelligence_state,statistics_publication_state,automatic_weight,automatic_promotion,capital_permission",
+          reviewer_user_id:`eq.${user.id}`,
+          classifier_version:`eq.${CLASSIFIER}`,
+          order:"evaluated_at.desc",
+          limit:"100"
+        })
+      ]);
 
       const histories=new Map<number,any[]>();
       for(const ev of reviews){
@@ -169,6 +192,45 @@ Deno.serve(async(req:Request)=>{
           .filter((id:number)=>directional.some((r:any)=>Number(r.id)===id))
       ).size;
 
+      const latestByHorizon=new Map<number,any>();
+      for(const row of intelligence){
+        const h=Number(row.horizon_minutes);
+        if(!latestByHorizon.has(h))latestByHorizon.set(h,row);
+      }
+      const intelligenceHorizons=[15,30,60,120].map((h)=>{
+        const x=latestByHorizon.get(h);
+        const n=Number(x?.scorable_count||0);
+        return {
+          horizon_minutes:h,
+          total_outcomes:Number(x?.total_outcomes||0),
+          scorable_count:n,
+          aligned_count:Number(x?.aligned_count||0),
+          contradicted_count:Number(x?.contradicted_count||0),
+          neutral_count:Number(x?.neutral_count||0),
+          unscored_count:Number(x?.unscored_count||0),
+          intelligence_state:x?.intelligence_state||'WAITING_FOR_SCORABLE_REVIEW',
+          statistics_withheld:n<10,
+          minimum_sample:10,
+          descriptive_statistics:n>=10 ? {
+            human_alignment_rate_pct:x?.human_alignment_rate_pct??null,
+            human_wilson_lower_pct:x?.human_wilson_lower_pct??null,
+            baseline_signal_favorable_rate_pct:x?.baseline_signal_favorable_rate_pct??null,
+            observed_value_add_pp:x?.observed_value_add_pp??null
+          } : null,
+          automatic_weight:x?.automatic_weight??null,
+          automatic_promotion:x?.automatic_promotion===true,
+          capital_permission:x?.capital_permission||'0R'
+        };
+      });
+      const maxScorable=intelligenceHorizons.reduce((m,x)=>Math.max(m,x.scorable_count),0);
+      const reviewIntelligenceState=
+        reviews.length===0 ? 'WAITING_FOR_HUMAN_REVIEW'
+        : anchors.length===0 ? 'WAITING_FOR_POST_REVIEW_ANCHOR'
+        : reviewOutcomes.length===0 ? 'WAITING_FOR_FUTURE_OUTCOMES'
+        : maxScorable<10 ? 'WITHHELD_SAMPLE_TOO_SMALL'
+        : maxScorable<30 ? 'EARLY_REVIEW_EVIDENCE'
+        : 'MATURE_REVIEW_EVIDENCE';
+
       return new Response(JSON.stringify({
         ok:true,
         version:VERSION,
@@ -176,6 +238,20 @@ Deno.serve(async(req:Request)=>{
         classifier_version:CLASSIFIER,
         owner_role:owner.role,
         aal:"aal2",
+        review_intelligence:{
+          state:reviewIntelligenceState,
+          post_review_anchors:anchors.length,
+          resolved_review_outcomes:reviewOutcomes.length,
+          max_scorable_sample:maxScorable,
+          horizons:intelligenceHorizons,
+          governance:{
+            descriptive_only:true,
+            automatic_weighting:false,
+            automatic_promotion:false,
+            human_review_can_grant_capital:false,
+            capital_permission:'0R'
+          }
+        },
         counts:{
           current_candidates:requests.length,
           directional_candidates:directional.length,
