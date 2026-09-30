@@ -434,6 +434,49 @@ async function loadGold() {
   }
 }
 
+async function loadGoldTransitions() {
+  const transition = await read('public-gold-transition-state', 7000);
+  if (!transition?.ok) {
+    set('v123-change-state', 'UNAVAILABLE');
+    set('v123-change-copy', 'Transition intelligence is unavailable. No setup change is inferred.');
+    for (const id of ['v123-event','v123-age','v123-data','v123-capital']) set(id, null);
+    set('v123-detail', 'The Gold execution firewall remains authoritative.');
+    return;
+  }
+
+  const material = transition?.latest_material_transition ?? {};
+  const current = transition?.current ?? {};
+  const data = transition?.data_quality ?? {};
+  const state = first(transition?.state, 'STABLE');
+  const age = material?.age_minutes;
+
+  set('v123-change-state', `WHAT CHANGED · ${state}`);
+  set('v123-change-copy',
+    state === 'DATA_BLOCKED'
+      ? 'A data-quality transition is blocking interpretation. Setup changes are not inferred while the market spine is unavailable.'
+      : state === 'REVIEW_REQUIRED'
+        ? 'A material setup transition requires human review. This does not itself grant capital permission.'
+        : state === 'WATCH_CHANGE'
+          ? 'A recent structural or level transition is active. Re-check the broker feed and current execution conditions.'
+          : 'No fresh material setup transition is active. The desk remains in its current governed state.'
+  );
+  set('v123-event', first(material?.transition_code, transition?.latest_transition?.transition_code, 'NONE'));
+  set('v123-age', age == null ? 'n/a' : `${age}m`);
+  set('v123-data', data?.blocked ? 'BLOCKED' : first(data?.latest_event, 'CLEAR'));
+  set('v123-capital', first(current?.capital_permission, transition?.governance?.capital_permission, '0R'));
+
+  const fromState = material?.from_state;
+  const toState = material?.to_state;
+  const fromPrice = material?.from_price;
+  const toPrice = material?.to_price;
+  const delta = material?.price_delta;
+  set('v123-detail',
+    material?.transition_code
+      ? `${first(material?.event_class, 'EVENT')} · ${material.transition_code} · ${fromState ?? 'n/a'} → ${toState ?? 'n/a'} · price ${fromPrice ?? 'n/a'} → ${toPrice ?? 'n/a'} · Δ ${delta ?? 'n/a'} · capital ${first(current?.capital_permission, '0R')}.`
+      : 'No material transition has been frozen yet.'
+  );
+}
+
 async function loadGoldOutcomeLearning() {
   const outcome = await read('public-gold-outcome-learning', 7000);
   if (!outcome?.ok) {
@@ -503,11 +546,16 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     : 'Refreshing the Gold desk and prospective learning heartbeat.');
 
   try {
-    await Promise.all([loadGold(), loadGoldLearning(), loadGoldOutcomeLearning()]);
+    await loadGold();
     goldLastRefreshAt = Date.now();
     goldNextRefreshAt = goldLastRefreshAt + 60_000;
     set('v121-pulse-state', 'LIVE · 60s');
-    set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Broker translations expire after 60 seconds or when the futures reference changes.');
+    set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
+    void Promise.allSettled([
+      loadGoldTransitions(),
+      loadGoldLearning(),
+      loadGoldOutcomeLearning(),
+    ]);
   } finally {
     goldRefreshBusy = false;
     renderGoldPulseClock();
