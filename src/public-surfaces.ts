@@ -457,6 +457,127 @@ async function loadGold() {
   }
 }
 
+function renderV132ShadowStudies(shadow: AnyJson) {
+  const host = byId('v132-open-studies');
+  if (!host) return;
+  host.replaceChildren();
+
+  const open = Array.isArray(shadow?.open_marks) ? shadow.open_marks : [];
+  if (!open.length) {
+    const empty = document.createElement('article');
+    empty.className = 'shadow-study shadow-study-empty';
+    const title = document.createElement('strong');
+    title.textContent = 'NO OPEN SHADOW STUDIES';
+    const copy = document.createElement('small');
+    copy.textContent = 'V132 is waiting for the next governed level-transition event.';
+    empty.append(title, copy);
+    host.appendChild(empty);
+    return;
+  }
+
+  for (const study of open.slice(0, 4)) {
+    const card = document.createElement('article');
+    card.className = 'shadow-study';
+
+    const top = document.createElement('div');
+    top.className = 'shadow-study-top';
+
+    const side = document.createElement('span');
+    const sideText = String(study?.side || 'UNKNOWN');
+    side.className = `shadow-side ${sideText === 'LONG' ? 'shadow-side-long' : 'shadow-side-short'}`;
+    side.textContent = sideText;
+
+    const r = document.createElement('strong');
+    const grossR = study?.unrealized_gross_r;
+    r.textContent = grossR == null ? 'R WITHHELD' : `${Number(grossR) >= 0 ? '+' : ''}${grossR}R`;
+    if (grossR != null) {
+      r.classList.add(Number(grossR) >= 0 ? 'state-good' : 'state-bad');
+    }
+
+    top.append(side, r);
+
+    const strategy = document.createElement('small');
+    strategy.className = 'shadow-strategy';
+    strategy.textContent = String(study?.strategy_code || 'SHADOW EVENT');
+
+    const grid = document.createElement('div');
+    grid.className = 'shadow-study-metrics';
+    const metrics = [
+      ['ENTRY', study?.entry_price],
+      ['MARK', study?.current_delayed_mark],
+      ['STOP', study?.stop_price],
+      ['TARGET', study?.target_price],
+    ];
+
+    for (const [label, value] of metrics) {
+      const cell = document.createElement('div');
+      const l = document.createElement('span');
+      l.textContent = String(label);
+      const v = document.createElement('b');
+      v.textContent = value == null ? 'WITHHELD' : String(value);
+      cell.append(l, v);
+      grid.appendChild(cell);
+    }
+
+    const foot = document.createElement('small');
+    foot.className = 'shadow-study-foot';
+    foot.textContent = 'Delayed COMEX research mark · not an executable quote';
+
+    card.append(top, strategy, grid, foot);
+    host.appendChild(card);
+  }
+}
+
+async function loadGoldAutonomousShadowTrader() {
+  const shadow = await read('public-gold-autonomous-shadow-trader', 7000);
+  if (!shadow?.ok) {
+    set('v132-state', 'SHADOW EXECUTION · UNAVAILABLE');
+    set('v132-copy', 'Shadow execution telemetry is unavailable. No trade state is inferred and real orders remain disabled.');
+    for (const id of ['v132-intents','v132-open','v132-resolved','v132-stats','v132-price','v132-latest-study','v132-broker','v132-capital']) set(id, null);
+    const host = byId('v132-open-studies');
+    host?.replaceChildren();
+    set('v132-detail', 'Fail closed: shadow telemetry unavailable · live orders OFF · real capital 0R.');
+    return;
+  }
+
+  const pipeline = shadow?.pipeline ?? {};
+  const performance = shadow?.performance ?? {};
+  const market = shadow?.market ?? {};
+  const governance = shadow?.governance ?? {};
+  const resolved = Array.isArray(shadow?.recent_resolved) ? shadow.recent_resolved : [];
+  const latestResolved = resolved[0] || null;
+
+  set('v132-state', `AUTONOMOUS SHADOW · ${first(shadow?.state, 'COLLECTING')}`);
+  set('v132-copy',
+    Number(pipeline?.open_shadow_intents || 0) > 0
+      ? `${pipeline.open_shadow_intents} shadow studies are tracking autonomously against governed stop/target geometry.`
+      : 'V132 is waiting for the next level-transition event while preserving the real-capital firewall.'
+  );
+  set('v132-intents', pipeline?.total_shadow_intents ?? 0);
+  set('v132-open', pipeline?.open_shadow_intents ?? 0);
+  set('v132-resolved', pipeline?.resolved_shadow_outcomes ?? 0);
+  set('v132-stats',
+    performance?.statistics_withheld
+      ? `WITHHELD · n<${pipeline?.minimum_public_sample ?? 10}`
+      : performance?.public_statistics
+        ? `AVG ${performance.public_statistics.average_gross_r}R · ${performance.public_statistics.gross_positive_rate_pct}% +R`
+        : 'WITHHELD'
+  );
+  set('v132-price', market?.latest_delayed_price == null ? null : `${market.latest_delayed_price} · DELAYED`);
+  set('v132-latest-study',
+    latestResolved
+      ? `${latestResolved.side} · ${latestResolved.resolution_code} · ${latestResolved.gross_r}R`
+      : 'OPEN STUDIES ONLY'
+  );
+  set('v132-broker', first(governance?.broker_adapter_state, 'NOT_CONNECTED'));
+  set('v132-capital', first(governance?.real_capital_permission, '0R'));
+  set('v132-detail',
+    `Event capture ${shadow?.methodology?.autonomous_event_capture ? 'AUTONOMOUS' : 'CHECK'} · entry basis ${first(shadow?.methodology?.entry_basis, 'WITHHELD')} · broker spread ${shadow?.methodology?.broker_spread_measured ? 'MEASURED' : 'NOT MEASURED'} · slippage ${shadow?.methodology?.slippage_measured ? 'MEASURED' : 'NOT MEASURED'} · live orders ${governance?.order_submission_enabled ? 'ON' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+
+  renderV132ShadowStudies(shadow);
+}
+
 async function loadGoldReviewFreshness() {
   const freshness = await read('public-gold-review-freshness', 7000);
   if (!freshness?.ok) {
@@ -859,6 +980,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldAutonomousShadowTrader(),
       loadGoldReviewFreshness(),
       loadGoldReviewPriority(),
       loadGoldContextualDisagreement(),
