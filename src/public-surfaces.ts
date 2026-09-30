@@ -493,7 +493,7 @@ async function loadGoldSignalReputation() {
   );
   set('v125-capital', first(latest?.capital_permission, governance?.capital_permission, '0R'));
   set('v125-detail',
-    `Review state: ${first(latest?.evidence_review_state, 'COLLECTING')} · human decisions: ${pipeline?.human_review_events ?? 0} · automatic weighting ${governance?.automatic_weighting ? 'ON' : 'OFF'} · automatic promotion ${governance?.automatic_promotion ? 'ON' : 'OFF'}.`
+    `Classifier ${first(reputation?.classifier_version, 'WITHHELD')} · review state: ${first(latest?.evidence_review_state, 'COLLECTING')} · human decisions: ${pipeline?.human_review_events ?? 0} · automatic weighting ${governance?.automatic_weighting ? 'ON' : 'OFF'} · automatic promotion ${governance?.automatic_promotion ? 'ON' : 'OFF'}.`
   );
 }
 
