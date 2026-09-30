@@ -12,6 +12,13 @@ on:
     - cron: '15 * * * *'
     - cron: '35 * * * *'
     - cron: '55 * * * *'
+  workflow_run:
+    workflows:
+      - Verify THE FATHER ANALYTICS
+    types:
+      - completed
+    branches:
+      - the-father-analytics-deploy
   workflow_dispatch:
 
 permissions:
@@ -23,6 +30,7 @@ concurrency:
 
 jobs:
   anchor:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout audit branch
