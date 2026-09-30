@@ -46,5 +46,10 @@
     "last_verified_at": "2026-09-30T15:02:47.682Z",
     "verification_count": 5,
     "source_proof_sha256": "9aa02ec3ccd0a881e7e973541e0f460521a3cffa658d010e02880ff06b9e69b8"
+  },
+  "heartbeat_artifact": {
+    "version": "v112-hourly-heartbeat-artifact-v1",
+    "hour_utc": "2026-09-30T15",
+    "immutable": true
   }
 }
