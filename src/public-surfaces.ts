@@ -588,6 +588,7 @@ function renderV140PromotionReviewGate(lab: AnyJson) {
   set('v140-alignment', `${alignment}%`);
   set('v140-consistency', inconsistentRecent === 0 ? 'CLEAR' : `${inconsistentRecent} CHECK`);
   set('v140-review', reviewEligible ? 'ELIGIBLE · HUMAN ONLY' : 'LOCKED');
+  set('v140-orb', reviewEligible ? 'REVIEW' : integrityPass ? `${matchedResolved}/${matureFloor}` : 'LOCK');
   set('v140-promotion', 'HUMAN REVIEW ONLY');
   set('v140-capital', '0R · LOCKED');
   set('v140-live', 'OFF');
