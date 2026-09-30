@@ -22,4 +22,4 @@ Canonical Vercel rescue branch for the production frontend.
 
 The AppDeploy-only `backend/index.ts` adapter is intentionally omitted so the Vercel source has no dependency on `@appdeploy/sdk`.
 
-Preview deployment trigger: Vercel Git connection verification.
+Production deployment trigger: V139 experiment integrity guard.
