@@ -275,7 +275,7 @@ async function loadGold() {
     set('v117-desk-state', first(desk?.desk_state, 'WAIT'));
     set('v117-feed-state', dm?.price == null ? first(dm?.market_status, 'UNAVAILABLE') : `${first(dm?.market_status, 'UNKNOWN')} · ${dm.price}`);
     set('v117-broker-feed', dm?.broker_execution_feed_required ? 'REQUIRED' : 'LIVE QUOTE OK');
-    set('v117-session', first(ds?.opening_state, 'UNKNOWN'));
+    set('v117-session', `${first(ds?.primary_session, 'NONE')} · ${first(ds?.opening_state, 'UNKNOWN')}`);
 
     set('v117-long-state', first(dl?.state, 'NOT_CONFIRMED'));
     set('v117-long-copy', first(dl?.trigger, 'Long continuation condition unavailable.'));
