@@ -457,6 +457,46 @@ async function loadGold() {
   }
 }
 
+async function loadGoldSignalReputation() {
+  const reputation = await read('public-gold-signal-reputation', 7000);
+  if (!reputation?.ok) {
+    set('v125-reputation-state', 'UNAVAILABLE');
+    set('v125-reputation-copy', 'Signal reputation evidence is unavailable. No performance claim is inferred.');
+    for (const id of ['v125-trigger-count','v125-directional-count','v125-human-count','v125-sample-count','v125-latest-signal','v125-horizon','v125-public-stats','v125-capital']) set(id, null);
+    set('v125-detail', 'The Gold execution firewall remains authoritative.');
+    return;
+  }
+
+  const pipeline = reputation?.pipeline ?? {};
+  const latest = reputation?.latest_signal ?? {};
+  const governance = reputation?.governance ?? {};
+  const publicStats = latest?.public_statistics;
+
+  set('v125-reputation-state', `SIGNAL REPUTATION · ${first(reputation?.state, 'COLLECTING')}`);
+  set('v125-reputation-copy',
+    latest?.statistics_withheld
+      ? `Latest transition-linked reputation sample is n=${latest?.sample_count ?? 0}. Public statistics remain withheld until n≥${latest?.minimum_public_sample ?? 10}.`
+      : 'Transition-linked statistics crossed the public sample floor. They remain descriptive evidence, not execution authority.'
+  );
+  set('v125-trigger-count', pipeline?.trigger_review_requests ?? 0);
+  set('v125-directional-count', pipeline?.directional_review_candidates ?? 0);
+  set('v125-human-count', pipeline?.human_review_events ?? 0);
+  set('v125-sample-count', pipeline?.max_sample_count ?? 0);
+  set('v125-latest-signal', first(latest?.source_state, latest?.signal_key, 'COLLECTING'));
+  set('v125-horizon', latest?.horizon_minutes == null ? 'n/a' : `${latest.horizon_minutes}m`);
+  set('v125-public-stats',
+    latest?.statistics_withheld
+      ? 'WITHHELD · SMALL N'
+      : publicStats
+        ? `HIT ${publicStats.observed_hit_rate_pct}% · WILSON ${publicStats.wilson_lower_pct}%`
+        : 'WITHHELD'
+  );
+  set('v125-capital', first(latest?.capital_permission, governance?.capital_permission, '0R'));
+  set('v125-detail',
+    `Review state: ${first(latest?.evidence_review_state, 'COLLECTING')} · human decisions: ${pipeline?.human_review_events ?? 0} · automatic weighting ${governance?.automatic_weighting ? 'ON' : 'OFF'} · automatic promotion ${governance?.automatic_promotion ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldTriggerWatch() {
   const trigger = await read('public-gold-trigger-watch', 7000);
   if (!trigger?.ok) {
@@ -617,6 +657,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldSignalReputation(),
       loadGoldTriggerWatch(),
       loadGoldTransitions(),
       loadGoldLearning(),
