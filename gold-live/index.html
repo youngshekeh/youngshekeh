@@ -73,6 +73,30 @@
         <h3 id="v117-decision">CHECKING</h3>
         <p id="v117-decision-copy">What changed, what matters now, and what action is permitted.</p>
       </section>
+
+      <section class="command-card broker-bridge">
+        <div>
+          <span class="kicker">V118 · BROKER XAUUSD BRIDGE</span>
+          <h3>Translate COMEX structure to your broker quote.</h3>
+          <p>Enter the XAUUSD bid and ask shown by your broker. Translation stays in this browser and does not place, prepare or transmit an order.</p>
+        </div>
+        <div class="broker-input-grid">
+          <label><span>BROKER BID</span><input id="v118-broker-bid" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 4176.20" /></label>
+          <label><span>BROKER ASK</span><input id="v118-broker-ask" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 4176.45" /></label>
+          <button id="v118-translate" type="button">TRANSLATE LEVELS</button>
+        </div>
+        <p id="v118-bridge-message">Waiting for your broker quote.</p>
+        <section class="command-strip broker-output-strip">
+          <article><span>FUTURES/SPOT BASIS</span><strong id="v118-basis">WITHHELD</strong></article>
+          <article><span>BROKER SPREAD</span><strong id="v118-spread">WITHHELD</strong></article>
+          <article><span>LONG RETEST</span><strong id="v118-long-zone">WITHHELD</strong></article>
+          <article><span>SHORT FAILURE</span><strong id="v118-short-trigger">WITHHELD</strong></article>
+        </section>
+        <section class="command-grid two">
+          <article class="command-card compact-card"><span class="kicker">LONG XAUUSD MAP</span><h3 id="v118-long-map">WITHHELD</h3><p id="v118-long-map-copy">Translated invalidation and targets appear after you enter the broker quote.</p></article>
+          <article class="command-card compact-card"><span class="kicker">SHORT XAUUSD MAP</span><h3 id="v118-short-map">WITHHELD</h3><p id="v118-short-map-copy">Translated invalidation and targets appear after you enter the broker quote.</p></article>
+        </section>
+      </section>
     </section>
 
     <section class="command-grid three">
