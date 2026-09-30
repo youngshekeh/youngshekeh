@@ -1539,7 +1539,7 @@ export default async function handler(req,res){
     ['Options / Volatility Intelligence','ACTIVE',gvz?.ok?`GVZ ${gvz.value} · ${gvz.regime} · ${compositeVolState.replaceAll('_',' ')}`:'WITHHELD']
   ].map(([name,state,detail])=>({name,state,detail}));
 
-  const checkpointProofRequested=String(req.query?.proof??'')==='checkpoint';
+  const checkpointProofRequested=new URL(req.url,BASE).searchParams.get('proof')==='checkpoint';
   if(checkpointProofRequested){
     const cp=checkpointState?.latest_checkpoint??{};
     res.setHeader('Cache-Control','public, max-age=20, s-maxage=60, stale-while-revalidate=120');
