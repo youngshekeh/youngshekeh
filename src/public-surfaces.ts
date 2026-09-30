@@ -528,6 +528,89 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+async function loadGoldExecutionReality() {
+  const reality = await read('public-gold-execution-reality', 7000);
+  const gateHost = byId('v133-gates');
+  if (!reality?.ok) {
+    set('v133-reality-state', 'EXECUTION REALITY · UNAVAILABLE');
+    set('v133-reality-copy', 'Readiness evidence is unavailable. Live execution remains locked.');
+    for (const id of ['v133-sample','v133-blockers','v133-infra','v133-low','v133-mod','v133-high']) set(id, null);
+    set('v133-capital', '0R');
+    set('v133-orders', 'OFF');
+    if (gateHost) gateHost.replaceChildren();
+    const fill = byId('v133-readiness-fill');
+    if (fill) fill.style.width = '0%';
+    set('v133-detail', 'Fail closed: no broker route, no order submission, no real capital.');
+    return;
+  }
+
+  const research = reality?.research ?? {};
+  const gate = reality?.execution_gate ?? {};
+  const governance = reality?.governance ?? {};
+  const stats = research?.public_statistics;
+  const sample = Number(research?.resolved_sample || 0);
+  const publicFloor = Number(research?.minimum_public_sample || 10);
+  const matureFloor = Number(research?.mature_research_sample || 30);
+  const infraPassed = Number(gate?.infrastructure_passed || 0);
+  const infraTotal = Number(gate?.infrastructure_total || 6);
+  const blockerCount = Number(gate?.blocker_count || 0);
+
+  set('v133-reality-state', `EXECUTION REALITY · ${first(reality?.state, 'LOCKED')}`);
+  set('v133-reality-copy',
+    sample < publicFloor
+      ? `Shadow evidence is still small (n=${sample}). Performance remains withheld while execution gates stay locked.`
+      : sample < matureFloor
+        ? `Research evidence is visible but not mature (n=${sample}/${matureFloor}). Broker and risk gates remain independent blockers.`
+        : 'Research maturity reached its minimum floor. Live execution still requires every infrastructure gate plus human release review.'
+  );
+  set('v133-sample', `${sample} / ${matureFloor}`);
+  set('v133-blockers', blockerCount);
+  set('v133-infra', `${infraPassed} / ${infraTotal}`);
+  set('v133-capital', first(governance?.real_capital_permission, '0R'));
+  set('v133-orders', governance?.order_submission_enabled ? 'CHECK REQUIRED' : 'OFF');
+
+  if (research?.statistics_withheld || !stats) {
+    set('v133-low', 'WITHHELD · n<10');
+    set('v133-mod', 'WITHHELD · n<10');
+    set('v133-high', 'WITHHELD · n<10');
+  } else {
+    set('v133-low', `${stats.average_low_friction_stress_r ?? 'n/a'}R`);
+    set('v133-mod', `${stats.average_moderate_friction_stress_r ?? 'n/a'}R`);
+    set('v133-high', `${stats.average_high_friction_stress_r ?? 'n/a'}R`);
+  }
+
+  if (gateHost) {
+    gateHost.replaceChildren();
+    for (const item of Array.isArray(gate?.infrastructure) ? gate.infrastructure : []) {
+      const card = document.createElement('article');
+      card.className = `execution-gate ${item?.passed ? 'execution-gate-pass' : 'execution-gate-block'}`;
+      const dot = document.createElement('span');
+      dot.className = 'execution-gate-dot';
+      const copy = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = String(item?.name || 'GATE');
+      const state = document.createElement('small');
+      state.textContent = item?.passed ? 'VERIFIED' : 'BLOCKED';
+      copy.append(label, state);
+      card.append(dot, copy);
+      gateHost.appendChild(card);
+    }
+  }
+
+  const fill = byId('v133-readiness-fill');
+  if (fill) {
+    const samplePct = Math.min(100, Math.max(0, (sample / matureFloor) * 100));
+    const infraPct = infraTotal > 0 ? (infraPassed / infraTotal) * 100 : 0;
+    const researchEdge = stats && Number(stats.average_high_friction_stress_r) > 0 ? 100 : 0;
+    const readiness = Math.min(100, Math.max(0, samplePct * .35 + infraPct * .50 + researchEdge * .15));
+    fill.style.width = `${readiness.toFixed(1)}%`;
+  }
+
+  set('v133-detail',
+    `${first(research?.execution_evidence_state, 'NOT_EXECUTION_GRADE')} · friction stress is simulated, not broker-measured · broker ${first(gate?.broker_adapter_state, governance?.broker_adapter_state, 'NOT_CONNECTED')} · live orders ${governance?.order_submission_enabled ? 'ON' : 'OFF'} · automatic real capital ${governance?.automatic_real_capital ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldAutonomousShadowTrader() {
   const shadow = await read('public-gold-autonomous-shadow-trader', 7000);
   if (!shadow?.ok) {
@@ -980,6 +1063,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldExecutionReality(),
       loadGoldAutonomousShadowTrader(),
       loadGoldReviewFreshness(),
       loadGoldReviewPriority(),
