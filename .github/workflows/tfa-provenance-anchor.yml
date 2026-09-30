@@ -1,6 +1,6 @@
 name: TFA Provenance External Anchor
 # Redundant scheduled heartbeat keeps V112 external provenance liveness fresh.
-# Three staggered runs per hour reduce scheduler-jitter risk while preserving hourly immutable artifacts.
+# Three post-checkpoint runs per hour reduce scheduler-jitter risk while preserving immutable heartbeat artifacts.
 
 on:
   push:
@@ -9,9 +9,9 @@ on:
     paths:
       - .github/workflows/tfa-provenance-anchor.yml
   schedule:
-    - cron: '7 * * * *'
-    - cron: '27 * * * *'
-    - cron: '47 * * * *'
+    - cron: '15 * * * *'
+    - cron: '35 * * * *'
+    - cron: '55 * * * *'
   workflow_dispatch:
 
 permissions:
