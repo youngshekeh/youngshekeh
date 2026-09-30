@@ -529,6 +529,75 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 }
 
 
+
+async function loadGoldAdaptivePaperRisk() {
+  const adaptive = await read('public-gold-adaptive-paper-risk', 9000);
+
+  if (!adaptive?.ok) {
+    set('v137-risk-state', 'ADAPTIVE RISK · FAIL CLOSED');
+    set('v137-risk-copy', 'The adaptive paper-risk governor is unavailable. No challenger allocation is promoted.');
+    for (const id of ['v137-next-risk','v137-sample','v137-dd','v137-loss','v137-challenger','v137-gross-r','v137-decisions','v137-open']) set(id, null);
+    set('v137-risk-orb', '0R');
+    set('v137-live', 'OFF');
+    set('v137-capital', '0R');
+    const fill = byId('v137-risk-fill');
+    if (fill) fill.style.width = '0%';
+    set('v137-detail', 'Fail closed. Fixed control remains separate; no live order or real-capital authority exists here.');
+    return;
+  }
+
+  const state = first(adaptive?.state, 'FAIL_CLOSED');
+  const nextRisk = Number(adaptive?.next_paper_risk_r);
+  const ch = adaptive?.challenger ?? {};
+  const gov = adaptive?.governance ?? {};
+  const open = ch?.current_open ?? null;
+  const gross = Number(ch?.cumulative_gross_r);
+  const dd = Number(ch?.max_drawdown_r);
+  const loss = Number(ch?.loss_streak ?? 0);
+
+  set('v137-risk-state', `ADAPTIVE RISK · ${state}`);
+  set('v137-risk-copy',
+    state === 'DRAWDOWN_DEFENSE'
+      ? 'Paper risk is throttled because resolved evidence shows drawdown or a defensive loss streak. The throttle affects only future V137 challenger decisions.'
+      : state === 'DEEP_DRAWDOWN_DEFENSE'
+        ? 'Paper risk is at the defensive floor. The challenger remains active for learning while real capital stays locked.'
+        : 'The challenger is sizing future paper opportunities from resolved evidence and sample maturity.'
+  );
+  set('v137-next-risk', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : null);
+  set('v137-risk-orb', Number.isFinite(nextRisk) ? `${nextRisk.toFixed(2)}R` : '0R');
+  set('v137-sample', ch?.resolved_events ?? 0);
+  set('v137-dd', Number.isFinite(dd) ? `${dd.toFixed(2)}R` : null);
+  set('v137-loss', loss);
+  set('v137-gross-r', Number.isFinite(gross) ? `${gross >= 0 ? '+' : ''}${gross.toFixed(2)}R · GROSS` : 'WITHHELD');
+  set('v137-decisions', ch?.total_decisions ?? 0);
+  set('v137-open', ch?.open_allocations ?? 0);
+  set('v137-live', gov?.order_submission_enabled ? 'CHECK REQUIRED' : 'OFF');
+  set('v137-capital', first(gov?.real_capital_permission, '0R'));
+
+  if (open) {
+    set('v137-challenger', `${open.side ?? 'PAPER'} · ${Number(open.allocated_paper_r ?? 0).toFixed(2)}R`);
+    set('v137-challenger-copy',
+      `Prospective challenger decision #${open.id ?? '—'} · entry ${open.source_price ?? 'withheld'} · stop ${open.stop_price ?? 'withheld'} · target ${open.target_price ?? 'withheld'}. Research only.`
+    );
+  } else {
+    set('v137-challenger', 'WAITING FOR NEW SIGNAL');
+    set('v137-challenger-copy', 'Only new post-launch signals can enter the adaptive challenger. Existing V133 paper positions are not resized.');
+  }
+
+  const fill = byId('v137-risk-fill');
+  if (fill) {
+    const pct = Number.isFinite(nextRisk) ? Math.max(0, Math.min(100, nextRisk * 100)) : 0;
+    fill.style.width = `${pct}%`;
+  }
+
+  set('v137-risk-memory-copy',
+    `Resolved evidence ${ch?.resolved_events ?? 0} · loss streak ${loss} · max drawdown ${Number.isFinite(dd) ? dd.toFixed(2) + 'R' : 'n/a'}. Gross R is not money P&L; measured execution costs are still required for net R.`
+  );
+  set('v137-detail',
+    `Adaptive challenger: next risk ${Number.isFinite(nextRisk) ? nextRisk.toFixed(2) + 'R' : 'withheld'} · decisions ${ch?.total_decisions ?? 0} · open ${ch?.open_allocations ?? 0} · retroactive allocation OFF · existing-position resize OFF · live execution OFF · real capital ${first(gov?.real_capital_permission, '0R')}.`
+  );
+}
+
 async function loadGoldExecutionFirewall() {
   const firewall = await read('public-gold-execution-firewall', 9000);
   const host = byId('v136-checks-grid');
@@ -1313,6 +1382,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldAdaptivePaperRisk(),
       loadGoldExecutionFirewall(),
       loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
