@@ -6,6 +6,15 @@ const FUNCTIONS = `${SUPABASE}/functions/v1`;
 
 type AnyJson = Record<string, any>;
 
+let latestGoldDesk: AnyJson = {};
+let brokerTranslationAt: number | null = null;
+let brokerTranslationFuturesPrice: number | null = null;
+let brokerTranslationExpired = false;
+let goldLastRefreshAt: number | null = null;
+let goldNextRefreshAt: number | null = null;
+let goldRefreshBusy = false;
+let goldPulseStarted = false;
+
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
     const response = await fetch(`${FUNCTIONS}/${path}`, {
@@ -52,16 +61,67 @@ function first<T>(...values: T[]) {
   return values.find((value) => value !== null && value !== undefined && value !== '');
 }
 
+function invalidateBrokerTranslation(message: string) {
+  brokerTranslationExpired = true;
+  for (const id of ['v118-basis','v118-spread','v118-long-zone','v118-short-trigger','v118-long-map','v118-short-map']) set(id, null);
+  set('v121-broker-age', 'EXPIRED');
+  set('v118-bridge-message', message);
+}
+
+function renderGoldPulseClock() {
+  const now = Date.now();
+
+  if (goldLastRefreshAt) {
+    const age = Math.max(0, Math.floor((now - goldLastRefreshAt) / 1000));
+    set('v121-last-refresh', `${age}s ago`);
+  }
+
+  if (document.hidden) {
+    set('v121-pulse-mode', 'PAUSED · TAB HIDDEN');
+    set('v121-next-refresh', 'ON RETURN');
+  } else {
+    set('v121-pulse-mode', 'ACTIVE · 60s');
+    if (goldNextRefreshAt) {
+      const remaining = Math.max(0, Math.ceil((goldNextRefreshAt - now) / 1000));
+      set('v121-next-refresh', `${remaining}s`);
+    }
+  }
+
+  if (brokerTranslationAt) {
+    const brokerAge = Math.max(0, Math.floor((now - brokerTranslationAt) / 1000));
+    if (brokerAge >= 60 && !brokerTranslationExpired) {
+      invalidateBrokerTranslation('Broker quote expired after 60 seconds. Enter the current XAUUSD bid/ask again before using translated levels.');
+    } else if (!brokerTranslationExpired) {
+      set('v121-broker-age', `${brokerAge}s · VALID`);
+    }
+  } else if (!brokerTranslationExpired) {
+    set('v121-broker-age', 'NOT SET');
+  }
+}
+
 function setupBrokerGoldBridge(desk: AnyJson) {
+  const nextFutures = Number(desk?.market?.price);
+  if (
+    brokerTranslationAt &&
+    !brokerTranslationExpired &&
+    brokerTranslationFuturesPrice != null &&
+    Number.isFinite(nextFutures) &&
+    Math.abs(nextFutures - brokerTranslationFuturesPrice) >= 0.01
+  ) {
+    invalidateBrokerTranslation('The Gold engine refreshed to a new futures reference. Re-enter your current broker bid/ask to rebuild the XAUUSD translation.');
+  }
+
+  latestGoldDesk = desk;
   const button = byId('v118-translate') as HTMLButtonElement | null;
-  if (!button) return;
+  if (!button || button.dataset.v121Bound === 'true') return;
+  button.dataset.v121Bound = 'true';
 
   const translate = () => {
     const bidInput = byId('v118-broker-bid') as HTMLInputElement | null;
     const askInput = byId('v118-broker-ask') as HTMLInputElement | null;
     const bid = Number(bidInput?.value);
     const ask = Number(askInput?.value);
-    const futures = Number(desk?.market?.price);
+    const futures = Number(latestGoldDesk?.market?.price);
 
     if (!Number.isFinite(bid) || !Number.isFinite(ask) || bid <= 0 || ask <= 0 || ask < bid) {
       set('v118-bridge-message', 'Enter a valid broker bid and ask. Ask must be greater than or equal to bid.');
@@ -81,8 +141,8 @@ function setupBrokerGoldBridge(desk: AnyJson) {
     };
     const f2 = (value: number | null) => value == null ? 'n/a' : value.toFixed(2);
 
-    const long = desk?.scenarios?.long_continuation ?? {};
-    const short = desk?.scenarios?.failed_break_short ?? {};
+    const long = latestGoldDesk?.scenarios?.long_continuation ?? {};
+    const short = latestGoldDesk?.scenarios?.failed_break_short ?? {};
     const longLow = spot(long?.retest_zone?.low);
     const longHigh = spot(long?.retest_zone?.high);
     const shortTrigger = spot(short?.failure_threshold);
@@ -103,9 +163,14 @@ function setupBrokerGoldBridge(desk: AnyJson) {
     set('v118-short-map-copy',
       `Translated from COMEX using the same contemporaneous basis. Structural state: ${first(short?.state, 'UNKNOWN')}.`
     );
+
+    brokerTranslationAt = Date.now();
+    brokerTranslationFuturesPrice = futures;
+    brokerTranslationExpired = false;
     set('v118-bridge-message',
-      `Broker mid ${brokerMid.toFixed(2)} · basis ${basis.toFixed(2)} · translated at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}. Re-enter your quote before acting if the broker price changes.`
+      `Broker mid ${brokerMid.toFixed(2)} · basis ${basis.toFixed(2)} · translation valid for 60 seconds unless the engine reference changes first.`
     );
+    renderGoldPulseClock();
   };
 
   button.addEventListener('click', translate);
@@ -392,6 +457,49 @@ async function loadGoldLearning() {
   set('v119-performance', first(learning?.methodology?.performance_claims, 'WITHHELD'));
 }
 
+async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
+  if (goldRefreshBusy) return;
+  goldRefreshBusy = true;
+  set('v121-pulse-state', 'REFRESHING');
+  set('v121-pulse-copy', reason === 'manual'
+    ? 'Manual Gold refresh in progress.'
+    : 'Refreshing the Gold desk and prospective learning heartbeat.');
+
+  try {
+    await Promise.all([loadGold(), loadGoldLearning()]);
+    goldLastRefreshAt = Date.now();
+    goldNextRefreshAt = goldLastRefreshAt + 60_000;
+    set('v121-pulse-state', 'LIVE · 60s');
+    set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Broker translations expire after 60 seconds or when the futures reference changes.');
+  } finally {
+    goldRefreshBusy = false;
+    renderGoldPulseClock();
+  }
+}
+
+function startGoldPulse() {
+  if (goldPulseStarted) return;
+  goldPulseStarted = true;
+
+  const button = byId('v121-refresh-now') as HTMLButtonElement | null;
+  button?.addEventListener('click', () => void refreshGoldSurface('manual'));
+
+  document.addEventListener('visibilitychange', () => {
+    renderGoldPulseClock();
+    if (!document.hidden && (!goldLastRefreshAt || Date.now() - goldLastRefreshAt >= 60_000)) {
+      void refreshGoldSurface('visibility');
+    }
+  });
+
+  window.setInterval(() => {
+    renderGoldPulseClock();
+  }, 1_000);
+
+  window.setInterval(() => {
+    if (!document.hidden) void refreshGoldSurface('timer');
+  }, 60_000);
+}
+
 async function loadVisualLab() {
   const [core, integrity, mission] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
@@ -432,7 +540,7 @@ const surface = document.body.dataset.surface;
 if (surface === 'intelligence') void loadIntelligence();
 if (surface === 'live-markets') void loadLiveMarkets();
 if (surface === 'gold-live') {
-  void loadGold();
-  void loadGoldLearning();
+  startGoldPulse();
+  void refreshGoldSurface('initial');
 }
 if (surface === 'visual-lab') void loadVisualLab();
