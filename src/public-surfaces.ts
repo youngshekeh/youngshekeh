@@ -434,6 +434,43 @@ async function loadGold() {
   }
 }
 
+async function loadGoldOutcomeLearning() {
+  const outcome = await read('public-gold-outcome-learning', 7000);
+  if (!outcome?.ok) {
+    set('v122-outcome-state', 'UNAVAILABLE');
+    set('v122-outcome-copy', 'Forward outcome observations are unavailable. No performance result is inferred.');
+    for (const id of ['v122-resolved','v122-15m','v122-eligible','v122-edge']) set(id, null);
+    set('v122-latest', 'Outcome evidence withheld.');
+    return;
+  }
+
+  const h15 = Array.isArray(outcome?.horizons)
+    ? outcome.horizons.find((x: AnyJson) => Number(x?.horizon_minutes) === 15)
+    : null;
+  const latest = outcome?.latest ?? {};
+  const calibration = outcome?.calibration ?? {};
+
+  set('v122-outcome-state', h15?.calibration_state ? `OUTCOME LAB · ${h15.calibration_state}` : 'OUTCOME LAB');
+  set('v122-outcome-copy',
+    'Prospective Gold states are resolved by market timestamp at 15/30/60/120-minute horizons. Intrabar ordering and trade P&L are not inferred.'
+  );
+  set('v122-resolved', outcome?.resolved_outcome_count ?? 0);
+  set('v122-15m', h15?.samples ?? 0);
+  set('v122-eligible', outcome?.trade_eligible_source_count ?? 0);
+  set('v122-edge', first(calibration?.edge_claims, 'WITHHELD'));
+
+  const sourcePrice = latest?.source_price;
+  const resolvedPrice = latest?.resolved_price;
+  const delta = latest?.price_delta;
+  const up = latest?.up_excursion;
+  const down = latest?.down_excursion;
+  set('v122-latest',
+    latest?.horizon_minutes
+      ? `${latest.horizon_minutes}m · ${first(latest?.source_desk_state, 'UNKNOWN')} · ${sourcePrice ?? 'n/a'} → ${resolvedPrice ?? 'n/a'} · Δ ${delta ?? 'n/a'} · up excursion ${up ?? 'n/a'} · down excursion ${down ?? 'n/a'} · sequence ${first(latest?.sequence_claim, 'NOT_INFERRED')}.`
+      : 'No resolved forward window yet.'
+  );
+}
+
 async function loadGoldLearning() {
   const learning = await read('public-gold-learning-state', 7000);
   if (!learning?.ok) {
@@ -466,7 +503,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     : 'Refreshing the Gold desk and prospective learning heartbeat.');
 
   try {
-    await Promise.all([loadGold(), loadGoldLearning()]);
+    await Promise.all([loadGold(), loadGoldLearning(), loadGoldOutcomeLearning()]);
     goldLastRefreshAt = Date.now();
     goldNextRefreshAt = goldLastRefreshAt + 60_000;
     set('v121-pulse-state', 'LIVE · 60s');
