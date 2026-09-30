@@ -33,6 +33,48 @@
       <article><span>CONFIDENCE</span><strong id="gold-confidence">WITHHELD</strong></article>
     </section>
 
+    <section class="section-block">
+      <div class="section-heading">
+        <div><span class="kicker">V117 · GOLD LIVE EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
+        <p>The desk converts live structure into conditional Long/Short maps. A delayed engine quote is never treated as an order price. Confirm every real entry on your broker feed.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>DESK STATE</span><strong id="v117-desk-state">CHECKING</strong></article>
+        <article><span>FEED</span><strong id="v117-feed-state">CHECKING</strong></article>
+        <article><span>BROKER CHECK</span><strong id="v117-broker-feed">REQUIRED</strong></article>
+        <article><span>SESSION</span><strong id="v117-session">CHECKING</strong></article>
+      </section>
+      <section class="command-grid two">
+        <article class="command-card">
+          <span class="kicker">LONG CONTINUATION · CONDITIONAL</span>
+          <h3 id="v117-long-state">CHECKING</h3>
+          <p id="v117-long-copy">Waiting for the live structural map.</p>
+          <div class="signal-stack">
+            <span>RETEST ZONE <strong id="v117-long-zone">WITHHELD</strong></span>
+            <span>INVALIDATION <strong id="v117-long-stop">WITHHELD</strong></span>
+            <span>PRIMARY / EXTENSION <strong id="v117-long-targets">WITHHELD</strong></span>
+            <span>RR @ PRIOR HIGH <strong id="v117-long-rr">WITHHELD</strong></span>
+          </div>
+        </article>
+        <article class="command-card">
+          <span class="kicker">FAILED-BREAK SHORT · CONDITIONAL</span>
+          <h3 id="v117-short-state">CHECKING</h3>
+          <p id="v117-short-copy">Waiting for failed-break confirmation.</p>
+          <div class="signal-stack">
+            <span>FAILURE THRESHOLD <strong id="v117-short-trigger">WITHHELD</strong></span>
+            <span>INVALIDATION <strong id="v117-short-stop">WITHHELD</strong></span>
+            <span>PRIMARY / EXTENSION <strong id="v117-short-targets">WITHHELD</strong></span>
+            <span>RR @ PRIOR HIGH <strong id="v117-short-rr">WITHHELD</strong></span>
+          </div>
+        </article>
+      </section>
+      <section class="command-card">
+        <span class="kicker">LIVE DECISION COMPRESSION</span>
+        <h3 id="v117-decision">CHECKING</h3>
+        <p id="v117-decision-copy">What changed, what matters now, and what action is permitted.</p>
+      </section>
+    </section>
+
     <section class="command-grid three">
       <article class="command-card"><span class="kicker">STRUCTURAL CONTEXT</span><h3 id="gold-structure">CHECKING</h3><p id="gold-structure-copy">Reading structural core.</p></article>
       <article class="command-card"><span class="kicker">MODEL EVIDENCE</span><h3 id="gold-model">CHECKING</h3><p id="gold-model-copy">Reading immutable performance evidence.</p></article>

@@ -142,10 +142,11 @@ async function loadLiveMarkets() {
 }
 
 async function loadGold() {
-  const [gold, core, evidence, day, v79, v81, v82, v83] = await Promise.all([
-    read('public-gold-live-api', 4500),
-    read('public-v63-structural-core-fabric', 5000),
-    read('public-v65-model-evidence-fabric', 5000),
+  const [gold, core, evidence, desk, day, v79, v81, v82, v83] = await Promise.all([
+    read('public-gold-live-api', 6500),
+    read('public-v63-structural-core-fabric', 6000),
+    read('public-v65-model-evidence-fabric', 6000),
+    read('public-gold-execution-desk', 10000),
     readLocal('/api/gold-day-state', 7000),
     readLocal('/api/gold-liquidity-state-machine', 9000),
     readLocal('/api/gold-mtf-zones', 9000),
@@ -154,21 +155,29 @@ async function loadGold() {
   ]);
 
   const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
+  const canonicalPrice = first(
+    gold?.feed?.gold_futures?.price,
+    gold?.feed?.gold?.price,
+    gold?.price,
+    gold?.quote?.price,
+    gold?.last,
+    null
+  );
   const canonicalUnavailable =
     gold?.ok === false ||
     /UNKNOWN|UNAVAILABLE|RESTRICTED|ERROR|FAIL/i.test(String(canonicalMarket)) ||
-    !first(gold?.price, gold?.quote?.price, gold?.last, null);
+    canonicalPrice == null;
 
   const useShadow = canonicalUnavailable && day?.ok === true;
-  const action = useShadow ? 'WAIT' : first(gold?.action, gold?.decision?.action, core?.gold?.action, 'WAIT');
-  const capital = useShadow ? '0R' : first(gold?.capital_permission, gold?.decision?.capital_permission, core?.gold?.capital_permission, '0R');
+  const action = useShadow ? 'WAIT' : first(gold?.engine?.action, gold?.action, gold?.decision?.action, core?.gold?.action, 'WAIT');
+  const capital = useShadow ? '0R' : first(gold?.engine?.capital_permission, gold?.capital_permission, gold?.decision?.capital_permission, core?.gold?.capital_permission, '0R');
   const market = useShadow ? first(day?.market_session, 'SHADOW_MARKET') : canonicalMarket;
-  const price = useShadow ? day?.current?.price : (market === 'UNAVAILABLE' ? null : first(gold?.price, gold?.quote?.price, gold?.last, null));
+  const price = useShadow ? day?.current?.price : (market === 'UNAVAILABLE' ? null : canonicalPrice);
   const evidenceState = useShadow
     ? 'SHADOW_RESEARCH_ONLY'
     : first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN');
 
-  set('gold-live-state', useShadow ? `SHADOW · ${first(day?.day_state?.day_state, 'DAY_STATE_UNAVAILABLE')}` : first(gold?.engine, gold?.state, market));
+  set('gold-live-state', useShadow ? `SHADOW · ${first(day?.day_state?.day_state, 'DAY_STATE_UNAVAILABLE')}` : first(gold?.engine?.state, gold?.state, market));
   set('gold-live-copy', useShadow
     ? 'Canonical Supabase market services are unavailable. V75 is showing delayed research-only structure; it cannot grant execution permission.'
     : market === 'MARKET_CLOSED'
@@ -181,7 +190,7 @@ async function loadGold() {
   set('gold-market', market);
   set('gold-price', price);
   set('gold-evidence', evidenceState);
-  set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.confidence, evidence?.gold?.confidence, null)));
+  set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.engine?.confidence_pct, gold?.confidence, evidence?.gold?.confidence, null)));
 
   if (useShadow) {
     set('gold-structure', first(day?.day_state?.day_state, 'SHADOW_DAY_STATE'));
@@ -197,6 +206,38 @@ async function loadGold() {
       : 'Observed model evidence is available subject to its sample and calibration gates.');
   }
   set('gold-firewall', `${action} · ${capital}`);
+
+  if (desk?.ok) {
+    const dm = desk?.market ?? {};
+    const ds = desk?.session ?? {};
+    const dl = desk?.scenarios?.long_continuation ?? {};
+    const dshort = desk?.scenarios?.failed_break_short ?? {};
+    const dc = desk?.current_read ?? {};
+    set('v117-desk-state', first(desk?.desk_state, 'WAIT'));
+    set('v117-feed-state', dm?.price == null ? first(dm?.market_status, 'UNAVAILABLE') : `${first(dm?.market_status, 'UNKNOWN')} · ${dm.price}`);
+    set('v117-broker-feed', dm?.broker_execution_feed_required ? 'REQUIRED' : 'LIVE QUOTE OK');
+    set('v117-session', first(ds?.opening_state, 'UNKNOWN'));
+
+    set('v117-long-state', first(dl?.state, 'NOT_CONFIRMED'));
+    set('v117-long-copy', first(dl?.trigger, 'Long continuation condition unavailable.'));
+    set('v117-long-zone', dl?.retest_zone ? `${dl.retest_zone.low} → ${dl.retest_zone.high}` : null);
+    set('v117-long-stop', dl?.structural_invalidation);
+    set('v117-long-targets', dl?.primary_target != null || dl?.extension_target != null ? `${dl?.primary_target ?? 'n/a'} / ${dl?.extension_target ?? 'n/a'}` : null);
+    set('v117-long-rr', dl?.rr_at_prior_high ? `${dl.rr_at_prior_high.primary ?? 'n/a'}R / ${dl.rr_at_prior_high.extension ?? 'n/a'}R` : null);
+
+    set('v117-short-state', first(dshort?.state, 'NOT_CONFIRMED'));
+    set('v117-short-copy', first(dshort?.trigger, 'Failed-break short condition unavailable.'));
+    set('v117-short-trigger', dshort?.failure_threshold);
+    set('v117-short-stop', dshort?.structural_invalidation);
+    set('v117-short-targets', dshort?.primary_target != null || dshort?.extension_target != null ? `${dshort?.primary_target ?? 'n/a'} / ${dshort?.extension_target ?? 'n/a'}` : null);
+    set('v117-short-rr', dshort?.rr_at_prior_high ? `${dshort.rr_at_prior_high.primary ?? 'n/a'}R / ${dshort.rr_at_prior_high.extension ?? 'n/a'}R` : null);
+
+    set('v117-decision', `${first(dc?.action_permitted, 'WAIT')} · ${first(dc?.capital_permission, '0R')}`);
+    set('v117-decision-copy', first(dc?.note, desk?.execution?.broker_feed_rule, 'No machine-authorized trade is active.'));
+  } else {
+    for (const id of ['v117-desk-state','v117-feed-state','v117-broker-feed','v117-session','v117-long-state','v117-long-zone','v117-long-stop','v117-long-targets','v117-long-rr','v117-short-state','v117-short-trigger','v117-short-stop','v117-short-targets','v117-short-rr','v117-decision']) set(id, null);
+    set('v117-decision-copy', 'The V117 live desk is unavailable. The existing Gold firewall remains authoritative.');
+  }
 
   if (day?.ok) {
     const state = day?.day_state ?? {};
