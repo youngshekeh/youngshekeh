@@ -49,6 +49,14 @@
           document.getElementById('brain').className =
             `value ${brainOk ? 'good' : 'wait'}`;
 
+          const workloadIdentity =
+            qaResult.response.headers.get('x-tfa-auth') || 'UNVERIFIED';
+          const identityOk = workloadIdentity === 'VERCEL_OIDC';
+          document.getElementById('identity').textContent =
+            identityOk ? 'VERCEL OIDC · VERIFIED' : workloadIdentity;
+          document.getElementById('identity').className =
+            `value ${identityOk ? 'good' : 'wait'}`;
+
           const billingOk =
             billingResult.response.ok &&
             billingResult.data?.ready_for_checkout === true &&
@@ -64,11 +72,12 @@
             'UNVERIFIED_EXTERNALLY';
           const failed = Number(qaResult.data?.summary?.failed ?? 0);
           document.getElementById('detail').textContent =
-            `Private Brain ${brainOk ? 'healthy' : 'check'} · QA failures ${failed} · billing ${billingResult.data?.state || 'CHECK'} · provider rate limit ${provider} · capital authority remains WAIT / 0R.`;
+            `Private Brain ${brainOk ? 'healthy' : 'check'} · workload identity ${workloadIdentity} · QA failures ${failed} · billing ${billingResult.data?.state || 'CHECK'} · provider rate limit ${provider} · capital authority remains WAIT / 0R.`;
         } catch {
           document.getElementById('auth').textContent = 'CHECK';
           document.getElementById('ready').textContent = 'CHECK';
           document.getElementById('brain').textContent = 'CHECK';
+          document.getElementById('identity').textContent = 'CHECK';
           document.getElementById('billing').textContent = 'CHECK';
           document.getElementById('detail').textContent =
             'Runtime telemetry is temporarily unavailable.';
