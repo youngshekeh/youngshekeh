@@ -369,6 +369,29 @@ async function loadGold() {
   }
 }
 
+async function loadGoldLearning() {
+  const learning = await read('public-gold-learning-state', 7000);
+  if (!learning?.ok) {
+    set('v119-learning-state', 'UNAVAILABLE');
+    set('v119-learning-copy', 'Prospective ledger summary is unavailable. No learning evidence is inferred.');
+    for (const id of ['v119-samples','v119-capture-health','v119-latest-state','v119-performance']) set(id, null);
+    return;
+  }
+
+  const health = first(learning?.capture_health?.state, 'UNKNOWN');
+  const samples = learning?.prospective_sample_count ?? null;
+  const latest = learning?.latest ?? {};
+  const age = learning?.capture_health?.last_capture_age_minutes;
+  set('v119-learning-state', health === 'HEALTHY' ? 'LEARNING · HEALTHY' : `LEARNING · ${health}`);
+  set('v119-learning-copy',
+    `Append-only pre-outcome snapshots · latest capture ${age == null ? 'age withheld' : `${age} min ago`} · payloads SHA-256 fingerprinted.`
+  );
+  set('v119-samples', samples);
+  set('v119-capture-health', health);
+  set('v119-latest-state', first(latest?.desk_state, 'NO_SAMPLE'));
+  set('v119-performance', first(learning?.methodology?.performance_claims, 'WITHHELD'));
+}
+
 async function loadVisualLab() {
   const [core, integrity, mission] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
@@ -408,5 +431,8 @@ async function loadVisualLab() {
 const surface = document.body.dataset.surface;
 if (surface === 'intelligence') void loadIntelligence();
 if (surface === 'live-markets') void loadLiveMarkets();
-if (surface === 'gold-live') void loadGold();
+if (surface === 'gold-live') {
+  void loadGold();
+  void loadGoldLearning();
+}
 if (surface === 'visual-lab') void loadVisualLab();
