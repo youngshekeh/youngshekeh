@@ -63,7 +63,7 @@ function first<T>(...values: T[]) {
 
 function invalidateBrokerTranslation(message: string) {
   brokerTranslationExpired = true;
-  for (const id of ['v118-basis','v118-spread','v118-long-zone','v118-short-trigger','v118-long-map','v118-short-map']) set(id, null);
+  for (const id of ['v118-basis','v118-spread','v118-long-zone','v118-short-trigger','v118-long-map','v118-short-map','v124-broker-long-distance','v124-broker-short-distance']) set(id, null);
   set('v121-broker-age', 'EXPIRED');
   set('v118-bridge-message', message);
 }
@@ -163,6 +163,29 @@ function setupBrokerGoldBridge(desk: AnyJson) {
     set('v118-short-map-copy',
       `Translated from COMEX using the same contemporaneous basis. Structural state: ${first(short?.state, 'UNKNOWN')}.`
     );
+
+    if (longLow != null && longHigh != null) {
+      const lo = Math.min(longLow, longHigh);
+      const hi = Math.max(longLow, longHigh);
+      const longDistance = brokerMid > hi
+        ? `${(brokerMid - hi).toFixed(2)} ABOVE`
+        : brokerMid < lo
+          ? `${(lo - brokerMid).toFixed(2)} BELOW`
+          : 'INSIDE ZONE';
+      set('v124-broker-long-distance', longDistance);
+    } else {
+      set('v124-broker-long-distance', null);
+    }
+
+    if (shortTrigger != null) {
+      set('v124-broker-short-distance',
+        brokerMid > shortTrigger
+          ? `${(brokerMid - shortTrigger).toFixed(2)} ABOVE`
+          : `${(shortTrigger - brokerMid).toFixed(2)} THROUGH`
+      );
+    } else {
+      set('v124-broker-short-distance', null);
+    }
 
     brokerTranslationAt = Date.now();
     brokerTranslationFuturesPrice = futures;
@@ -434,6 +457,48 @@ async function loadGold() {
   }
 }
 
+async function loadGoldTriggerWatch() {
+  const trigger = await read('public-gold-trigger-watch', 7000);
+  if (!trigger?.ok) {
+    set('v124-trigger-state', 'UNAVAILABLE');
+    set('v124-trigger-copy', 'Trigger Watch is unavailable. No level interaction is inferred.');
+    for (const id of ['v124-price','v124-long-distance','v124-short-distance','v124-capital','v124-long-review','v124-short-review']) set(id, null);
+    set('v124-detail', 'The Gold execution firewall remains authoritative.');
+    return;
+  }
+
+  const market = trigger?.market ?? {};
+  const long = trigger?.long_watch ?? {};
+  const short = trigger?.short_watch ?? {};
+  const execution = trigger?.execution ?? {};
+
+  set('v124-trigger-state', `TRIGGER WATCH · ${first(trigger?.state, 'WAIT_FOR_LEVEL')}`);
+  set('v124-trigger-copy',
+    market?.broker_execution_feed_required
+      ? 'Distances below are COMEX structural distances from a delayed feed. Enter a fresh broker quote for broker-basis distances.'
+      : 'Structural trigger distances are active. Broker confirmation is still required before any manual action.'
+  );
+  set('v124-price', market?.price);
+  set('v124-long-distance',
+    long?.distance_to_zone_points == null
+      ? null
+      : long?.location === 'INSIDE_RETEST_ZONE'
+        ? 'INSIDE ZONE'
+        : `${long.distance_to_zone_points} · ${first(long?.location, 'UNKNOWN')}`
+  );
+  set('v124-short-distance',
+    short?.distance_to_threshold_points == null
+      ? null
+      : `${short.distance_to_threshold_points} · ${first(short?.location, 'UNKNOWN')}`
+  );
+  set('v124-capital', first(execution?.system_capital_permission, trigger?.governance?.capital_permission, '0R'));
+  set('v124-long-review', long?.human_review_condition_reached ? 'REACHED · REVIEW ONLY' : 'NOT REACHED');
+  set('v124-short-review', short?.human_review_condition_reached ? 'REACHED · REVIEW ONLY' : 'NOT REACHED');
+  set('v124-detail',
+    `Long: ${first(long?.location, 'UNKNOWN')} · Short: ${first(short?.location, 'UNKNOWN')} · acceptance is not inferred · machine execution ${execution?.machine_executable ? 'ENABLED' : 'DISABLED'}.`
+  );
+}
+
 async function loadGoldTransitions() {
   const transition = await read('public-gold-transition-state', 7000);
   if (!transition?.ok) {
@@ -552,6 +617,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldTriggerWatch(),
       loadGoldTransitions(),
       loadGoldLearning(),
       loadGoldOutcomeLearning(),
