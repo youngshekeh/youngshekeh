@@ -30,7 +30,8 @@ async function probe(check,attempt){
     return {
       name:check.name,
       attempt,
-      ok:response.ok&&check.validate(body),
+      transport_ok:response.ok,
+      semantic_ok:response.ok&&check.validate(body),
       status:response.status,
       latency_ms:Date.now()-started,
       state:body?.state??body?.version??null
@@ -39,7 +40,8 @@ async function probe(check,attempt){
     return {
       name:check.name,
       attempt,
-      ok:false,
+      transport_ok:false,
+      semantic_ok:false,
       status:0,
       latency_ms:Date.now()-started,
       error:String(error).slice(0,120)
@@ -60,24 +62,31 @@ export default async function handler(req,res){
     }
   }
 
-  const passed=results.filter(x=>x.ok).length;
+  const transportPassed=results.filter(x=>x.transport_ok).length;
+  const semanticPassed=results.filter(x=>x.semantic_ok).length;
   const rateLimited=results.filter(x=>x.status===429||x.status===546).length;
   const serverErrors=results.filter(x=>x.status>=500||x.status===0).length;
   const maxLatency=Math.max(...results.map(x=>Number(x.latency_ms)||0));
-  const ok=passed===results.length&&rateLimited===0&&serverErrors===0;
+  const ok=transportPassed===results.length&&rateLimited===0&&serverErrors===0;
+  const applicationConsistency=semanticPassed===results.length
+    ? 'ALL_SEMANTIC_GATES_READY'
+    : 'SEMANTIC_VARIANCE_OBSERVED';
 
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Probe-Origin','VERCEL_EXTERNAL_TO_SUPABASE');
   return res.status(200).json({
     ok,
-    version:'v116-external-edge-acceptance-v1',
+    version:'v116-external-edge-acceptance-v2',
     checked_at:new Date().toISOString(),
     state:ok?'EXTERNAL_EDGE_PATH_VERIFIED':'EXTERNAL_EDGE_PATH_DEGRADED',
     scope:'READ_ONLY_LOW_LOAD_ACCEPTANCE',
     summary:{
-      passed,
-      failed:results.length-passed,
+      transport_passed:transportPassed,
+      transport_failed:results.length-transportPassed,
+      semantic_passed:semanticPassed,
+      semantic_failed:results.length-semanticPassed,
       total:results.length,
+      application_consistency:applicationConsistency,
       rate_limited:rateLimited,
       server_errors:serverErrors,
       max_latency_ms:maxLatency
@@ -85,7 +94,8 @@ export default async function handler(req,res){
     results,
     truth:{
       externally_observed_from_vercel:true,
-      proves_current_low_load_reachability:true,
+      proves_current_low_load_reachability:ok,
+      provider_transport_is_separate_from_application_readiness:true,
       guarantees_future_capacity:false,
       load_test:false,
       creates_charges:false,
