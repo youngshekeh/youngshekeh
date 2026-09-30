@@ -113,7 +113,7 @@
         $('reviewDirectional').textContent = String(counts.directional_candidates || 0);
         $('reviewP1').textContent = String(data?.review_priority?.high_attention_pending || 0);
         $('reviewDetail').textContent =
-          `Classifier ${data?.classifier_version || 'WITHHELD'} · routing ${data?.review_priority?.scoring_version || 'WITHHELD'} · attention ranking only · capital remains 0R.`;
+          `Classifier ${data?.classifier_version || 'WITHHELD'} · routing ${data?.review_priority?.scoring_version || 'WITHHELD'} · oldest-first within equal priority · attention targets are operational only · capital remains 0R.`;
 
         const host = $('reviewQueue');
         host.replaceChildren();
@@ -139,7 +139,7 @@
           card.appendChild(
             textEl(
               'p',
-              `Request #${item.review_request_id} · ${item.review_stage || 'REVIEW'} · severity ${item?.priority?.severity || 'UNKNOWN'} · source ${item.source_price ?? 'n/a'} · history ${item.review_history_count || 0}`,
+              `Request #${item.review_request_id} · ${item.review_stage || 'REVIEW'} · severity ${item?.priority?.severity || 'UNKNOWN'} · age ${item?.priority?.age_minutes ?? 'n/a'}m / target ${item?.priority?.target_minutes ?? 'n/a'}m · ${item?.priority?.attention_state || 'UNAVAILABLE'} · source ${item.source_price ?? 'n/a'} · history ${item.review_history_count || 0}`,
               'muted'
             )
           );
