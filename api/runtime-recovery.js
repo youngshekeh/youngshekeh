@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   const [quota, edge, state, qa, release] = await Promise.all([
     probe(origin, 'quota', PATHS.quota, 12000),
     probe(origin, 'edge', PATHS.edge, 16000),
-    probe(origin, 'state', PATHS.state, 22000),
+    probe(origin, 'state', `${PATHS.state}?recovery_fresh=${Date.now()}`, 22000),
     probe(origin, 'qa', PATHS.qa, 32000),
     probe(origin, 'release', PATHS.release, 12000)
   ]);

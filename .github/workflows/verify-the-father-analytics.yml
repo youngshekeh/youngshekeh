@@ -47,6 +47,7 @@ jobs:
         run: |
           test -f api/runtime-recovery.js
           grep -q 'v142-runtime-recovery-engine-v1' api/runtime-recovery.js
+          grep -q 'recovery_fresh=' api/runtime-recovery.js
           grep -q "capital_permission: '0R'" api/runtime-recovery.js
           grep -q "live_order_routing: false" api/runtime-recovery.js
           grep -q "automatic_policy_promotion: false" api/runtime-recovery.js
