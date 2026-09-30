@@ -528,6 +528,68 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+async function loadGoldBrokerAdapterLab() {
+  const lab = await read('public-gold-broker-adapter-lab', 7000);
+  const host = byId('v134-tests-grid');
+  if (!lab?.ok) {
+    set('v134-lab-state', 'BROKER ADAPTER LAB · UNAVAILABLE');
+    set('v134-lab-copy', 'Adapter self-test telemetry is unavailable. Live broker execution remains absent.');
+    for (const id of ['v134-tests','v134-orphans','v134-mode','v134-quote','v134-production']) set(id, null);
+    set('v134-real-orders', '0');
+    set('v134-capital', '0R');
+    set('v134-orders', 'OFF');
+    set('v134-orb-score', '0/6');
+    if (host) host.replaceChildren();
+    set('v134-detail', 'Fail closed: no live route, no broker call, no real order.');
+    return;
+  }
+
+  const sim = lab?.lab ?? {};
+  const boundary = lab?.production_boundary ?? {};
+  const governance = lab?.governance ?? {};
+  const tests = Array.isArray(sim?.tests) ? sim.tests : [];
+  const passed = Number(sim?.tests_passed || 0);
+  const total = Number(sim?.tests_total || tests.length || 6);
+
+  set('v134-lab-state', `BROKER ADAPTER LAB · ${first(lab?.state, 'WAITING_FOR_SELFTEST')}`);
+  set('v134-lab-copy',
+    lab?.state === 'PASS_SIMULATION_ONLY'
+      ? 'The simulated adapter mechanics passed. Production broker readiness remains a separate, untested boundary.'
+      : 'The adapter lab is fail-closed until every deterministic safety test passes.'
+  );
+  set('v134-tests', `${passed} / ${total}`);
+  set('v134-real-orders', sim?.real_orders_sent ?? 0);
+  set('v134-orphans', sim?.orphan_event_count ?? 0);
+  set('v134-capital', first(governance?.real_capital_permission, '0R'));
+  set('v134-mode', first(sim?.adapter_mode, 'SIMULATED_ONLY'));
+  set('v134-quote', first(sim?.quote_source, 'DETERMINISTIC_TEST_VECTOR'));
+  set('v134-production', first(boundary?.production_broker_readiness, 'NOT_TESTED'));
+  set('v134-orders', governance?.order_submission_enabled ? 'CHECK REQUIRED' : 'OFF');
+  set('v134-orb-score', `${passed}/${total}`);
+
+  if (host) {
+    host.replaceChildren();
+    for (const test of tests) {
+      const card = document.createElement('article');
+      card.className = `adapter-test ${test?.passed ? 'adapter-test-pass' : 'adapter-test-fail'}`;
+      const pulse = document.createElement('span');
+      pulse.className = 'adapter-test-pulse';
+      const copy = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = String(test?.label || test?.code || 'TEST');
+      const state = document.createElement('small');
+      state.textContent = test?.passed ? 'PASS · SIMULATION' : 'FAIL · LOCKED';
+      copy.append(label, state);
+      card.append(pulse, copy);
+      host.appendChild(card);
+    }
+  }
+
+  set('v134-detail',
+    `Mode ${first(sim?.adapter_mode, 'SIMULATED_ONLY')} · real broker ${boundary?.real_broker_connected ? 'CONNECTED' : 'NOT CONNECTED'} · live route ${boundary?.live_order_route_present ? 'PRESENT' : 'ABSENT'} · production readiness ${first(boundary?.production_broker_readiness, 'NOT_TESTED')} · real orders sent ${sim?.real_orders_sent ?? 0}.`
+  );
+}
+
 async function loadGoldExecutionReality() {
   const reality = await read('public-gold-execution-reality', 7000);
   const gateHost = byId('v133-gates');
@@ -1063,6 +1125,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldBrokerAdapterLab(),
       loadGoldExecutionReality(),
       loadGoldAutonomousShadowTrader(),
       loadGoldReviewFreshness(),
