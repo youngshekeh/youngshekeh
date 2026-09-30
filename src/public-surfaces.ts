@@ -531,6 +531,78 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+async function loadV141RuntimeRecoverySentinel() {
+  const state = await readLocal('/api/autonomous-state', 9000);
+  const health = state?.health ?? {};
+  const governance = state?.governance ?? {};
+  const details = state?.details ?? {};
+  const blockers = Array.isArray(state?.blockers) ? state.blockers.map((x: unknown) => String(x)) : [];
+  const connectors = health?.connectors ?? {};
+  const smoke = health?.production_smoke ?? {};
+
+  const edgeRestricted = String(health?.edge_runtime ?? 'UNKNOWN') !== 'HEALTHY';
+  const smokeFresh = String(smoke?.state ?? 'UNKNOWN') === 'FRESH';
+  const databaseOnline = String(health?.database ?? 'UNKNOWN') === 'ONLINE';
+  const evidenceFresh = String(health?.evidence ?? 'UNKNOWN') === 'FRESH';
+  const connectorHealthy = Number(connectors?.healthy || 0);
+  const connectorRequired = Number(connectors?.required || 0);
+  const connectorsReady = connectorRequired > 0 && connectorHealthy >= connectorRequired;
+  const criticalIncidents = Number(details?.open_major_critical_incidents || 0);
+  const action = first(governance?.action_permitted, 'WAIT');
+  const capital = first(governance?.capital_permission, '0R');
+
+  const recoveryReady =
+    Boolean(state?.ok) &&
+    databaseOnline &&
+    evidenceFresh &&
+    connectorsReady &&
+    !edgeRestricted &&
+    smokeFresh &&
+    criticalIncidents === 0;
+
+  const recoveryState = !state?.ok
+    ? 'FAIL CLOSED · STATE UNAVAILABLE'
+    : recoveryReady
+      ? 'RECOVERY CONDITIONS CLEAR'
+      : 'RECOVERY BLOCKED';
+
+  set('v141-state', recoveryState);
+  set('v141-copy',
+    recoveryReady
+      ? 'Infrastructure recovery conditions are clear. This sentinel still cannot increase capital permission or enable order routing.'
+      : 'Infrastructure health is blocking promotion. V141 turns runtime restrictions, smoke freshness and connector health into an explicit fail-closed gate.'
+  );
+  set('v141-database', databaseOnline ? 'ONLINE' : first(health?.database, 'UNKNOWN'));
+  set('v141-evidence', evidenceFresh ? 'FRESH' : first(health?.evidence, 'UNKNOWN'));
+  set('v141-connectors', connectorRequired > 0 ? `${connectorHealthy}/${connectorRequired}` : 'WITHHELD');
+  set('v141-edge', first(health?.edge_runtime, 'UNKNOWN'));
+  set('v141-smoke', first(smoke?.state, 'UNKNOWN'));
+  set('v141-smoke-age', smoke?.age_minutes == null ? 'WITHHELD' : `${Number(smoke.age_minutes).toFixed(1)}m`);
+  set('v141-incidents', criticalIncidents);
+  set('v141-score', state?.system_score == null ? 'WITHHELD' : `${state.system_score}/100`);
+  set('v141-action', String(action));
+  set('v141-capital', String(capital));
+  set('v141-orders', 'OFF');
+  set('v141-promotion', 'DISABLED');
+
+  const host = byId('v141-blockers');
+  if (host) {
+    host.replaceChildren();
+    const runtimeBlockers = blockers.length ? blockers : (recoveryReady ? ['No runtime recovery blocker'] : ['Runtime recovery state unresolved']);
+    for (const item of runtimeBlockers.slice(0, 7)) {
+      const chip = document.createElement('span');
+      chip.className = recoveryReady ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = item.replaceAll('_', ' ').toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v141-detail',
+    `Runtime sentinel: database ${first(health?.database, 'unknown')} · evidence ${first(health?.evidence, 'unknown')} · connectors ${connectorHealthy}/${connectorRequired || 0} · edge ${first(health?.edge_runtime, 'unknown')} · smoke ${first(smoke?.state, 'unknown')} · incidents ${criticalIncidents} · action ${action} · orders OFF · capital ${capital}.`
+  );
+}
+
 function renderV140PromotionReviewGate(lab: AnyJson) {
   const cohort = lab?.cohort ?? {};
   const release = lab?.release ?? {};
@@ -1655,6 +1727,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV141RuntimeRecoverySentinel(),
       loadGoldRiskChallengerEvaluation(),
       loadGoldAdaptivePaperRisk(),
       loadGoldExecutionFirewall(),
