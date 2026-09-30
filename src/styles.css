@@ -1245,3 +1245,68 @@ button:disabled {
   .problem-lab-grid { grid-template-columns:1fr; }
   .problem-form { position:static; }
 }
+
+
+/* V118 Broker XAUUSD Bridge */
+.broker-bridge {
+  display: grid;
+  gap: 24px;
+}
+.broker-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+.broker-input-grid label {
+  display: grid;
+  gap: 8px;
+}
+.broker-input-grid label span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+.broker-input-grid input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: #f6f2f7;
+  background: rgba(10,8,14,.82);
+  outline: none;
+}
+.broker-input-grid input:focus {
+  border-color: rgba(114,240,173,.55);
+  box-shadow: 0 0 0 3px rgba(114,240,173,.08);
+}
+.broker-input-grid button {
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid rgba(114,240,173,.45);
+  border-radius: 12px;
+  color: #07110c;
+  background: var(--green);
+  font-weight: 950;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.broker-input-grid button:hover {
+  filter: brightness(1.06);
+}
+.broker-output-strip {
+  margin-top: 4px;
+}
+.compact-card {
+  min-height: 0;
+}
+@media (max-width: 760px) {
+  .broker-input-grid {
+    grid-template-columns: 1fr;
+  }
+  .broker-input-grid button {
+    width: 100%;
+  }
+}
