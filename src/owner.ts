@@ -55,7 +55,55 @@
         return el;
       }
 
+      function renderReviewIntelligence(data) {
+        const intel = data?.review_intelligence || {};
+        $('reviewIntelligence').classList.remove('hidden');
+        $('reviewIntelState').textContent =
+          `REVIEW INTELLIGENCE · ${intel?.state || 'WAITING_FOR_HUMAN_REVIEW'}`;
+        $('reviewIntelState').className =
+          `value ${intel?.state === 'MATURE_REVIEW_EVIDENCE' ? 'good' : 'wait'}`;
+        $('reviewIntelAnchors').textContent = String(intel?.post_review_anchors || 0);
+        $('reviewIntelOutcomes').textContent = String(intel?.resolved_review_outcomes || 0);
+        $('reviewIntelSample').textContent = String(intel?.max_scorable_sample || 0);
+        $('reviewIntelCapital').textContent = String(
+          intel?.governance?.capital_permission || '0R'
+        );
+        $('reviewIntelDetail').textContent =
+          intel?.state === 'WAITING_FOR_HUMAN_REVIEW'
+            ? 'No human evidence judgment exists yet. Nothing is scored or invented.'
+            : (intel?.max_scorable_sample || 0) < 10
+              ? 'Post-review evidence is collecting. Descriptive statistics remain withheld until n≥10.'
+              : 'Descriptive review evidence is available. It cannot promote models or grant capital.';
+
+        const host = $('reviewIntelHorizons');
+        host.replaceChildren();
+        for (const horizon of intel?.horizons || []) {
+          const card = document.createElement('article');
+          card.className = 'card';
+          card.style.marginTop = '8px';
+          const status = horizon?.statistics_withheld
+            ? 'STATISTICS WITHHELD'
+            : `ALIGNMENT ${horizon?.descriptive_statistics?.human_alignment_rate_pct ?? 'n/a'}% · BASELINE ${horizon?.descriptive_statistics?.baseline_signal_favorable_rate_pct ?? 'n/a'}% · Δ ${horizon?.descriptive_statistics?.observed_value_add_pp ?? 'n/a'}pp`;
+          card.appendChild(
+            textEl(
+              'div',
+              `${horizon?.horizon_minutes ?? '?'}m · n=${horizon?.scorable_count ?? 0} · ${status}`,
+              'value'
+            )
+          );
+          card.appendChild(
+            textEl(
+              'p',
+              `${horizon?.intelligence_state || 'WAITING'} · auto weight OFF · auto promotion OFF`,
+              'muted'
+            )
+          );
+          host.appendChild(card);
+        }
+      }
+
       function renderReviewInbox(data) {
+        renderReviewIntelligence(data);
         $('reviewInbox').classList.remove('hidden');
         const counts = data?.counts || {};
         $('reviewState').textContent = 'AAL2 REVIEW READY';
