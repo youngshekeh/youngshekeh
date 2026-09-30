@@ -117,6 +117,54 @@
 
 
 
+      <section id="v143-stability-confirmation" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V143 · STABILITY CONFIRMATION ENGINE</span>
+            <h3 id="v143-state">CHECKING</h3>
+            <p id="v143-copy">Testing whether recovery persists across time, consecutive health observations and rolling scheduler reliability.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v143-score">--</span><small>STABILITY</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ROLLING CONFIRMATION · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">PROMOTION · DISABLED</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>STABLE WINDOW</span><strong id="v143-duration">CHECKING</strong></article>
+          <article><span>QUOTA CLEAR STREAK</span><strong id="v143-quota-streak">CHECKING</strong></article>
+          <article><span>SMOKE PASS STREAK</span><strong id="v143-smoke-streak">CHECKING</strong></article>
+          <article><span>CONNECTORS</span><strong id="v143-connectors">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CRON RELIABILITY · 15M</span><strong id="v143-cron-15">CHECKING</strong></article>
+          <article><span>CRON RELIABILITY · 60M</span><strong id="v143-cron-60">CHECKING</strong></article>
+          <article><span>FAILURE CLASS</span><strong id="v143-failure">CHECKING</strong></article>
+          <article><span>LAST CRON FAILURE</span><strong id="v143-last-failure">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>POLICY PROMOTION</span><strong id="v143-promotion">DISABLED</strong><small>Stability confirmation cannot promote trading policy.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v143-orders">OFF</strong><small>Reliability evidence cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v143-capital">0R</strong><small>Capital remains governed by the canonical firewall.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>STABILITY ACTION QUEUE</span>
+          <small>One green check is insufficient. V143 requires sustained recovery before it can label infrastructure stable.</small>
+        </div>
+        <div id="v143-actions" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">ACCUMULATING STABILITY EVIDENCE</span></div>
+        <p id="v143-detail" class="autonomy-detail">V143 classifies transient versus persistent failures and measures rolling recovery without changing trading authority.</p>
+      </section>
+
       <section id="v142-runtime-recovery-engine" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
