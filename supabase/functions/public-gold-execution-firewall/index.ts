@@ -22,6 +22,24 @@ function secretKey(){
   return legacy;
 }
 
+
+function publishableKey(){
+  const bundle=Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if(bundle){
+    try{
+      const parsed=JSON.parse(bundle);
+      if(parsed?.default)return String(parsed.default);
+    }catch{}
+  }
+  return Deno.env.get("SUPABASE_ANON_KEY")||"";
+}
+
+function callerAllowed(req:Request){
+  const expected=publishableKey();
+  const supplied=req.headers.get("apikey")||"";
+  return Boolean(expected&&supplied&&supplied===expected);
+}
+
 function serverHeaders(key:string){
   const headers:Record<string,string>={
     apikey:key,
@@ -174,6 +192,7 @@ async function current(){
 
 Deno.serve(async(req:Request)=>{
   if(req.method==="OPTIONS")return new Response("ok",{headers:CORS});
+  if(!callerAllowed(req))return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{...CORS,"Cache-Control":"no-store"}});
   if(req.method!=="GET")return Response.json({ok:false,error:"method_not_allowed"},{status:405,headers:CORS});
   try{
     return Response.json(await current(),{
