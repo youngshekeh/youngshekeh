@@ -457,6 +457,46 @@ async function loadGold() {
   }
 }
 
+async function loadGoldContextualDisagreement() {
+  const context = await read('public-gold-contextual-disagreement', 7000);
+  if (!context?.ok) {
+    set('v129-context-state', 'UNAVAILABLE');
+    set('v129-context-copy', 'Contextual disagreement evidence is unavailable. No cohort result is inferred.');
+    for (const id of ['v129-events','v129-scorable','v129-cohorts','v129-sample','v129-session','v129-structure','v129-signal','v129-capital']) set(id, null);
+    set('v129-detail', 'Context weighting remains disabled when evidence is unavailable.');
+    return;
+  }
+
+  const pipeline = context?.pipeline ?? {};
+  const governance = context?.governance ?? {};
+  const dimensions = Array.isArray(context?.dimensions) ? context.dimensions : [];
+  const byName = (name) => dimensions.find((x) => x?.context_dimension === name) || {};
+  const session = byName('SESSION_STATE');
+  const structure = byName('DAILY_STRUCTURE');
+  const signal = byName('SIGNAL_FAMILY');
+  const maxN = Number(pipeline?.max_cohort_sample || 0);
+
+  set('v129-context-state', `CONTEXT LAB · ${first(context?.state, 'WAITING_FOR_HUMAN_REVIEW')}`);
+  set('v129-context-copy',
+    context?.state === 'WAITING_FOR_HUMAN_REVIEW'
+      ? 'No human disagreement exists yet, so no contextual cohort is manufactured.'
+      : maxN < 10
+        ? 'Context events are collecting prospectively. Cohort statistics remain withheld until each cohort reaches n≥10.'
+        : 'Context cohorts crossed the publication floor. Results remain descriptive and cannot alter capital.'
+  );
+  set('v129-events', pipeline?.context_events ?? 0);
+  set('v129-scorable', pipeline?.scorable_context_events ?? 0);
+  set('v129-cohorts', pipeline?.cohort_cells ?? 0);
+  set('v129-sample', maxN);
+  set('v129-session', `${session?.cohort_count ?? 0} · max n=${session?.max_scorable_sample ?? 0}`);
+  set('v129-structure', `${structure?.cohort_count ?? 0} · max n=${structure?.max_scorable_sample ?? 0}`);
+  set('v129-signal', `${signal?.cohort_count ?? 0} · max n=${signal?.max_scorable_sample ?? 0}`);
+  set('v129-capital', first(governance?.capital_permission, '0R'));
+  set('v129-detail',
+    `Frozen anchor context ${context?.methodology?.context_frozen_from_post_review_anchor_snapshot ? 'YES' : 'NO'} · hindsight reconstruction ${context?.methodology?.outcome_context_not_reconstructed_after_resolution ? 'OFF' : 'CHECK'} · context weight ${governance?.automatic_context_weighting ? 'ON' : 'OFF'} · human override ${governance?.automatic_human_override ? 'ON' : 'OFF'} · machine override ${governance?.automatic_machine_override ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldDisagreementIntelligence() {
   const disagreement = await read('public-gold-disagreement-intelligence', 7000);
   if (!disagreement?.ok) {
@@ -739,6 +779,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldContextualDisagreement(),
       loadGoldDisagreementIntelligence(),
       loadGoldReviewIntelligence(),
       loadGoldSignalReputation(),
