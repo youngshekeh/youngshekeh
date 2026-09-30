@@ -198,14 +198,16 @@ begin
     from rev
     where portfolio_gross_r < 0 and non_loss_seen=0;
   else
-    select resolved_events,cumulative_gross_r,max_drawdown_r,loss_streak
+    select count(*) into v_n
+    from public.gold_paper_portfolio_equity_events;
+
+    select cumulative_gross_r,max_drawdown_r,loss_streak
     into c
     from public.gold_paper_portfolio_equity_events
     order by id desc
     limit 1;
 
     if found then
-      v_n := coalesce(c.resolved_events,0);
       v_cum := coalesce(c.cumulative_gross_r,0);
       v_dd := coalesce(c.max_drawdown_r,0);
       v_loss := coalesce(c.loss_streak,0);
