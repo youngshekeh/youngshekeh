@@ -1,12 +1,13 @@
--- V143 Stability Confirmation Engine
+-- V143.1 Stability Confirmation Engine
 -- Rolling infrastructure reliability only. Never grants trading permission.
+-- A scheduler burst is recovered only after every failed job has a later successful run.
 
-create or replace function public.get_v143_stability_confirmation()
-returns jsonb
-language plpgsql
-security definer
-set search_path to 'public', 'cron', 'pg_temp'
-as $function$
+CREATE OR REPLACE FUNCTION public.get_v143_stability_confirmation()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'cron', 'pg_temp'
+AS $function$
 declare
   v_now timestamptz := now();
   v_mode text := null;
@@ -43,6 +44,7 @@ declare
   v_last_cron_failure_job text := null;
   v_last_cron_failure_at timestamptz := null;
   v_last_cron_failure_recovered boolean := false;
+  v_unrecovered_failed_jobs_15 integer := 0;
   v_failure_class text := 'NONE_60M';
   v_state text := 'STABILITY_BUILDING';
   v_score integer := 0;
@@ -144,18 +146,38 @@ begin
     ) into v_last_cron_failure_recovered;
   end if;
 
+  with failures as (
+    select j.jobname,max(d.start_time) as failure_at
+    from cron.job_run_details d
+    join cron.job j on j.jobid=d.jobid
+    where d.start_time >= v_now-interval '15 minutes'
+      and d.status not in ('succeeded','running')
+    group by j.jobname
+  )
+  select count(*)::int
+  into v_unrecovered_failed_jobs_15
+  from failures f
+  where not exists(
+    select 1
+    from cron.job_run_details d2
+    join cron.job j2 on j2.jobid=d2.jobid
+    where j2.jobname=f.jobname
+      and d2.status='succeeded'
+      and d2.start_time>f.failure_at
+  );
+
   if v_open_incidents > 0
      or coalesce(v_mode,'UNKNOWN') <> 'AUTONOMOUS_READY'
      or coalesce(v_smoke_latest_status,'UNKNOWN') <> 'succeeded'
      or coalesce(v_smoke_state,'UNKNOWN') <> 'FRESH'
-     or v_quota_streak = 0
-     or v_cron_fail_15 >= 3 then
+     or v_quota_streak = 0 then
     v_failure_class := 'PERSISTENT_ACTIVE';
+  elsif v_unrecovered_failed_jobs_15 > 0 then
+    v_failure_class := 'RECENT_FAILURE_UNCONFIRMED';
+  elsif v_cron_fail_15 >= 3 then
+    v_failure_class := 'TRANSIENT_BURST_RECOVERED';
   elsif v_cron_fail_60 > 0 or v_smoke_fail_24 > 0 or v_quota_fail_60 > 0 then
-    v_failure_class := case
-      when v_last_cron_failure_job is null or v_last_cron_failure_recovered then 'TRANSIENT_RECOVERED'
-      else 'RECENT_FAILURE_UNCONFIRMED'
-    end;
+    v_failure_class := 'TRANSIENT_RECOVERED';
   else
     v_failure_class := 'NONE_60M';
   end if;
@@ -183,9 +205,9 @@ begin
     and v_connectors_healthy>=v_connectors_required
     and v_open_incidents=0
     and v_stable_minutes>=15
-    and v_failure_class<>'PERSISTENT_ACTIVE';
+    and v_unrecovered_failed_jobs_15=0;
 
-  if v_failure_class='PERSISTENT_ACTIVE' then v_state:='STABILITY_BLOCKED';
+  if v_failure_class in ('PERSISTENT_ACTIVE','RECENT_FAILURE_UNCONFIRMED') then v_state:='STABILITY_BLOCKED';
   elsif v_confirmed then v_state:='STABILITY_CONFIRMED';
   else v_state:='STABILITY_BUILDING';
   end if;
@@ -195,12 +217,16 @@ begin
   if v_cron_reliability_60 < 99.5 then v_actions:=v_actions||jsonb_build_array('IMPROVE_60_MINUTE_CRON_RELIABILITY'); end if;
   if v_failure_class='PERSISTENT_ACTIVE' then
     v_actions:=v_actions||jsonb_build_array('HOLD_STABILITY_CONFIRMATION_AND_INSPECT_ACTIVE_FAILURE');
+  elsif v_failure_class='RECENT_FAILURE_UNCONFIRMED' then
+    v_actions:=v_actions||jsonb_build_array('WAIT_FOR_FAILED_JOBS_TO_COMPLETE_A_SUCCESSFUL_RETRY');
+  elsif v_failure_class='TRANSIENT_BURST_RECOVERED' then
+    v_actions:=v_actions||jsonb_build_array('KEEP_SCHEDULER_BURST_UNDER_OBSERVATION');
   elsif v_failure_class='TRANSIENT_RECOVERED' then
     v_actions:=v_actions||jsonb_build_array('KEEP_TRANSIENT_FAILURE_UNDER_OBSERVATION');
   end if;
 
   return jsonb_build_object(
-    'ok',true,'version','v143-stability-confirmation-db-v1','generated_at',v_now,
+    'ok',true,'version','v143.1-stability-confirmation-db-v2','generated_at',v_now,
     'state',v_state,'stability_confirmed',v_confirmed,'stability_score',v_score,
     'stable_minutes',v_stable_minutes,'recovery_anchor',v_recovery_anchor,
     'current',jsonb_build_object(
@@ -223,7 +249,8 @@ begin
     'failure_classification',jsonb_build_object(
       'class',v_failure_class,'last_cron_failure_job',v_last_cron_failure_job,
       'last_cron_failure_at',v_last_cron_failure_at,'last_cron_failure_recovered',v_last_cron_failure_recovered,
-      'rule','Persistent means current health is failing or repeated recent cron failures. Transient means a recent failure was followed by observed recovery.'
+      'unrecovered_failed_jobs_15m',v_unrecovered_failed_jobs_15,
+      'rule','Persistent means a current health gate is failing. Recent failures remain blocked until each failed job has a later successful run. A same-window burst becomes transient only after all failed jobs recover.'
     ),
     'thresholds',jsonb_build_object(
       'post_recovery_stable_minutes',15,'quota_clear_streak',3,
@@ -237,7 +264,8 @@ begin
     'truth_label','ROLLING_INFRASTRUCTURE_STABILITY_NOT_TRADING_PERMISSION'
   );
 end;
-$function$;
+$function$
+
 
 revoke all on function public.get_v143_stability_confirmation() from public;
 revoke all on function public.get_v143_stability_confirmation() from anon;

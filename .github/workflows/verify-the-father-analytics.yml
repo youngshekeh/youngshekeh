@@ -60,6 +60,7 @@ jobs:
         run: |
           test -f api/stability-confirmation.js
           test -f supabase/recovery/v143-stability-confirmation.sql
+          grep -q 'v143.1-stability-confirmation-db-v2' supabase/recovery/v143-stability-confirmation.sql
           test -f supabase/functions/runtime-v143-stability-confirmation/index.ts
           grep -q 'v143-stability-confirmation-bridge-v1' api/stability-confirmation.js
           grep -q "capital_permission:'0R'" api/stability-confirmation.js
