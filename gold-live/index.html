@@ -116,6 +116,63 @@
       </section>
 
 
+      <section id="v137-paper-risk-governor" class="command-card autonomy-cockpit risk-governor-cockpit">
+        <div class="risk-governor-head">
+          <div>
+            <span class="kicker">V137 · ADAPTIVE PAPER RISK GOVERNOR</span>
+            <h3 id="v137-state">CHECKING</h3>
+            <p id="v137-copy">The machine now scales the next autonomous paper allocation from its own drawdown, streak and sample evidence instead of blindly reusing 1R.</p>
+          </div>
+          <div class="risk-governor-orb" aria-hidden="true">
+            <div class="risk-orbit risk-orbit-a"></div>
+            <div class="risk-orbit risk-orbit-b"></div>
+            <div class="risk-governor-core"><span id="v137-orb">0R</span><small>NEXT SLOT</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">PAPER RISK · ADAPTIVE</span>
+          <span class="autonomy-chip autonomy-chip-off">ONE SLOT · ENFORCED</span>
+          <span class="autonomy-chip autonomy-chip-lock">REAL CAPITAL · 0R</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>NEXT PAPER RISK</span><strong id="v137-next-risk">CHECKING</strong></article>
+          <article><span>BASELINE REDUCTION</span><strong id="v137-reduction">CHECKING</strong></article>
+          <article><span>MAX DRAWDOWN</span><strong id="v137-drawdown">CHECKING</strong></article>
+          <article><span>LOSS STREAK</span><strong id="v137-loss-streak">CHECKING</strong></article>
+        </section>
+
+        <div class="risk-governor-shell">
+          <div class="risk-governor-current">
+            <span>CURRENT OPEN PAPER POSITION</span>
+            <strong id="v137-current-position">CHECKING</strong>
+            <small id="v137-current-detail">Existing allocations are never rewritten by the risk governor.</small>
+          </div>
+          <div class="risk-ladder" id="v137-risk-ladder">
+            <article data-risk="0.10"><span>0.10R</span><small>DEEP DEFENSE</small></article>
+            <article data-risk="0.25"><span>0.25R</span><small>DEFENSE / DISCOVERY</small></article>
+            <article data-risk="0.50"><span>0.50R</span><small>CAUTIOUS / EARLY</small></article>
+            <article data-risk="1.00"><span>1.00R</span><small>MATURE POSITIVE</small></article>
+          </div>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>RESOLVED PAPER TRADES</span><strong id="v137-resolved">CHECKING</strong></article>
+          <article><span>CUMULATIVE GROSS R</span><strong id="v137-gross-r">CHECKING</strong></article>
+          <article><span>SAMPLE BAND</span><strong id="v137-sample-band">CHECKING</strong></article>
+          <article><span>MAX POSITIONS</span><strong id="v137-max-positions">1</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>WHY RISK CHANGED</span>
+          <small>Only forward paper allocations use this recommendation. Live execution remains completely separate.</small>
+        </div>
+        <div id="v137-reasons" class="risk-reason-grid"></div>
+
+        <p id="v137-detail" class="autonomy-detail">Future paper allocation is adaptive. Existing paper positions remain immutable. Live trading and order submission stay OFF.</p>
+      </section>
+
       <section id="v136-execution-firewall" class="command-card autonomy-cockpit firewall-cockpit">
         <div class="firewall-head">
           <div>
