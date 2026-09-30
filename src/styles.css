@@ -1310,3 +1310,29 @@ button:disabled {
     width: 100%;
   }
 }
+
+
+/* V121 Gold Live Pulse */
+.live-pulse-card {
+  display: grid;
+  gap: 20px;
+}
+.pulse-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.pulse-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(156,115,255,.42);
+  border-radius: 12px;
+  color: #f5f0f7;
+  background: rgba(156,115,255,.12);
+  font-weight: 950;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.pulse-actions button:hover {
+  border-color: rgba(156,115,255,.72);
+  background: rgba(156,115,255,.18);
+}
