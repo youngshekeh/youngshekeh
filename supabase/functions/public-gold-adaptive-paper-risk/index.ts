@@ -5,7 +5,7 @@ const CORS={
   "Access-Control-Allow-Headers":"content-type, apikey",
   "Access-Control-Allow-Methods":"GET, OPTIONS"
 };
-const VERSION="v137-adaptive-paper-risk-governor-v1";
+const VERSION="v137.1-adaptive-paper-risk-consensus-v1";
 const TTL=12_000;
 let cache:any=null,cachedAt=0,inflight:Promise<any>|null=null;
 
@@ -89,6 +89,13 @@ async function build(){
       current_open:open,
       recent_decisions:decisions,
       recent_outcomes:outcomes
+    },
+    risk_consensus:{
+      snapshot_id:state?.consensus_snapshot_id??null,
+      models_agree:state?.risk_models_agree===true,
+      adaptive_model_r:state?.adaptive_model_r??null,
+      independent_model_r:state?.independent_model_r??null,
+      policy:"MINIMUM_ON_DISAGREEMENT"
     },
     controls:{
       max_concurrent_positions:Number(state?.max_concurrent_positions||1),
