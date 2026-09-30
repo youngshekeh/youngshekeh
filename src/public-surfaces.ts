@@ -532,6 +532,69 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+async function loadV142RuntimeRecoveryEngine() {
+  const recovery = await readLocal('/api/runtime-recovery', 36000);
+  if (!recovery?.ok) {
+    set('v142-state', 'RECOVERY ENGINE · UNAVAILABLE');
+    set('v142-copy', 'The live recovery diagnostic could not complete. Canonical execution remains WAIT · 0R.');
+    for (const id of ['v142-score','v142-quota','v142-edge','v142-canonical','v142-smoke','v142-qa','v142-release','v142-divergence']) set(id, null);
+    set('v142-promotion', 'DISABLED');
+    set('v142-orders', 'OFF');
+    set('v142-capital', '0R');
+    return;
+  }
+
+  const evidence = recovery?.evidence ?? {};
+  const quota = evidence?.live_quota_probe ?? {};
+  const edge = evidence?.external_edge_acceptance ?? {};
+  const canonical = evidence?.canonical_state ?? {};
+  const qa = evidence?.qa ?? {};
+  const release = evidence?.release ?? {};
+  const divergence = recovery?.divergence ?? {};
+  const actions = Array.isArray(recovery?.actions) ? recovery.actions.map((x: unknown) => String(x)) : [];
+
+  set('v142-state', `RECOVERY ENGINE · ${first(recovery?.state, 'UNKNOWN')}`);
+  set('v142-copy',
+    divergence?.canonical_edge_restriction_stale
+      ? 'Live provider probes have recovered, but the canonical machine still carries the prior quota restriction. V142 isolates that stale-state divergence instead of treating it as fresh truth.'
+      : recovery?.state === 'CANONICAL_RECOVERED_SMOKE_RECERTIFICATION_PENDING'
+        ? 'Canonical quota recovery is confirmed. The remaining infrastructure task is a fresh production smoke recertification.'
+        : recovery?.state === 'RECOVERY_VERIFIED'
+          ? 'Runtime recovery evidence is aligned across provider probes, canonical state, smoke, QA and release provenance. Capital permission remains independently governed.'
+          : 'Recovery remains incomplete. V142 separates provider transport, canonical state, smoke freshness, QA and release provenance before declaring the infrastructure healthy.'
+  );
+  set('v142-score', recovery?.recovery_score == null ? 'WITHHELD' : `${recovery.recovery_score}%`);
+  set('v142-quota', quota?.clear ? 'LIVE · CLEAR' : 'BLOCKED');
+  set('v142-edge', edge?.verified ? `VERIFIED · ${edge?.transport_passed ?? '?'} / ${edge?.total ?? '?'}` : 'DEGRADED');
+  set('v142-canonical', first(canonical?.edge_runtime, 'UNKNOWN'));
+  set('v142-smoke', canonical?.smoke_state
+    ? `${canonical.smoke_state}${canonical?.smoke_age_minutes == null ? '' : ' · ' + Number(canonical.smoke_age_minutes).toFixed(1) + 'm'}`
+    : 'WITHHELD');
+  set('v142-qa', qa?.pass ? `PASS · ${qa?.passed ?? '?'} / ${qa?.total ?? '?'}` : `DEGRADED · ${qa?.failed ?? '?'} FAIL`);
+  set('v142-release', release?.verified ? `VERIFIED · ${release?.commit ?? 'CURRENT'}` : first(release?.state, 'WITHHELD'));
+  set('v142-divergence', divergence?.canonical_edge_restriction_stale ? 'STALE CANONICAL FLAG' : 'NONE DETECTED');
+  set('v142-promotion', 'DISABLED');
+  set('v142-orders', 'OFF');
+  set('v142-capital', '0R');
+
+  const host = byId('v142-actions');
+  if (host) {
+    host.replaceChildren();
+    const items = actions.length ? actions : ['No recovery action beyond continued verification'];
+    for (const item of items.slice(0, 7)) {
+      const chip = document.createElement('span');
+      chip.className = actions.length ? 'integrity-chip integrity-chip-warn' : 'integrity-chip integrity-chip-clear';
+      chip.textContent = item.replaceAll('_', ' ').toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v142-detail',
+    `Live quota clear ${quota?.clear ? 'YES' : 'NO'} · external edge ${edge?.verified ? 'VERIFIED' : 'NOT VERIFIED'} · canonical edge ${first(canonical?.edge_runtime, 'unknown')} · smoke ${first(canonical?.smoke_state, 'unknown')} · QA ${first(qa?.state, 'unknown')} · release ${first(release?.state, 'unknown')} · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV141RuntimeRecoverySentinel() {
   const state = await readLocal('/api/autonomous-state', 9000);
   const health = state?.health ?? {};
@@ -1727,6 +1790,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV142RuntimeRecoveryEngine(),
       loadV141RuntimeRecoverySentinel(),
       loadGoldRiskChallengerEvaluation(),
       loadGoldAdaptivePaperRisk(),
