@@ -1,4 +1,5 @@
 name: TFA Production Health Watch
+# Hourly production health independently verifies launch invariants.
 
 on:
   push:
