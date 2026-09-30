@@ -536,7 +536,7 @@ async function loadGoldExecutionFirewall() {
   if (!firewall?.ok) {
     set('v136-firewall-state', 'ORDER FIREWALL · FAIL CLOSED');
     set('v136-firewall-copy', 'Execution qualification is unavailable. No order envelope is promoted and all real-money paths remain blocked.');
-    for (const id of ['v136-order','v136-side','v136-risk','v136-entry','v136-stop','v136-target','v136-rr','v136-quote','v136-idempotency']) set(id, null);
+    for (const id of ['v136-order','v136-side','v136-risk','v136-entry','v136-stop','v136-target','v136-rr','v136-quote','v136-idempotency','v136-paper-resolved','v136-paper-gross-r','v136-paper-dd','v136-paper-loss-streak']) set(id, null);
     set('v136-real-orders', '0');
     set('v136-broker', 'NOT CONNECTED');
     set('v136-route', 'ABSENT');
@@ -551,6 +551,7 @@ async function loadGoldExecutionFirewall() {
   const order = firewall?.order ?? null;
   const qualification = firewall?.qualification ?? {};
   const governance = firewall?.governance ?? {};
+  const performance = firewall?.paper_portfolio ?? {};
   const checks = Array.isArray(qualification?.checks) ? qualification.checks : [];
   const blockers = Array.isArray(order?.blocker_codes) ? order.blocker_codes : [];
 
@@ -564,6 +565,12 @@ async function loadGoldExecutionFirewall() {
   set('v136-side', order?.side ?? 'NONE');
   set('v136-risk', order?.requested_r == null ? '0R' : `${order.requested_r}R · DRY RUN`);
   set('v136-real-orders', governance?.real_orders_sent ?? 0);
+  set('v136-paper-resolved', performance?.resolved_events ?? 0);
+  const grossR = Number(performance?.cumulative_gross_r);
+  set('v136-paper-gross-r', Number.isFinite(grossR) ? `${grossR >= 0 ? '+' : ''}${grossR.toFixed(2)}R · GROSS` : null);
+  const maxDd = Number(performance?.max_drawdown_r);
+  set('v136-paper-dd', Number.isFinite(maxDd) ? `${maxDd.toFixed(2)}R` : null);
+  set('v136-paper-loss-streak', performance?.loss_streak ?? 0);
   set('v136-entry', order?.reference_entry);
   set('v136-stop', order?.reference_stop);
   set('v136-target', order?.reference_target);
@@ -612,7 +619,7 @@ async function loadGoldExecutionFirewall() {
   }
 
   set('v136-detail',
-    `Qualified ${qualification?.passed ?? 0}/${qualification?.total ?? checks.length} checks · blockers ${qualification?.live_blockers ?? blockers.length} · kill switch ${governance?.kill_switch_default_on ? 'ON' : 'CHECK'} · live orders ${governance?.order_submission_enabled ? 'CHECK' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+    `Qualified ${qualification?.passed ?? 0}/${qualification?.total ?? checks.length} checks · blockers ${qualification?.live_blockers ?? blockers.length} · research sample ${qualification?.resolved_research_sample ?? 0}/${qualification?.mature_sample_required ?? 30} · paper gross R ${Number.isFinite(grossR) ? grossR.toFixed(2) : 'n/a'} · live orders ${governance?.order_submission_enabled ? 'CHECK' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
   );
 }
 
