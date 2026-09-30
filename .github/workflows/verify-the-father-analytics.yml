@@ -36,3 +36,10 @@ jobs:
           grep -q "set('v140-capital', '0R · LOCKED')" src/public-surfaces.ts
           grep -q "set('v140-live', 'OFF')" src/public-surfaces.ts
           grep -q 'V140 · PROMOTION REVIEW GATE' dist/gold-live/index.html
+      - name: Verify V141 runtime sentinel invariants
+        run: |
+          grep -q 'V141 · RUNTIME RECOVERY SENTINEL' gold-live/index.html
+          grep -q "loadV141RuntimeRecoverySentinel()" src/public-surfaces.ts
+          grep -q "set('v141-orders', 'OFF')" src/public-surfaces.ts
+          grep -q "set('v141-promotion', 'DISABLED')" src/public-surfaces.ts
+          grep -q 'V141 · RUNTIME RECOVERY SENTINEL' dist/gold-live/index.html
