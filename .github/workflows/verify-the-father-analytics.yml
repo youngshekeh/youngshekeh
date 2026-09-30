@@ -28,3 +28,11 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build
         run: npm run build
+      - name: Verify V140 governance invariants
+        run: |
+          grep -q 'V140 · PROMOTION REVIEW GATE' gold-live/index.html
+          grep -q "renderV140PromotionReviewGate(lab);" src/public-surfaces.ts
+          grep -q "set('v140-promotion', 'HUMAN REVIEW ONLY')" src/public-surfaces.ts
+          grep -q "set('v140-capital', '0R · LOCKED')" src/public-surfaces.ts
+          grep -q "set('v140-live', 'OFF')" src/public-surfaces.ts
+          grep -q 'V140 · PROMOTION REVIEW GATE' dist/gold-live/index.html
