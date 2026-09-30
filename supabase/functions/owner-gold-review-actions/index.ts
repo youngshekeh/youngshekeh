@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const SUPA=Deno.env.get("SUPABASE_URL")!;
 const CLASSIFIER="v125.3-event-aware-v2";
-const VERSION="v127-owner-gold-review-actions-v2";
+const VERSION="v130-owner-gold-review-actions-v3";
 const DECISIONS=new Set([
   "EVIDENCE_SUPPORTIVE",
   "EVIDENCE_CONTRADICTORY",
@@ -129,7 +129,7 @@ Deno.serve(async(req:Request)=>{
         order:"event_at.desc",
         limit:"200"
       });
-      const [anchors,reviewOutcomes,intelligence]=await Promise.all([
+      const [anchors,reviewOutcomes,intelligence,priorities]=await Promise.all([
         restRows(service,"gold_human_review_anchors",{
           select:"id,review_event_id,anchor_delay_seconds,created_at",
           reviewer_user_id:`eq.${user.id}`,
@@ -150,6 +150,12 @@ Deno.serve(async(req:Request)=>{
           classifier_version:`eq.${CLASSIFIER}`,
           order:"evaluated_at.desc",
           limit:"100"
+        }),
+        restRows(service,"gold_review_priority_assignments",{
+          select:"review_request_id,scoring_version,severity,direction_score,event_class_score,severity_score,transition_score,priority_score,priority_band,performance_evidence_used,human_outcome_evidence_used,capital_permission",
+          classifier_version:`eq.${CLASSIFIER}`,
+          order:"priority_score.desc",
+          limit:"500"
         })
       ]);
 
@@ -159,10 +165,14 @@ Deno.serve(async(req:Request)=>{
         if(!histories.has(id))histories.set(id,[]);
         histories.get(id)!.push(ev);
       }
+      const priorityByRequest=new Map<number,any>();
+      for(const p of priorities)priorityByRequest.set(Number(p.review_request_id),p);
+
       const directional=requests.filter((x:any)=>["LONG","SHORT"].includes(String(x.direction)));
       const queue=directional
         .map((x:any)=>{
           const history=histories.get(Number(x.id))||[];
+          const priority=priorityByRequest.get(Number(x.id))||null;
           return {
             review_request_id:x.id,
             transition_id:x.transition_id,
@@ -176,6 +186,21 @@ Deno.serve(async(req:Request)=>{
             source_state:x.source_state,
             source_price:x.source_price,
             requested_at:x.requested_at,
+            priority:priority ? {
+              scoring_version:priority.scoring_version,
+              severity:priority.severity,
+              priority_score:Number(priority.priority_score||0),
+              priority_band:priority.priority_band,
+              components:{
+                direction:Number(priority.direction_score||0),
+                event_class:Number(priority.event_class_score||0),
+                severity:Number(priority.severity_score||0),
+                transition:Number(priority.transition_score||0)
+              },
+              performance_evidence_used:priority.performance_evidence_used===true,
+              human_outcome_evidence_used:priority.human_outcome_evidence_used===true,
+              capital_permission:priority.capital_permission||'0R'
+            } : null,
             review_history_count:history.length,
             latest_review:history[0]?publicReview(history[0]):null
           };
@@ -183,6 +208,9 @@ Deno.serve(async(req:Request)=>{
         .sort((a:any,b:any)=>{
           const ap=a.latest_review?1:0,bp=b.latest_review?1:0;
           if(ap!==bp)return ap-bp;
+          const as=Number(a?.priority?.priority_score||0);
+          const bs=Number(b?.priority?.priority_score||0);
+          if(as!==bs)return bs-as;
           return Date.parse(String(b.requested_at))-Date.parse(String(a.requested_at));
         })
         .slice(0,30);
@@ -238,6 +266,27 @@ Deno.serve(async(req:Request)=>{
         classifier_version:CLASSIFIER,
         owner_role:owner.role,
         aal:"aal2",
+        review_priority:{
+          state:priorities.length ? 'ROUTING_ACTIVE' : 'WAITING_FOR_PRIORITY_ASSIGNMENTS',
+          scoring_version:'v130-rule-v1',
+          assignments:priorities.length,
+          pending_directional:Math.max(0,directional.length-reviewedDirectional),
+          high_attention_pending:queue.filter((x:any)=>!x.latest_review&&x?.priority?.priority_band==='P1_HIGH_ATTENTION').length,
+          methodology:{
+            inputs:['EXPLICIT_DIRECTION','EVENT_CLASS','STATED_SEVERITY','TRANSITION_SPECIFICITY'],
+            performance_evidence_used:false,
+            human_outcome_evidence_used:false,
+            reviewer_reputation_used:false,
+            market_future_data_used:false,
+            ranking_is_attention_routing_not_trade_signal:true
+          },
+          governance:{
+            automatic_execution:false,
+            automatic_promotion:false,
+            review_priority_can_grant_capital:false,
+            capital_permission:'0R'
+          }
+        },
         review_intelligence:{
           state:reviewIntelligenceState,
           post_review_anchors:anchors.length,
