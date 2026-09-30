@@ -35,9 +35,47 @@ jobs:
         run: |
           set -euo pipefail
           TMP="$(mktemp)"
-          curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
-            'https://thefatheranalytics.com/api/mission-brief?proof=checkpoint' \
-            -o "$TMP"
+          VERIFIED=0
+          for ATTEMPT in 1 2 3 4 5 6; do
+            curl --fail --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
+              'https://thefatheranalytics.com/api/mission-brief?proof=checkpoint' \
+              -o "$TMP"
+
+            if PROOF_FILE="$TMP" node <<'PREFLIGHT'
+          const fs = require('fs');
+          const proof = JSON.parse(fs.readFileSync(process.env.PROOF_FILE, 'utf8'));
+          const checkpoint = proof.checkpoint || {};
+          const integrity = proof.integrity || {};
+          const failures =
+            Number(integrity.payload_hash_failures || 0) +
+            Number(integrity.hmac_failures || 0) +
+            Number(integrity.chain_link_failures || 0) +
+            Number(integrity.missing_historical_keys || 0) +
+            Number(integrity.uncheckpointed_attestations || 0);
+
+          const valid =
+            proof.ok === true &&
+            proof.version === 'v111-external-anchor-proof-v1' &&
+            proof.state === 'GLOBAL_CHECKPOINT_VERIFIED' &&
+            /^[a-f0-9]{64}$/.test(String(checkpoint.checkpoint_sha256 || '')) &&
+            failures === 0 &&
+            proof.governance?.capital_permission === '0R';
+
+          process.exit(valid ? 0 : 1);
+          PREFLIGHT
+            then
+              VERIFIED=1
+              break
+            fi
+
+            echo "Checkpoint proof not yet stable on attempt $ATTEMPT/6; retrying in 20s."
+            sleep 20
+          done
+
+          if [ "$VERIFIED" != "1" ]; then
+            echo "Checkpoint proof did not become fully verified within the retry window."
+            exit 1
+          fi
 
           PROOF_FILE="$TMP" node <<'NODE'
           const fs = require('fs');
