@@ -1,4 +1,5 @@
 name: TFA Provenance External Anchor
+# Scheduled heartbeat keeps V112 external provenance liveness fresh.
 
 on:
   push:
