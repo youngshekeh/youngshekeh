@@ -530,6 +530,92 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+function renderV140PromotionReviewGate(lab: AnyJson) {
+  const cohort = lab?.cohort ?? {};
+  const release = lab?.release ?? {};
+  const recent = Array.isArray(lab?.recent_matches) ? lab.recent_matches : [];
+
+  const matchedAlloc = Number(cohort?.matched_allocations || 0);
+  const matchedResolved = Number(cohort?.matched_resolved || 0);
+  const controlAlloc = Number(cohort?.control_allocations_post_launch || 0);
+  const challengerAlloc = Number(cohort?.challenger_allocations_post_launch || 0);
+  const publicFloor = Math.max(1, Number(release?.public_sample_floor || 10));
+  const matureFloor = Math.max(publicFloor, Number(release?.mature_sample_floor || 30));
+
+  const checkedAt = Date.parse(String(lab?.checked_at || ''));
+  const ageSeconds = Number.isFinite(checkedAt)
+    ? Math.max(0, Math.floor((Date.now() - checkedAt) / 1000))
+    : null;
+
+  const stale = ageSeconds == null || ageSeconds > 600;
+  const impossibleCounts = matchedResolved > matchedAlloc;
+  const inconsistentRecent = recent.filter((row: AnyJson) => row?.outcome_consistent === false).length;
+  const balanced = controlAlloc === challengerAlloc;
+  const allocationBase = Math.max(controlAlloc, challengerAlloc, 1);
+  const alignment = Math.max(0, Math.min(100, Math.round((matchedAlloc / allocationBase) * 100)));
+  const publicEarned = matchedResolved >= publicFloor;
+  const matureEarned = matchedResolved >= matureFloor;
+  const integrityPass = Boolean(lab?.ok) && !stale && !impossibleCounts && inconsistentRecent === 0 && balanced;
+  const reviewEligible = integrityPass && matureEarned;
+
+  const state = !integrityPass
+    ? 'FAIL CLOSED'
+    : !publicEarned
+      ? 'LEARNING LOCK'
+      : !matureEarned
+        ? 'DESCRIPTIVE ONLY'
+        : 'HUMAN REVIEW WINDOW';
+
+  const blockers: string[] = [];
+  if (!lab?.ok) blockers.push('governed telemetry unavailable');
+  if (stale) blockers.push('telemetry freshness >10m');
+  if (impossibleCounts) blockers.push('resolved count exceeds matched allocation');
+  if (inconsistentRecent > 0) blockers.push(`${inconsistentRecent} outcome consistency check(s)`);
+  if (!balanced) blockers.push(`allocation imbalance ${controlAlloc} vs ${challengerAlloc}`);
+  if (!publicEarned) blockers.push(`public evidence gate ${matchedResolved}/${publicFloor}`);
+  if (publicEarned && !matureEarned) blockers.push(`maturity gate ${matchedResolved}/${matureFloor}`);
+  if (reviewEligible) blockers.push('human review required before any policy change');
+
+  set('v140-state', `PROMOTION REVIEW · ${state}`);
+  set('v140-copy',
+    reviewEligible
+      ? 'Prospective evidence has reached the maturity floor and integrity checks are clear. The machine may surface evidence for explicit human review, but it cannot promote itself.'
+      : 'V140 compresses experiment integrity, sample maturity and cohort alignment into a fail-closed review gate. No gate can increase capital permission.'
+  );
+  set('v140-freshness', ageSeconds == null ? 'WITHHELD' : `${ageSeconds}s`);
+  set('v140-sample', `${matchedResolved} / ${matureFloor}`);
+  set('v140-alignment', `${alignment}%`);
+  set('v140-consistency', inconsistentRecent === 0 ? 'CLEAR' : `${inconsistentRecent} CHECK`);
+  set('v140-review', reviewEligible ? 'ELIGIBLE · HUMAN ONLY' : 'LOCKED');
+  set('v140-promotion', 'HUMAN REVIEW ONLY');
+  set('v140-capital', '0R · LOCKED');
+  set('v140-live', 'OFF');
+
+  const fill = byId('v140-progress-fill') as HTMLElement | null;
+  if (fill) {
+    fill.style.width = `${Math.max(0, Math.min(100, (matchedResolved / matureFloor) * 100))}%`;
+  }
+
+  const host = byId('v140-blockers');
+  if (host) {
+    host.replaceChildren();
+    const items = blockers.length ? blockers : ['No active blocker beyond mandatory human review'];
+    for (const item of items.slice(0, 7)) {
+      const chip = document.createElement('span');
+      chip.className = reviewEligible && item.startsWith('human review')
+        ? 'integrity-chip integrity-chip-clear'
+        : 'integrity-chip integrity-chip-warn';
+      chip.textContent = item.toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v140-detail',
+    `V140 is a review gate, not a promotion engine. Matched ${matchedResolved}/${matchedAlloc || 0} resolved/allocated · public floor ${publicFloor} · mature floor ${matureFloor} · alignment ${alignment}% · live orders OFF · automatic promotion OFF · real capital 0R.`
+  );
+}
+
 function renderV139ExperimentIntegrity(lab: AnyJson) {
   const cohort = lab?.cohort ?? {};
   const release = lab?.release ?? {};
@@ -607,6 +693,7 @@ function renderV139ExperimentIntegrity(lab: AnyJson) {
 
 async function loadGoldRiskChallengerEvaluation() {
   const lab = await read('public-gold-risk-challenger-evaluation', 9000);
+  renderV140PromotionReviewGate(lab);
   renderV139ExperimentIntegrity(lab);
   const matchHost = byId('v138-match-list');
   const progress = byId('v138-progress-fill') as HTMLElement | null;
