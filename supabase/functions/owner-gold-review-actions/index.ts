@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const SUPA=Deno.env.get("SUPABASE_URL")!;
 const CLASSIFIER="v125.3-event-aware-v2";
-const VERSION="v130-owner-gold-review-actions-v3";
+const VERSION="v131-owner-gold-review-actions-v4";
 const DECISIONS=new Set([
   "EVIDENCE_SUPPORTIVE",
   "EVIDENCE_CONTRADICTORY",
@@ -173,6 +173,16 @@ Deno.serve(async(req:Request)=>{
         .map((x:any)=>{
           const history=histories.get(Number(x.id))||[];
           const priority=priorityByRequest.get(Number(x.id))||null;
+          const requestedMs=Date.parse(String(x.requested_at));
+          const ageMinutes=Number.isFinite(requestedMs)?Math.max(0,(Date.now()-requestedMs)/60000):null;
+          const priorityBand=String(priority?.priority_band||'UNRANKED');
+          const targetMinutes=priorityBand==='P1_HIGH_ATTENTION'?30:
+            priorityBand==='P2_PRIORITY'?60:
+            priorityBand==='P3_STANDARD'?120:
+            priorityBand==='P4_BACKGROUND'?240:null;
+          const attentionState=ageMinutes==null||targetMinutes==null?'UNAVAILABLE':
+            ageMinutes>targetMinutes?'OVER_TARGET':
+            ageMinutes>targetMinutes*0.75?'AGING':'FRESH';
           return {
             review_request_id:x.id,
             transition_id:x.transition_id,
@@ -199,7 +209,10 @@ Deno.serve(async(req:Request)=>{
               },
               performance_evidence_used:priority.performance_evidence_used===true,
               human_outcome_evidence_used:priority.human_outcome_evidence_used===true,
-              capital_permission:priority.capital_permission||'0R'
+              capital_permission:priority.capital_permission||'0R',
+              age_minutes:ageMinutes==null?null:Number(ageMinutes.toFixed(1)),
+              target_minutes:targetMinutes,
+              attention_state:attentionState
             } : null,
             review_history_count:history.length,
             latest_review:history[0]?publicReview(history[0]):null
@@ -211,7 +224,7 @@ Deno.serve(async(req:Request)=>{
           const as=Number(a?.priority?.priority_score||0);
           const bs=Number(b?.priority?.priority_score||0);
           if(as!==bs)return bs-as;
-          return Date.parse(String(b.requested_at))-Date.parse(String(a.requested_at));
+          return Date.parse(String(a.requested_at))-Date.parse(String(b.requested_at));
         })
         .slice(0,30);
 
@@ -272,6 +285,16 @@ Deno.serve(async(req:Request)=>{
           assignments:priorities.length,
           pending_directional:Math.max(0,directional.length-reviewedDirectional),
           high_attention_pending:queue.filter((x:any)=>!x.latest_review&&x?.priority?.priority_band==='P1_HIGH_ATTENTION').length,
+          freshness:{
+            operational_targets_minutes:{
+              P1_HIGH_ATTENTION:30,
+              P2_PRIORITY:60,
+              P3_STANDARD:120,
+              P4_BACKGROUND:240
+            },
+            oldest_first_within_equal_priority:true,
+            target_type:'OPERATIONAL_ATTENTION_TARGET_NOT_MARKET_SIGNAL'
+          },
           methodology:{
             inputs:['EXPLICIT_DIRECTION','EVENT_CLASS','STATED_SEVERITY','TRANSITION_SPECIFICITY'],
             performance_evidence_used:false,
