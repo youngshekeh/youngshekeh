@@ -1,5 +1,7 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
+import { getVercelOidcToken } from '@vercel/oidc';
+
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-mission-brief';
 
 export default async function handler(req,res){
