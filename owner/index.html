@@ -48,6 +48,21 @@
           Verify MFA
         </button>
       </section>
+      <section id="reviewInbox" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V126 · HUMAN REVIEW INBOX</div>
+        <div id="reviewState" class="value wait">LOCKED UNTIL AAL2</div>
+        <p id="reviewDetail" class="muted">
+          Evidence judgments are append-only research records. They never authorize trades or capital.
+        </p>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card" style="min-width: 150px"><div class="label">PENDING</div><div id="reviewPending" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">REVIEWED</div><div id="reviewReviewed" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">DIRECTIONAL</div><div id="reviewDirectional" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">CAPITAL</div><div class="value">0R</div></div>
+        </div>
+        <button id="reviewRefresh" class="secondary" style="margin-top: 12px">Refresh review inbox</button>
+        <div id="reviewQueue" style="margin-top: 12px"></div>
+      </section>
       <div class="row" style="margin-top: 14px">
         <a class="secondary" href="../access/">Access Gateway</a>
         <a class="secondary" href="../member/">Member</a>
