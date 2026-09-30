@@ -530,8 +530,84 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+function renderV139ExperimentIntegrity(lab: AnyJson) {
+  const cohort = lab?.cohort ?? {};
+  const release = lab?.release ?? {};
+  const recent = Array.isArray(lab?.recent_matches) ? lab.recent_matches : [];
+
+  const matchedAlloc = Number(cohort?.matched_allocations || 0);
+  const matchedResolved = Number(cohort?.matched_resolved || 0);
+  const controlAlloc = Number(cohort?.control_allocations_post_launch || 0);
+  const challengerAlloc = Number(cohort?.challenger_allocations_post_launch || 0);
+  const publicFloor = Number(release?.public_sample_floor || 10);
+  const matureFloor = Number(release?.mature_sample_floor || 30);
+
+  const checkedAt = Date.parse(String(lab?.checked_at || ''));
+  const ageSeconds = Number.isFinite(checkedAt)
+    ? Math.max(0, Math.floor((Date.now() - checkedAt) / 1000))
+    : null;
+  const stale = ageSeconds == null || ageSeconds > 600;
+  const impossibleCounts = matchedResolved > matchedAlloc;
+  const inconsistentRecent = recent.filter((row: AnyJson) => row?.outcome_consistent === false).length;
+  const allocationBase = Math.max(controlAlloc, challengerAlloc, 1);
+  const alignment = Math.max(0, Math.min(100, Math.round((matchedAlloc / allocationBase) * 100)));
+  const maturity = matchedResolved >= matureFloor
+    ? 'MATURE · HUMAN REVIEW ELIGIBLE'
+    : matchedResolved >= publicFloor
+      ? 'EARLY · DESCRIPTIVE STATS'
+      : `SMALL N · ${matchedResolved}/${publicFloor}`;
+
+  const blockers: string[] = [];
+  if (!lab?.ok) blockers.push('V138 telemetry unavailable');
+  if (stale) blockers.push('evaluation freshness >10m');
+  if (impossibleCounts) blockers.push('resolved count exceeds matched allocations');
+  if (inconsistentRecent > 0) blockers.push(`${inconsistentRecent} recent outcome consistency check(s)`);
+  if (matchedResolved < publicFloor) blockers.push(`sample gate ${matchedResolved}/${publicFloor}`);
+  if (controlAlloc !== challengerAlloc) blockers.push(`allocation imbalance ${controlAlloc} vs ${challengerAlloc}`);
+
+  const integrityState = !lab?.ok || stale || impossibleCounts || inconsistentRecent > 0
+    ? 'FAIL CLOSED'
+    : matchedResolved >= matureFloor
+      ? 'REVIEW READY · HUMAN DECISION ONLY'
+      : matchedResolved >= publicFloor
+        ? 'OBSERVE · EARLY EVIDENCE'
+        : 'LEARNING · SAMPLE GATE ACTIVE';
+
+  set('v139-state', `INTEGRITY · ${integrityState}`);
+  set('v139-copy',
+    !lab?.ok
+      ? 'The challenger experiment cannot be evaluated because its governed telemetry is unavailable.'
+      : 'V139 checks freshness, cohort alignment, outcome consistency and evidence maturity before any human review can even be considered.'
+  );
+  set('v139-freshness', ageSeconds == null ? 'WITHHELD' : `${ageSeconds}s`);
+  set('v139-alignment', `${alignment}%`);
+  set('v139-maturity', maturity);
+  set('v139-consistency', inconsistentRecent === 0 ? 'CLEAR' : `${inconsistentRecent} CHECK`);
+  set('v139-promotion', 'DISABLED');
+  set('v139-capital', '0R · LOCKED');
+  set('v139-orb', integrityState.startsWith('FAIL') ? 'LOCK' : matchedResolved >= matureFloor ? '30+' : `${matchedResolved}/${publicFloor}`);
+
+  const host = byId('v139-blockers');
+  if (host) {
+    host.replaceChildren();
+    const items = blockers.length ? blockers : ['No integrity blocker beyond human review governance'];
+    for (const item of items.slice(0, 6)) {
+      const chip = document.createElement('span');
+      chip.className = blockers.length ? 'integrity-chip integrity-chip-warn' : 'integrity-chip integrity-chip-clear';
+      chip.textContent = item.toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v139-detail',
+    `V139 does not choose a winner and cannot promote risk. Matched ${matchedResolved}/${matchedAlloc || 0} resolved/allocated · control ${controlAlloc} · challenger ${challengerAlloc} · telemetry ${ageSeconds == null ? 'unknown age' : ageSeconds + 's old'} · live orders OFF · real capital 0R.`
+  );
+}
+
+
 async function loadGoldRiskChallengerEvaluation() {
   const lab = await read('public-gold-risk-challenger-evaluation', 9000);
+  renderV139ExperimentIntegrity(lab);
   const matchHost = byId('v138-match-list');
   const progress = byId('v138-progress-fill') as HTMLElement | null;
 

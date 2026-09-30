@@ -2764,3 +2764,153 @@ body[data-surface="gold-live"] .command-card:hover {
   .challenger-ring-a,.challenger-ring-b,.challenger-lab-core { animation:none!important; }
   .challenger-progress span { transition:none!important; }
 }
+
+
+/* V139 Autonomous Experiment Integrity Guard */
+.integrity-cockpit {
+  overflow:hidden;
+  border-color:rgba(106,168,255,.24);
+  background:
+    radial-gradient(circle at 84% 12%,rgba(106,168,255,.12),transparent 24%),
+    radial-gradient(circle at 70% 76%,rgba(156,115,255,.08),transparent 30%),
+    linear-gradient(145deg,rgba(255,255,255,.042),rgba(255,255,255,.006));
+}
+.integrity-cockpit::after {
+  background:linear-gradient(90deg,transparent,rgba(106,168,255,.80),rgba(114,240,173,.62),rgba(156,115,255,.58),transparent);
+  filter:drop-shadow(0 0 12px rgba(106,168,255,.20));
+}
+.integrity-head {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 138px;
+  gap:28px;
+  align-items:center;
+}
+.integrity-head h3 {
+  margin-top:16px;
+  font-size:clamp(30px,4.2vw,46px);
+  letter-spacing:-.045em;
+}
+.integrity-orb {
+  position:relative;
+  width:132px;
+  aspect-ratio:1;
+  justify-self:end;
+  display:grid;
+  place-items:center;
+  transform-style:preserve-3d;
+}
+.integrity-ring {
+  position:absolute;
+  border-radius:50%;
+  border:1px solid rgba(106,168,255,.34);
+  box-shadow:0 0 28px rgba(106,168,255,.08);
+}
+.integrity-ring-a {
+  width:124px;
+  height:58px;
+  transform:rotateX(70deg) rotateZ(10deg);
+  animation:integrityOrbitA 10s linear infinite;
+}
+.integrity-ring-b {
+  width:88px;
+  height:124px;
+  border-color:rgba(114,240,173,.30);
+  transform:rotateY(69deg) rotateZ(-16deg);
+  animation:integrityOrbitB 13s linear infinite reverse;
+}
+.integrity-core {
+  width:82px;
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  border-radius:50%;
+  border:1px solid rgba(106,168,255,.48);
+  background:
+    radial-gradient(circle at 32% 24%,rgba(255,255,255,.16),transparent 15%),
+    radial-gradient(circle,rgba(106,168,255,.14),rgba(114,240,173,.06) 44%,rgba(7,6,11,.98) 72%);
+  box-shadow:inset 0 0 30px rgba(106,168,255,.08),0 0 44px rgba(106,168,255,.10);
+  animation:integrityCorePulse 3.5s ease-in-out infinite;
+}
+.integrity-core span {
+  color:#b9d2ff;
+  font-size:16px;
+  font-weight:1000;
+  letter-spacing:-.04em;
+}
+.integrity-core small {
+  margin-top:3px;
+  color:#74849f;
+  font-size:6.5px;
+  font-weight:950;
+  letter-spacing:.16em;
+}
+.integrity-governance-grid {
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.integrity-governance-grid article {
+  padding:14px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:13px;
+  background:rgba(0,0,0,.14);
+}
+.integrity-governance-grid span,
+.integrity-governance-grid small {
+  display:block;
+}
+.integrity-governance-grid span {
+  color:#77717e;
+  font-size:6.5px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.integrity-governance-grid strong {
+  display:block;
+  margin-top:6px;
+  color:#ececf0;
+  font-size:12px;
+  font-weight:1000;
+}
+.integrity-governance-grid small {
+  margin-top:4px;
+  color:#8d8792;
+  font-size:7.5px;
+}
+.integrity-blockers {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.integrity-chip {
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:999px;
+  font-size:6.5px;
+  font-weight:1000;
+  letter-spacing:.10em;
+}
+.integrity-chip-warn {
+  color:#f3d99d;
+  border-color:rgba(243,200,107,.20);
+  background:rgba(243,200,107,.055);
+}
+.integrity-chip-clear {
+  color:#a7f5cc;
+  border-color:rgba(114,240,173,.20);
+  background:rgba(114,240,173,.05);
+}
+@keyframes integrityOrbitA { to { transform:rotateX(70deg) rotateZ(370deg); } }
+@keyframes integrityOrbitB { to { transform:rotateY(69deg) rotateZ(344deg); } }
+@keyframes integrityCorePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.045)} }
+@media (max-width:760px) {
+  .integrity-head { grid-template-columns:1fr; }
+  .integrity-orb { justify-self:center;width:118px; }
+  .integrity-governance-grid { grid-template-columns:1fr; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .integrity-ring-a,.integrity-ring-b,.integrity-core { animation:none!important; }
+}
