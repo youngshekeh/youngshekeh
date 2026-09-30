@@ -1,3 +1,5 @@
+import { getVercelOidcToken } from '@vercel/oidc';
+
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 
 export default async function handler(req,res){
@@ -5,7 +7,10 @@ export default async function handler(req,res){
     res.setHeader('Allow','GET');
     return res.status(405).json({ok:false,error:'method_not_allowed'});
   }
-  const token=process.env.VERCEL_OIDC_TOKEN||'';
+  let token='';
+  try{
+    token=await getVercelOidcToken();
+  }catch{}
   if(!token){
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({ok:false,state:'VERCEL_OIDC_UNAVAILABLE'});
