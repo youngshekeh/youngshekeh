@@ -117,6 +117,54 @@
 
 
 
+      <section id="v141-runtime-recovery-sentinel" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V141 · RUNTIME RECOVERY SENTINEL</span>
+            <h3 id="v141-state">CHECKING</h3>
+            <p id="v141-copy">Verifying database, evidence, connectors, runtime quota and production smoke freshness before infrastructure can be considered recovered.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v141-score">--</span><small>RUNTIME</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">MONITORING · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">PROMOTION · DISABLED</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>DATABASE</span><strong id="v141-database">CHECKING</strong></article>
+          <article><span>EVIDENCE</span><strong id="v141-evidence">CHECKING</strong></article>
+          <article><span>CONNECTORS</span><strong id="v141-connectors">CHECKING</strong></article>
+          <article><span>EDGE RUNTIME</span><strong id="v141-edge">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PRODUCTION SMOKE</span><strong id="v141-smoke">CHECKING</strong></article>
+          <article><span>SMOKE AGE</span><strong id="v141-smoke-age">CHECKING</strong></article>
+          <article><span>MAJOR INCIDENTS</span><strong id="v141-incidents">CHECKING</strong></article>
+          <article><span>CANONICAL ACTION</span><strong id="v141-action">WAIT</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>POLICY PROMOTION</span><strong id="v141-promotion">DISABLED</strong><small>Infrastructure recovery cannot self-promote a trading policy.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v141-orders">OFF</strong><small>Runtime health cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v141-capital">0R</strong><small>Capital remains controlled by the canonical firewall.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>ACTIVE RUNTIME BLOCKERS</span>
+          <small>V141 may identify recovery or degradation. It cannot loosen execution permissions.</small>
+        </div>
+        <div id="v141-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING RUNTIME HEALTH</span></div>
+        <p id="v141-detail" class="autonomy-detail">V141 is an infrastructure sentinel only. It cannot transmit orders, promote a policy or increase capital permission.</p>
+      </section>
+
       <section id="v140-promotion-review-gate" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
