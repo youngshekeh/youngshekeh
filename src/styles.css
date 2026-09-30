@@ -1901,3 +1901,129 @@ body[data-surface="gold-live"] .command-card:hover {
   .gate-ring-a,.gate-ring-b,.execution-lock-core { animation: none !important; }
   .execution-readiness-fill { transition: none !important; }
 }
+
+
+/* V134 Broker Adapter Lab · sealed simulation chamber */
+.adapter-lab-cockpit {
+  border-color: rgba(90,196,255,.25);
+  background:
+    radial-gradient(circle at 84% 15%, rgba(90,196,255,.12), transparent 22%),
+    radial-gradient(circle at 10% 88%, rgba(114,240,173,.08), transparent 27%),
+    radial-gradient(circle at 52% 112%, rgba(156,115,255,.08), transparent 32%),
+    linear-gradient(145deg,rgba(255,255,255,.038),rgba(255,255,255,.006));
+}
+.adapter-lab-cockpit::after {
+  background: linear-gradient(90deg,transparent,rgba(90,196,255,.78),rgba(114,240,173,.58),transparent);
+  filter: drop-shadow(0 0 10px rgba(90,196,255,.30));
+}
+.adapter-reactor {
+  position: relative;
+  width: 136px;
+  aspect-ratio: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+.adapter-reactor-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(90,196,255,.34);
+  box-shadow: 0 0 30px rgba(90,196,255,.08);
+}
+.adapter-reactor-a {
+  width: 128px;
+  height: 60px;
+  transform: rotateX(68deg) rotateZ(14deg);
+  animation: adapterOrbitA 8s linear infinite;
+}
+.adapter-reactor-b {
+  width: 88px;
+  height: 126px;
+  border-color: rgba(114,240,173,.30);
+  transform: rotateY(67deg) rotateZ(-20deg);
+  animation: adapterOrbitB 11s linear infinite reverse;
+}
+.adapter-reactor-core {
+  width: 78px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(90,196,255,.48);
+  background:
+    radial-gradient(circle at 34% 26%,rgba(255,255,255,.16),transparent 15%),
+    radial-gradient(circle,rgba(90,196,255,.14),rgba(8,9,14,.97) 68%);
+  box-shadow: inset 0 0 34px rgba(90,196,255,.08),0 0 48px rgba(90,196,255,.10);
+  animation: adapterCorePulse 3.6s ease-in-out infinite;
+}
+.adapter-reactor-core span {
+  color: #8bdcff;
+  font-size: 20px;
+  font-weight: 1000;
+  letter-spacing: -.04em;
+}
+.adapter-reactor-core small {
+  margin-top: 2px;
+  color: #84939c;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .18em;
+}
+.adapter-test-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+}
+.adapter-test {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 14px;
+  background: rgba(0,0,0,.15);
+  transition: transform .2s ease,border-color .2s ease,background .2s ease;
+}
+.adapter-test:hover { transform: translateY(-2px); }
+.adapter-test-pulse {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 16px currentColor;
+}
+.adapter-test strong,.adapter-test small { display:block; }
+.adapter-test strong {
+  color:#eee9f0;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.adapter-test small {
+  margin-top:4px;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.adapter-test-pass {
+  color:var(--green);
+  border-color:rgba(114,240,173,.22);
+  background:rgba(114,240,173,.035);
+}
+.adapter-test-fail {
+  color:#ff8d96;
+  border-color:rgba(255,124,134,.22);
+  background:rgba(255,124,134,.035);
+}
+@keyframes adapterOrbitA { to { transform:rotateX(68deg) rotateZ(374deg); } }
+@keyframes adapterOrbitB { to { transform:rotateY(67deg) rotateZ(340deg); } }
+@keyframes adapterCorePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+@media (max-width:760px){.adapter-test-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media (max-width:520px){.adapter-test-grid{grid-template-columns:1fr}.adapter-reactor{width:112px;justify-self:center;}}
+@media (prefers-reduced-motion:reduce){
+  .adapter-reactor-a,.adapter-reactor-b,.adapter-reactor-core{animation:none!important}
+}
