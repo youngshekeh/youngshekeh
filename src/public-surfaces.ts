@@ -528,6 +528,94 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+
+async function loadGoldExecutionFirewall() {
+  const firewall = await read('public-gold-execution-firewall', 9000);
+  const host = byId('v136-checks-grid');
+
+  if (!firewall?.ok) {
+    set('v136-firewall-state', 'ORDER FIREWALL · FAIL CLOSED');
+    set('v136-firewall-copy', 'Execution qualification is unavailable. No order envelope is promoted and all real-money paths remain blocked.');
+    for (const id of ['v136-order','v136-side','v136-risk','v136-entry','v136-stop','v136-target','v136-rr','v136-quote','v136-idempotency']) set(id, null);
+    set('v136-real-orders', '0');
+    set('v136-broker', 'NOT CONNECTED');
+    set('v136-route', 'ABSENT');
+    set('v136-submit', 'BLOCKED');
+    set('v136-capital', '0R');
+    set('v136-orb', 'LOCK');
+    host?.replaceChildren();
+    set('v136-detail', 'Fail closed: no live broker call, no order transmission, no real capital.');
+    return;
+  }
+
+  const order = firewall?.order ?? null;
+  const qualification = firewall?.qualification ?? {};
+  const governance = firewall?.governance ?? {};
+  const checks = Array.isArray(qualification?.checks) ? qualification.checks : [];
+  const blockers = Array.isArray(order?.blocker_codes) ? order.blocker_codes : [];
+
+  set('v136-firewall-state', `ORDER FIREWALL · ${first(firewall?.state, 'FAIL_CLOSED')}`);
+  set('v136-firewall-copy',
+    order
+      ? `Dry-run ${order.side ?? ''} envelope ${order.client_order_id ?? ''} is frozen for audit. Live submission remains blocked by ${blockers.length} prerequisites.`
+      : 'No active paper allocation is available to qualify. The firewall is waiting without inventing an order.'
+  );
+  set('v136-order', order?.client_order_id ?? 'WAITING');
+  set('v136-side', order?.side ?? 'NONE');
+  set('v136-risk', order?.requested_r == null ? '0R' : `${order.requested_r}R · DRY RUN`);
+  set('v136-real-orders', governance?.real_orders_sent ?? 0);
+  set('v136-entry', order?.reference_entry);
+  set('v136-stop', order?.reference_stop);
+  set('v136-target', order?.reference_target);
+  set('v136-rr', order?.reference_rr == null ? null : `${order.reference_rr}R`);
+  set('v136-quote', first(order?.quote_class, 'DELAYED_RESEARCH_REFERENCE'));
+  const idem = String(order?.idempotency_key ?? '');
+  set('v136-idempotency', idem ? `${idem.slice(0,12)}…` : null);
+  set('v136-broker', governance?.broker_adapter_state === 'CONNECTED' ? 'CONNECTED' : 'NOT CONNECTED');
+  set('v136-route', governance?.order_submission_enabled ? 'CHECK REQUIRED' : 'ABSENT');
+  set('v136-submit', qualification?.live_submission_permitted ? 'CHECK REQUIRED' : 'BLOCKED');
+  set('v136-capital', first(governance?.real_capital_permission, '0R'));
+  set('v136-orb', qualification?.live_submission_permitted ? 'REVIEW' : 'LOCK');
+
+  if (host) {
+    host.replaceChildren();
+    if (!checks.length) {
+      const empty = document.createElement('article');
+      empty.className = 'firewall-check firewall-check-block';
+      const dot = document.createElement('span');
+      dot.className = 'firewall-check-dot';
+      const copy = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = 'QUALIFICATION EVIDENCE';
+      const state = document.createElement('small');
+      state.textContent = 'WITHHELD · LOCKED';
+      copy.append(label, state);
+      empty.append(dot, copy);
+      host.appendChild(empty);
+    } else {
+      for (const check of checks) {
+        const passed = check?.passed === true;
+        const card = document.createElement('article');
+        card.className = `firewall-check ${passed ? 'firewall-check-pass' : 'firewall-check-block'}`;
+        const dot = document.createElement('span');
+        dot.className = 'firewall-check-dot';
+        const copy = document.createElement('div');
+        const label = document.createElement('strong');
+        label.textContent = String(check?.label || check?.code || 'CHECK');
+        const state = document.createElement('small');
+        state.textContent = passed ? 'VERIFIED' : 'LOCKED';
+        copy.append(label, state);
+        card.append(dot, copy);
+        host.appendChild(card);
+      }
+    }
+  }
+
+  set('v136-detail',
+    `Qualified ${qualification?.passed ?? 0}/${qualification?.total ?? checks.length} checks · blockers ${qualification?.live_blockers ?? blockers.length} · kill switch ${governance?.kill_switch_default_on ? 'ON' : 'CHECK'} · live orders ${governance?.order_submission_enabled ? 'CHECK' : 'OFF'} · real capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+}
+
 async function loadGoldOpportunityGovernor() {
   const governor = await read('public-gold-opportunity-governor', 10000);
   const host = byId('v135-prereq-grid');
@@ -1218,6 +1306,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldExecutionFirewall(),
       loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
       loadGoldExecutionReality(),
