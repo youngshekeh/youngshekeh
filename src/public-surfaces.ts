@@ -457,6 +457,49 @@ async function loadGold() {
   }
 }
 
+async function loadGoldDisagreementIntelligence() {
+  const disagreement = await read('public-gold-disagreement-intelligence', 7000);
+  if (!disagreement?.ok) {
+    set('v128-disagreement-state', 'UNAVAILABLE');
+    set('v128-disagreement-copy', 'Human × Machine evidence is unavailable. No disagreement result is inferred.');
+    for (const id of ['v128-reviews','v128-outcomes','v128-events','v128-sample','v128-15m','v128-30m','v128-override','v128-capital']) set(id, null);
+    set('v128-detail', 'Neither human nor machine gains override authority when evidence is unavailable.');
+    return;
+  }
+
+  const pipeline = disagreement?.pipeline ?? {};
+  const governance = disagreement?.governance ?? {};
+  const horizons = Array.isArray(disagreement?.horizons) ? disagreement.horizons : [];
+  const h15 = horizons.find((x) => Number(x?.horizon_minutes) === 15) || {};
+  const h30 = horizons.find((x) => Number(x?.horizon_minutes) === 30) || {};
+  const maxN = Number(pipeline?.max_scorable_disagreement_sample || 0);
+  const floor = Number(h15?.minimum_public_sample || h30?.minimum_public_sample || 10);
+
+  set('v128-disagreement-state', `HUMAN × MACHINE · ${first(disagreement?.state, 'WAITING_FOR_HUMAN_REVIEW')}`);
+  set('v128-disagreement-copy',
+    disagreement?.state === 'WAITING_FOR_HUMAN_REVIEW'
+      ? 'No human review exists yet, so no agreement or disagreement evidence is manufactured.'
+      : maxN < floor
+        ? `Disagreement evidence is collecting prospectively. Comparative statistics remain withheld until n≥${floor}.`
+        : 'Disagreement evidence crossed the publication floor. Results remain descriptive and cannot override either side.'
+  );
+  set('v128-reviews', pipeline?.human_review_events ?? 0);
+  set('v128-outcomes', pipeline?.review_outcomes ?? 0);
+  set('v128-events', pipeline?.disagreement_events ?? 0);
+  set('v128-sample', maxN);
+  set('v128-15m', `n=${h15?.scorable_disagreements ?? 0} · ${h15?.disagreement_statistics_withheld ? 'WITHHELD' : 'AVAILABLE'}`);
+  set('v128-30m', `n=${h30?.scorable_disagreements ?? 0} · ${h30?.disagreement_statistics_withheld ? 'WITHHELD' : 'AVAILABLE'}`);
+  set('v128-override',
+    governance?.automatic_human_override || governance?.automatic_machine_override
+      ? 'CHECK REQUIRED'
+      : 'NONE'
+  );
+  set('v128-capital', first(governance?.capital_permission, '0R'));
+  set('v128-detail',
+    `Explicit contradiction required ${disagreement?.methodology?.disagreement_requires_explicit_human_contradiction ? 'YES' : 'NO'} · supportive=agreement · human override ${governance?.automatic_human_override ? 'ON' : 'OFF'} · machine override ${governance?.automatic_machine_override ? 'ON' : 'OFF'} · auto weighting ${governance?.automatic_weighting ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldReviewIntelligence() {
   const review = await read('public-gold-review-intelligence', 7000);
   if (!review?.ok) {
@@ -696,6 +739,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldDisagreementIntelligence(),
       loadGoldReviewIntelligence(),
       loadGoldSignalReputation(),
       loadGoldTriggerWatch(),
