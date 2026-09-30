@@ -56,3 +56,17 @@ jobs:
           grep -q "set('v142-orders', 'OFF')" src/public-surfaces.ts
           grep -q "set('v142-promotion', 'DISABLED')" src/public-surfaces.ts
           grep -q 'V142 · RUNTIME RECOVERY ENGINE' dist/gold-live/index.html
+      - name: Verify V143 stability confirmation invariants
+        run: |
+          test -f api/stability-confirmation.js
+          test -f supabase/recovery/v143-stability-confirmation.sql
+          test -f supabase/functions/runtime-v143-stability-confirmation/index.ts
+          grep -q 'v143-stability-confirmation-bridge-v1' api/stability-confirmation.js
+          grep -q "capital_permission:'0R'" api/stability-confirmation.js
+          grep -q "live_order_routing:false" api/stability-confirmation.js
+          grep -q "automatic_policy_promotion:false" api/stability-confirmation.js
+          grep -q 'V143 · STABILITY CONFIRMATION ENGINE' gold-live/index.html
+          grep -q "loadV143StabilityConfirmation()" src/public-surfaces.ts
+          grep -q "set('v143-orders', 'OFF')" src/public-surfaces.ts
+          grep -q "set('v143-promotion', 'DISABLED')" src/public-surfaces.ts
+          grep -q 'V143 · STABILITY CONFIRMATION ENGINE' dist/gold-live/index.html

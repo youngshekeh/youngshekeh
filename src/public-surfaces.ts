@@ -533,6 +533,75 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+async function loadV143StabilityConfirmation() {
+  const stability = await readLocal('/api/stability-confirmation', 15000);
+  if (!stability?.ok) {
+    set('v143-state', 'STABILITY · FAIL CLOSED');
+    set('v143-copy', 'Rolling stability evidence is unavailable. V143 cannot confirm infrastructure health and cannot change execution permission.');
+    for (const id of ['v143-score','v143-duration','v143-quota-streak','v143-smoke-streak','v143-cron-15','v143-cron-60','v143-failure','v143-last-failure','v143-connectors']) set(id, null);
+    set('v143-promotion', 'DISABLED');
+    set('v143-orders', 'OFF');
+    set('v143-capital', '0R');
+    return;
+  }
+
+  const current = stability?.current ?? {};
+  const health = stability?.consecutive_health ?? {};
+  const rolling = stability?.rolling_reliability ?? {};
+  const failure = stability?.failure_classification ?? {};
+  const thresholds = stability?.thresholds ?? {};
+  const actions = Array.isArray(stability?.actions) ? stability.actions.map((x: unknown) => String(x)) : [];
+  const stableMinutes = Number(stability?.stable_minutes);
+  const requiredMinutes = Number(thresholds?.post_recovery_stable_minutes || 15);
+  const cron15 = Number(rolling?.cron_15m?.reliability_pct);
+  const cron60 = Number(rolling?.cron_60m?.reliability_pct);
+  const confirmed = stability?.stability_confirmed === true;
+
+  set('v143-state', `STABILITY · ${first(stability?.state, 'UNKNOWN')}`);
+  set('v143-copy',
+    confirmed
+      ? 'Recovery has survived the required observation window with consecutive quota clears, fresh smoke evidence, high cron reliability and no active major incident. This confirms infrastructure stability only.'
+      : stability?.state === 'STABILITY_BLOCKED'
+        ? 'A current or repeated failure prevents stability confirmation. V143 stays fail-closed until observed recovery satisfies the full rolling window.'
+        : 'Recovery is healthy but still earning time. V143 refuses to convert one green check into a stability claim before the rolling confirmation window is satisfied.'
+  );
+  set('v143-score', stability?.stability_score == null ? 'WITHHELD' : `${stability.stability_score}/100`);
+  set('v143-duration', Number.isFinite(stableMinutes) ? `${stableMinutes.toFixed(1)}m / ${requiredMinutes}m` : 'WITHHELD');
+  set('v143-quota-streak', `${Number(health?.quota_clear_streak || 0)} CLEAR`);
+  set('v143-smoke-streak', `${Number(health?.smoke_success_streak || 0)} PASS`);
+  set('v143-cron-15', Number.isFinite(cron15) ? `${cron15.toFixed(3)}%` : 'WITHHELD');
+  set('v143-cron-60', Number.isFinite(cron60) ? `${cron60.toFixed(3)}%` : 'WITHHELD');
+  set('v143-failure', first(failure?.class, 'UNKNOWN'));
+  set('v143-last-failure', failure?.last_cron_failure_job
+    ? `${failure.last_cron_failure_job} · ${failure?.last_cron_failure_recovered ? 'RECOVERED' : 'OPEN CHECK'}`
+    : 'NONE');
+  set('v143-connectors', current?.connectors?.required
+    ? `${Number(current?.connectors?.healthy || 0)}/${Number(current?.connectors?.required || 0)}`
+    : 'WITHHELD');
+  set('v143-promotion', 'DISABLED');
+  set('v143-orders', 'OFF');
+  set('v143-capital', '0R');
+
+  const host = byId('v143-actions');
+  if (host) {
+    host.replaceChildren();
+    const items = actions.length ? actions : ['Stability window satisfied; continue passive verification'];
+    for (const item of items.slice(0, 7)) {
+      const chip = document.createElement('span');
+      chip.className = confirmed && !actions.length
+        ? 'integrity-chip integrity-chip-clear'
+        : 'integrity-chip integrity-chip-warn';
+      chip.textContent = item.replaceAll('_', ' ').toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v143-detail',
+    `Mode ${first(current?.mode, 'unknown')} · stability ${first(stability?.state, 'unknown')} · score ${stability?.stability_score ?? 'n/a'}/100 · stable ${Number.isFinite(stableMinutes) ? stableMinutes.toFixed(1) : 'n/a'}m · quota streak ${Number(health?.quota_clear_streak || 0)} · smoke streak ${Number(health?.smoke_success_streak || 0)} · cron 60m ${Number.isFinite(cron60) ? cron60.toFixed(3) : 'n/a'}% · failure ${first(failure?.class, 'unknown')} · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV142RuntimeRecoveryEngine() {
   const recovery = await readLocal('/api/runtime-recovery', 36000);
   if (!recovery?.ok) {
@@ -1790,6 +1859,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV143StabilityConfirmation(),
       loadV142RuntimeRecoveryEngine(),
       loadV141RuntimeRecoverySentinel(),
       loadGoldRiskChallengerEvaluation(),
