@@ -2027,3 +2027,243 @@ body[data-surface="gold-live"] .command-card:hover {
 @media (prefers-reduced-motion:reduce){
   .adapter-reactor-a,.adapter-reactor-b,.adapter-reactor-core{animation:none!important}
 }
+
+
+/* V135 Autonomous Opportunity Governor */
+.governor-cockpit {
+  overflow: hidden;
+  border-color: rgba(243,200,107,.30);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(243,200,107,.13), transparent 21%),
+    radial-gradient(circle at 70% 42%, rgba(156,115,255,.10), transparent 28%),
+    radial-gradient(circle at 8% 92%, rgba(114,240,173,.08), transparent 30%),
+    linear-gradient(145deg, rgba(255,255,255,.048), rgba(255,255,255,.006));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 32px 120px rgba(0,0,0,.28),
+    0 0 90px rgba(156,115,255,.035);
+}
+.governor-cockpit::after {
+  background: linear-gradient(90deg, transparent, rgba(243,200,107,.88), rgba(156,115,255,.72), rgba(114,240,173,.58), transparent);
+  filter: drop-shadow(0 0 13px rgba(243,200,107,.28));
+}
+.governor-head {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 154px;
+  gap: 28px;
+  align-items: center;
+}
+.governor-head h3 {
+  margin-top: 16px;
+  font-size: clamp(31px,4.5vw,48px);
+  letter-spacing: -.045em;
+}
+.governor-orb {
+  position: relative;
+  width: 148px;
+  aspect-ratio: 1;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+.governor-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(243,200,107,.32);
+  box-shadow: 0 0 30px rgba(243,200,107,.08);
+}
+.governor-ring-a {
+  width: 140px;
+  height: 64px;
+  transform: rotateX(68deg) rotateZ(10deg);
+  animation: governorOrbitA 9s linear infinite;
+}
+.governor-ring-b {
+  width: 94px;
+  height: 140px;
+  border-color: rgba(156,115,255,.34);
+  transform: rotateY(68deg) rotateZ(-18deg);
+  animation: governorOrbitB 12s linear infinite reverse;
+}
+.governor-ring-c {
+  width: 118px;
+  height: 118px;
+  border-style: dashed;
+  border-color: rgba(114,240,173,.19);
+  animation: governorOrbitC 16s linear infinite;
+}
+.governor-core {
+  width: 84px;
+  aspect-ratio: 1;
+  display: grid;
+  align-content: center;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(243,200,107,.52);
+  background:
+    radial-gradient(circle at 32% 24%, rgba(255,255,255,.19), transparent 15%),
+    radial-gradient(circle, rgba(243,200,107,.14), rgba(156,115,255,.10) 38%, rgba(7,6,11,.98) 72%);
+  box-shadow:
+    inset 0 0 34px rgba(243,200,107,.08),
+    0 0 46px rgba(243,200,107,.13),
+    0 0 90px rgba(156,115,255,.08);
+  animation: governorCorePulse 3.2s ease-in-out infinite;
+}
+.governor-core span {
+  color: #f7d98f;
+  font-size: 17px;
+  font-weight: 1000;
+  letter-spacing: -.03em;
+}
+.governor-core small {
+  margin-top: 3px;
+  color: #8c8291;
+  font-size: 6.5px;
+  font-weight: 950;
+  letter-spacing: .18em;
+}
+.governor-position-shell {
+  display: grid;
+  grid-template-columns: minmax(220px,.72fr) minmax(0,1.55fr);
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(243,200,107,.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(243,200,107,.025), rgba(156,115,255,.025)),
+    rgba(0,0,0,.17);
+}
+.governor-position-main {
+  min-width: 0;
+  align-self: center;
+}
+.governor-position-label {
+  display: block;
+  color: #7d7484;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .14em;
+}
+.governor-position-main strong {
+  display: block;
+  margin-top: 8px;
+  color: #f4eef6;
+  font-size: 21px;
+  font-weight: 1000;
+  letter-spacing: -.02em;
+}
+.governor-position-main small {
+  display: block;
+  margin-top: 8px;
+  max-width: 46ch;
+}
+.governor-tape {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 8px;
+}
+.governor-tape > div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 11px;
+  background: rgba(0,0,0,.15);
+}
+.governor-tape span,
+.governor-tape b {
+  display: block;
+}
+.governor-tape span {
+  color: #766d7d;
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: .11em;
+}
+.governor-tape b {
+  margin-top: 6px;
+  color: #eee9f1;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.governor-prereq-grid {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  gap: 8px;
+}
+.governor-prereq {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 12px;
+  background: rgba(0,0,0,.14);
+  transition: transform .2s ease,border-color .2s ease,background .2s ease;
+}
+.governor-prereq:hover { transform: translateY(-2px); }
+.governor-prereq-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 14px currentColor;
+}
+.governor-prereq strong,
+.governor-prereq small { display:block; }
+.governor-prereq strong {
+  color: #ece6ef;
+  font-size: 7.5px;
+  font-weight: 950;
+  letter-spacing: .065em;
+  line-height: 1.35;
+}
+.governor-prereq small {
+  margin-top: 3px;
+  font-size: 6.5px;
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+.governor-prereq-pass {
+  color: var(--green);
+  border-color: rgba(114,240,173,.22);
+  background: rgba(114,240,173,.035);
+}
+.governor-prereq-block {
+  color: var(--amber);
+  border-color: rgba(243,200,107,.16);
+  background: rgba(243,200,107,.022);
+}
+@keyframes governorOrbitA { to { transform: rotateX(68deg) rotateZ(370deg); } }
+@keyframes governorOrbitB { to { transform: rotateY(68deg) rotateZ(342deg); } }
+@keyframes governorOrbitC { to { transform: rotate(360deg); } }
+@keyframes governorCorePulse {
+  0%,100% { transform: scale(1); filter: saturate(1); }
+  50% { transform: scale(1.055); filter: saturate(1.18); }
+}
+@media (max-width: 980px) {
+  .governor-prereq-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .governor-position-shell { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .governor-head { grid-template-columns: 1fr; }
+  .governor-orb { justify-self: center; width: 126px; }
+  .governor-tape { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 520px) {
+  .governor-prereq-grid,
+  .governor-tape { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .governor-ring-a,
+  .governor-ring-b,
+  .governor-ring-c,
+  .governor-core { animation: none !important; }
+  .governor-prereq:hover { transform: none; }
+}
