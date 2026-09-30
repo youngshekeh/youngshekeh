@@ -528,6 +528,80 @@ function renderV132ShadowStudies(shadow: AnyJson) {
   }
 }
 
+async function loadGoldExecutionQualification() {
+  const firewall = await read('public-gold-execution-qualification', 8000);
+  const host = byId('v136-gates');
+
+  if (!firewall?.ok) {
+    set('v136-state', 'EXECUTION FIREWALL · FAIL CLOSED');
+    set('v136-copy', 'Qualification telemetry is unavailable. Live execution remains locked.');
+    for (const id of ['v136-dry-ready','v136-side','v136-blockers','v136-client-id','v136-strategy','v136-entry','v136-stop','v136-target','v136-rr','v136-paper-r','v136-sample']) set(id, null);
+    set('v136-live-qualified', 'NO');
+    set('v136-route', 'DRY RUN ONLY');
+    set('v136-real-orders', '0');
+    set('v136-submission', 'OFF');
+    set('v136-capital', '0R');
+    set('v136-orb', 'LOCK');
+    host?.replaceChildren();
+    set('v136-detail', 'Fail closed: no broker route, no live order submission, no automatic real capital.');
+    return;
+  }
+
+  const order = firewall?.dry_run_order ?? null;
+  const qualification = firewall?.qualification ?? {};
+  const governance = firewall?.governance ?? {};
+  const safety = firewall?.safety ?? {};
+  const gates = Array.isArray(qualification?.hard_gates) ? qualification.hard_gates : [];
+
+  set('v136-state', `ORDER FIREWALL · ${first(firewall?.state, 'LOCKED')}`);
+  set('v136-copy',
+    qualification?.dry_run_order_ready
+      ? `A deterministic ${order?.side ?? ''} dry-run ticket is qualified. Live execution remains blocked by ${qualification?.blocker_count ?? 0} independent gates.`
+      : 'The dry-run ticket is not qualified. The firewall is withholding both simulated and live order promotion.'
+  );
+  set('v136-dry-ready', qualification?.dry_run_order_ready ? 'READY · DRY ONLY' : 'LOCKED');
+  set('v136-side', first(order?.side, 'WITHHELD'));
+  set('v136-blockers', qualification?.blocker_count ?? 0);
+  set('v136-live-qualified', qualification?.live_order_qualified ? 'YES · REVIEW REQUIRED' : 'NO · LOCKED');
+  set('v136-client-id', first(order?.client_order_id, 'WITHHELD'));
+  set('v136-strategy', order ? `${first(order?.strategy_code, 'SHADOW EVENT')} · intent #${order?.intent_id ?? 'n/a'} · reference only` : 'Waiting for a qualified paper allocation.');
+  set('v136-entry', order?.reference_entry ?? null);
+  set('v136-stop', order?.stop_price ?? null);
+  set('v136-target', order?.target_price ?? null);
+  set('v136-rr', order?.reference_rr == null ? null : `${order.reference_rr}R`);
+  set('v136-paper-r', order?.requested_paper_r == null ? null : `${order.requested_paper_r}R`);
+  set('v136-route', first(order?.route, 'DRY_RUN_ONLY'));
+  set('v136-sample', `${qualification?.resolved_research_sample ?? 0} / ${qualification?.mature_sample_required ?? 30}`);
+  set('v136-real-orders', safety?.adapter_real_orders_sent ?? 0);
+  set('v136-submission', governance?.order_submission_enabled ? 'CHECK REQUIRED' : 'OFF');
+  set('v136-capital', first(governance?.real_capital_permission, '0R'));
+  set('v136-orb', qualification?.dry_run_order_ready ? 'DRY' : 'LOCK');
+
+  if (host) {
+    host.replaceChildren();
+    for (const gate of gates) {
+      const card = document.createElement('article');
+      card.className = `firewall-gate ${gate?.passed ? 'firewall-gate-pass' : 'firewall-gate-block'}`;
+      const dot = document.createElement('span');
+      dot.className = 'firewall-gate-dot';
+      const copy = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = String(gate?.label || gate?.code || 'GATE');
+      const state = document.createElement('small');
+      state.textContent = gate?.passed
+        ? `VERIFIED · ${first(gate?.scope, 'CHECK')}`
+        : `LOCKED · ${first(gate?.scope, 'CHECK')}`;
+      copy.append(label, state);
+      card.append(dot, copy);
+      host.appendChild(card);
+    }
+  }
+
+  set('v136-detail',
+    `Dry-run ${qualification?.dry_run_order_ready ? 'READY' : 'LOCKED'} · live qualified ${qualification?.live_order_qualified ? 'YES' : 'NO'} · real broker ${safety?.real_broker_connected ? 'CONNECTED' : 'NOT CONNECTED'} · live route ${safety?.live_order_route_present ? 'PRESENT' : 'ABSENT'} · real order sent ${safety?.real_order_sent ? 'YES' : 'NO'} · capital ${first(governance?.real_capital_permission, '0R')}.`
+  );
+}
+
 async function loadGoldOpportunityGovernor() {
   const governor = await read('public-gold-opportunity-governor', 10000);
   const host = byId('v135-prereq-grid');
@@ -1218,6 +1292,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldExecutionQualification(),
       loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
       loadGoldExecutionReality(),
