@@ -1,4 +1,4 @@
-const VERSION='v113.2-autonomous-regression-matrix-v7';
+const VERSION='v114-autonomous-regression-matrix-v8';
 const BASE=process.env.VERCEL_URL?`https://${process.env.VERCEL_URL}`:'https://thefatheranalytics.com';
 
 async function fetchAny(path,timeout=10000){
@@ -29,7 +29,7 @@ export default async function handler(req,res){
     fetchAny('/api/gold-mtf-confluence'),
     fetchAny('/api/gold-breakout-acceptance'),
     fetchAny('/api/gold-breakout-acceptance?selftest=1'),
-    fetchAny('/api/mission-brief',15000)
+    fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000)
   ]);
   const tests=[];
   tests.push(result('homepage_http',home.status===200,`status=${home.status}`,home.latency_ms));
