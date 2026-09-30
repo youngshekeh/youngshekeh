@@ -457,6 +457,43 @@ async function loadGold() {
   }
 }
 
+async function loadGoldReviewPriority() {
+  const priority = await read('public-gold-review-priority', 7000);
+  if (!priority?.ok) {
+    set('v130-priority-state', 'UNAVAILABLE');
+    set('v130-priority-copy', 'Review routing telemetry is unavailable. The private review queue remains authoritative.');
+    for (const id of ['v130-assignments','v130-pending','v130-p1','v130-top-score','v130-p1-band','v130-p2-band','v130-model','v130-capital']) set(id, null);
+    set('v130-detail', 'Unavailable routing data never grants execution or capital authority.');
+    return;
+  }
+
+  const pipeline = priority?.pipeline ?? {};
+  const governance = priority?.governance ?? {};
+  const methodology = priority?.methodology ?? {};
+  const bands = Array.isArray(priority?.bands) ? priority.bands : [];
+  const byBand = (name) => bands.find((x) => x?.priority_band === name) || {};
+  const p1 = byBand('P1_HIGH_ATTENTION');
+  const p2 = byBand('P2_PRIORITY');
+
+  set('v130-priority-state', `REVIEW ROUTING · ${first(priority?.state, 'COLLECTING')}`);
+  set('v130-priority-copy',
+    Number(pipeline?.pending_directional_reviews || 0) > 0
+      ? `${pipeline.pending_directional_reviews} directional reviews are pending; ${pipeline.high_attention_pending ?? 0} are P1 high-attention.`
+      : 'No pending directional review candidates are currently routed.'
+  );
+  set('v130-assignments', pipeline?.assignments ?? 0);
+  set('v130-pending', pipeline?.pending_directional_reviews ?? 0);
+  set('v130-p1', pipeline?.high_attention_pending ?? 0);
+  set('v130-top-score', pipeline?.top_pending_score ?? 'n/a');
+  set('v130-p1-band', `${p1?.pending_reviews ?? 0} pending`);
+  set('v130-p2-band', `${p2?.pending_reviews ?? 0} pending`);
+  set('v130-model', first(methodology?.scoring_version, 'WITHHELD'));
+  set('v130-capital', first(governance?.capital_permission, '0R'));
+  set('v130-detail',
+    `Inputs: direction + event class + stated severity + transition specificity · performance data ${methodology?.performance_evidence_used ? 'ON' : 'OFF'} · reviewer reputation ${methodology?.reviewer_reputation_used ? 'ON' : 'OFF'} · auto execution ${governance?.automatic_execution ? 'ON' : 'OFF'}.`
+  );
+}
+
 async function loadGoldContextualDisagreement() {
   const context = await read('public-gold-contextual-disagreement', 7000);
   if (!context?.ok) {
@@ -779,6 +816,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadGoldReviewPriority(),
       loadGoldContextualDisagreement(),
       loadGoldDisagreementIntelligence(),
       loadGoldReviewIntelligence(),

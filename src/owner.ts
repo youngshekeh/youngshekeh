@@ -111,8 +111,9 @@
         $('reviewPending').textContent = String(counts.pending_directional || 0);
         $('reviewReviewed').textContent = String(counts.reviewed_directional || 0);
         $('reviewDirectional').textContent = String(counts.directional_candidates || 0);
+        $('reviewP1').textContent = String(data?.review_priority?.high_attention_pending || 0);
         $('reviewDetail').textContent =
-          `Classifier ${data?.classifier_version || 'WITHHELD'} · append-only evidence judgments · capital remains 0R.`;
+          `Classifier ${data?.classifier_version || 'WITHHELD'} · routing ${data?.review_priority?.scoring_version || 'WITHHELD'} · attention ranking only · capital remains 0R.`;
 
         const host = $('reviewQueue');
         host.replaceChildren();
@@ -127,16 +128,18 @@
           card.className = 'card';
           card.style.marginTop = '10px';
 
+          const priorityBand = item?.priority?.priority_band || 'UNRANKED';
+          const priorityScore = item?.priority?.priority_score ?? 'n/a';
           const title = textEl(
             'div',
-            `${item.direction || 'UNCLASSIFIED'} · ${item.transition_code || 'EVENT'} · ${item.source_state || 'STATE UNKNOWN'}`,
+            `${priorityBand} · ${priorityScore} · ${item.direction || 'UNCLASSIFIED'} · ${item.transition_code || 'EVENT'} · ${item.source_state || 'STATE UNKNOWN'}`,
             'value'
           );
           card.appendChild(title);
           card.appendChild(
             textEl(
               'p',
-              `Request #${item.review_request_id} · ${item.review_stage || 'REVIEW'} · source ${item.source_price ?? 'n/a'} · history ${item.review_history_count || 0}`,
+              `Request #${item.review_request_id} · ${item.review_stage || 'REVIEW'} · severity ${item?.priority?.severity || 'UNKNOWN'} · source ${item.source_price ?? 'n/a'} · history ${item.review_history_count || 0}`,
               'muted'
             )
           );
