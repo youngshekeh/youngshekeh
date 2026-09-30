@@ -116,6 +116,64 @@
       </section>
 
 
+
+      <section id="v137-adaptive-risk" class="command-card autonomy-cockpit adaptive-risk-cockpit">
+        <div class="adaptive-risk-head">
+          <div>
+            <span class="kicker">V137 · ADAPTIVE PAPER RISK GOVERNOR</span>
+            <h3 id="v137-risk-state">CHECKING</h3>
+            <p id="v137-risk-copy">Sizing the next challenger paper allocation from resolved drawdown, loss streak and evidence maturity. Existing positions are never resized retroactively.</p>
+          </div>
+          <div class="adaptive-risk-dial" aria-hidden="true">
+            <div class="adaptive-risk-ring"></div>
+            <div class="adaptive-risk-core">
+              <span id="v137-risk-orb">0R</span>
+              <small>NEXT PAPER RISK</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ADAPTIVE CHALLENGER · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">CONTROL · V133 FIXED 1R</span>
+          <span class="autonomy-chip autonomy-chip-off">REAL CAPITAL · 0R</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>NEXT PAPER RISK</span><strong id="v137-next-risk">CHECKING</strong></article>
+          <article><span>RISK EVIDENCE N</span><strong id="v137-sample">CHECKING</strong></article>
+          <article><span>MAX DRAWDOWN</span><strong id="v137-dd">CHECKING</strong></article>
+          <article><span>LOSS STREAK</span><strong id="v137-loss">CHECKING</strong></article>
+        </section>
+
+        <div class="adaptive-risk-meter-shell">
+          <div class="adaptive-risk-meter"><span id="v137-risk-fill"></span></div>
+          <div class="adaptive-risk-scale"><span>0.10R DEFENSE</span><span>0.25R</span><span>0.50R</span><span>0.75R</span><span>1.00R MAX</span></div>
+        </div>
+
+        <section class="command-grid two">
+          <article class="command-card compact-card">
+            <span class="kicker">CHALLENGER PORTFOLIO</span>
+            <h3 id="v137-challenger">WAITING FOR NEW SIGNAL</h3>
+            <p id="v137-challenger-copy">Only signals created after V137 launch are eligible. Late events whose outcomes are already known are rejected.</p>
+          </article>
+          <article class="command-card compact-card">
+            <span class="kicker">RISK MEMORY</span>
+            <h3 id="v137-gross-r">CHECKING</h3>
+            <p id="v137-risk-memory-copy">Gross R is research-unit performance, not money P&amp;L. Net R stays unavailable until execution costs are measured.</p>
+          </article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>DECISIONS</span><strong id="v137-decisions">0</strong></article>
+          <article><span>OPEN CHALLENGER</span><strong id="v137-open">0</strong></article>
+          <article><span>LIVE ORDERS</span><strong id="v137-live">OFF</strong></article>
+          <article><span>REAL CAPITAL</span><strong id="v137-capital">0R</strong></article>
+        </section>
+
+        <p id="v137-detail" class="autonomy-detail">V137 runs beside the fixed-1R control so the machine can learn whether adaptive paper sizing reduces damage without inventing live execution authority.</p>
+      </section>
+
       <section id="v136-execution-firewall" class="command-card autonomy-cockpit firewall-cockpit">
         <div class="firewall-head">
           <div>
