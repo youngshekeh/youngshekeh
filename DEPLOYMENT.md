@@ -7,7 +7,10 @@ Canonical Vercel rescue branch for the production frontend.
 - Framework: Vite
 - Backend/data services: Supabase project `mpcelmjiycjpdyyflisn`
 - Production domain: `thefatheranalytics.com`
-- Release checkpoint: V138 Prospective Risk Challenger Evaluation
+- Release checkpoint: V139 Autonomous Experiment Integrity Guard
+- V138 experiment state: preserved as the underlying matched prospective comparison
+- V139 checks: telemetry freshness, cohort alignment, outcome consistency, sample maturity
+- V139 authority: observation/governance only; it cannot promote a policy or increase capital permission
 - Control: V133 fixed 1R
 - Challenger: V137.1 adaptive consensus risk
 - Comparison: matched prospective allocations only
