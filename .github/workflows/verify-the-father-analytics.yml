@@ -76,14 +76,16 @@ jobs:
           test -f api/scheduler-governor.js
           test -f supabase/recovery/v144-scheduler-load-governor.sql
           test -f supabase/recovery/v144-scheduler-load-governor-rollback.sql
+          test -f supabase/recovery/v1441-core-cluster-phasing.sql
+          grep -q 'v144.1-scheduler-load-governor-db-v2' supabase/recovery/v1441-core-cluster-phasing.sql
           test -f supabase/functions/runtime-v144-scheduler-governor/index.ts
           grep -q 'v144-scheduler-load-governor-bridge-v1' api/scheduler-governor.js
           grep -q "capital_permission:'0R'" api/scheduler-governor.js
           grep -q "live_order_routing:false" api/scheduler-governor.js
           grep -q "automatic_rescheduling:false" api/scheduler-governor.js
-          grep -q 'V144 · SCHEDULER LOAD GOVERNOR' gold-live/index.html
+          grep -q 'V144.1 · SCHEDULER LOAD GOVERNOR' gold-live/index.html
           grep -q "loadV144SchedulerLoadGovernor()" src/public-surfaces.ts
           grep -q "set('v144-orders', 'OFF')" src/public-surfaces.ts
           grep -q "set('v144-promotion', 'DISABLED')" src/public-surfaces.ts
           grep -q '11,26,41,56' supabase/recovery/v144-scheduler-load-governor.sql
-          grep -q 'V144 · SCHEDULER LOAD GOVERNOR' dist/gold-live/index.html
+          grep -q 'V144.1 · SCHEDULER LOAD GOVERNOR' dist/gold-live/index.html
