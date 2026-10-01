@@ -1,8 +1,8 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const SUPABASE_FUNCTIONS='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1';
-const DEPENDENCY_TIMEOUT_MS=12000;
-const PRESSURE_CONTROL_VERSION='v176';
+const DEPENDENCY_TIMEOUT_MS=6000;
+const PRESSURE_CONTROL_VERSION='v176.1';
 
 const PUBLIC_ENDPOINTS={
   desk:'public-gold-execution-desk',
@@ -49,7 +49,7 @@ async function fetchJson(url,headers={},timeout=DEPENDENCY_TIMEOUT_MS){
 function failClosed(res,status,error,detail){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Engine','V166');
-  res.setHeader('X-TFA-Pressure-Control','V176');
+  res.setHeader('X-TFA-Pressure-Control','V176.1');
   return res.status(status).json({
     ok:false,
     version:'v166-production-closure-gate-v1',
@@ -175,11 +175,13 @@ export default async function handler(req,res){
 
   const selected=handoff?.selected_candidate||null;
 
-  res.setHeader('Cache-Control','public, max-age=0, s-maxage=5, must-revalidate');
+  res.setHeader('Cache-Control',allDependenciesHealthy
+    ?'public, max-age=0, s-maxage=5, must-revalidate'
+    :'no-store');
   res.setHeader('X-TFA-Runtime','PUBLIC-SHELL-PRIVATE-BRAIN');
   res.setHeader('X-TFA-Auth','VERCEL_OIDC');
   res.setHeader('X-TFA-Engine','V166');
-  res.setHeader('X-TFA-Pressure-Control','V176');
+  res.setHeader('X-TFA-Pressure-Control','V176.1');
   if(!allDependenciesHealthy)res.setHeader('Retry-After','5');
 
   return res.status(allDependenciesHealthy?200:503).json({
@@ -261,7 +263,8 @@ export default async function handler(req,res){
     pressure_control:{
       version:PRESSURE_CONTROL_VERSION,
       dependency_timeout_ms:DEPENDENCY_TIMEOUT_MS,
-      vercel_edge_cache_seconds:5,
+      healthy_response_cache_seconds:5,
+      degraded_response_cache:false,
       qa_retry_recommended:false,
       live_order_permission_unchanged:true
     },

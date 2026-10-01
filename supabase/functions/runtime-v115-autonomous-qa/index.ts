@@ -49,7 +49,7 @@ async function legacyHandler(req:any,res:any,transport:any){
     ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',{},8000),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',8000)),
     ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000),
-    ()=>fetchAny('/api/production-closure',12000),
+    ()=>fetchAny('/api/production-closure',7000),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-opportunity-governor',10000)),
     ()=>fetchAny('/api/capital-calendar',12000),
     ()=>fetchAny('/api/earnings-calendar',12000),
