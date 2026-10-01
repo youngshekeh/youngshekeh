@@ -536,6 +536,72 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV154RollbackRehearsalShadow() {
+  const rollback = await readLocal('/api/rollback-rehearsal-shadow', 20000);
+  if (!rollback?.ok) {
+    set('v154-state', 'ROLLBACK · FAIL CLOSED');
+    set('v154-copy', 'The rollback rehearsal engine is unavailable. No rollback or further scheduler mutation is permitted.');
+    for (const id of ['v154-ready','v154-live','v154-from','v154-to','v154-recommended','v154-identity','v154-consistency','v154-primitive']) set(id, null);
+    set('v154-drift-rule', 'REFUSED');
+    set('v154-rollback-file', 'WITHHELD');
+    set('v154-auto-rollback', 'OFF');
+    set('v154-orders', 'OFF');
+    set('v154-capital', '0R');
+    return;
+  }
+
+  const rehearsal = rollback?.rehearsal ?? {};
+  const target = rollback?.target ?? {};
+  const sim = rollback?.simulated_rollback ?? {};
+  const blockers = Array.isArray(rehearsal?.blockers) ? rehearsal.blockers.map((x: unknown) => String(x)) : [];
+  const ready = Boolean(rehearsal?.ready);
+  const recommended = Boolean(rehearsal?.rollback_recommended);
+
+  set('v154-state', `ROLLBACK · ${first(rollback?.state, 'UNKNOWN')}`);
+  set('v154-copy',
+    recommended && ready
+      ? 'The post-shift observer recommends rollback and V154 has verified the exact rollback path. Automatic rollback remains disabled.'
+      : ready
+        ? 'The exact rollback path is rehearsed and ready if a governed rollback is later required. No rollback is currently recommended.'
+        : 'The rollback path has a blocker. Scheduler mutation remains locked until the rollback contract is restored.'
+  );
+  set('v154-ready', ready ? 'READY' : 'LOCKED');
+  set('v154-live', target?.live_schedule ?? 'WITHHELD');
+  set('v154-from', sim?.from_schedule ?? 'WITHHELD');
+  set('v154-to', sim?.to_schedule ?? 'WITHHELD');
+  set('v154-recommended', recommended ? 'YES' : 'NO');
+  set('v154-identity', target?.identity_match ? 'MATCH' : 'LOCKED');
+  set('v154-consistency', target?.ledger_state_consistent ? 'CONSISTENT' : 'LOCKED');
+  set('v154-primitive', rehearsal?.rollback_primitive_available ? 'AVAILABLE' : 'WITHHELD');
+  set('v154-drift-rule', sim?.unknown_drift_refused ? 'REFUSED' : 'WITHHELD');
+  set('v154-rollback-file', rehearsal?.rollback_file ? 'READY' : 'WITHHELD');
+  set('v154-auto-rollback', 'OFF');
+  set('v154-orders', 'OFF');
+  set('v154-capital', '0R');
+
+  const host = byId('v154-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO ROLLBACK CONTRACT BLOCKERS';
+      host.appendChild(chip);
+    } else {
+      for (const item of blockers.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = item.replaceAll('_', ' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v154-detail',
+    `State ${String(rollback?.state || 'unknown')} · live ${String(target?.live_schedule || 'n/a')} · simulated ${String(sim?.from_schedule || 'n/a')} → ${String(sim?.to_schedule || 'n/a')} · identity ${target?.identity_match ? 'match' : 'blocked'} · ledger ${target?.ledger_state_consistent ? 'consistent' : 'blocked'} · rollback recommended ${recommended ? 'yes' : 'no'} · auto rollback OFF · capital 0R.`
+  );
+}
+
 async function loadV153SchedulerMutationAdmission() {
   const gate = await readLocal('/api/scheduler-mutation-admission', 20000);
   if (!gate?.ok) {
@@ -2549,6 +2615,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV154RollbackRehearsalShadow(),
       loadV153SchedulerMutationAdmission(),
       loadV152PostShiftObserver(),
       loadV151SingleCandidatePlanShadow(),
