@@ -1,0 +1,307 @@
+{
+  "release": "V170 network evidence freshness",
+  "checked_at": "2026-10-01T16:56:56.890Z",
+  "migration": "20261001165418_v170_bounded_network_evidence_freshness",
+  "deterministic_cases": {
+    "passed": 20,
+    "failed": 0,
+    "executed": "atomically in migration before commit"
+  },
+  "live_regression": {
+    "version": "v169.0-integrated-engine-certification-v48",
+    "state": "PASS",
+    "summary": {
+      "passed": 74,
+      "failed": 0,
+      "total": 74,
+      "max_latency_ms": 9521
+    },
+    "invariants": {
+      "canonical_execution_permission": "UNCHANGED",
+      "action_permitted": "WAIT",
+      "capital_permission": "0R",
+      "automatic_promotion": false
+    }
+  },
+  "http_checks": [
+    {
+      "path": "/api/network-sla-evidence-shadow",
+      "http_status": 200,
+      "elapsed_s": 8.084,
+      "ok": true,
+      "state": "NETWORK_SLA_CANDIDATES_READY_FOR_CONTROLLED_PLAN_REVIEW",
+      "engine_version": "v170-network-sla-snapshot-freshness-db-v1",
+      "summary": {
+        "failure_review_candidates": 0,
+        "latency_review_candidates": 0,
+        "network_candidates_audited": 3,
+        "invalidated_cached_candidates": 0,
+        "protected_business_candidates": 1,
+        "incomplete_evidence_candidates": 0,
+        "network_sla_cleared_candidates": 2
+      },
+      "cache": {
+        "state": "FRESH",
+        "expires_at": "2026-10-01T17:08:00.318466+00:00",
+        "measured_at": "2026-10-01T16:48:00.318466+00:00",
+        "ttl_minutes": 20,
+        "refresh_mode": "SCHEDULED_OUT_OF_BAND",
+        "refreshed_at": "2026-10-01T16:48:00.318466+00:00",
+        "history_scanned_on_read": false
+      },
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "automatic_pool_reconfiguration": false,
+        "network_sla_evidence_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/connection-pressure-shadow",
+      "http_status": 200,
+      "elapsed_s": 11.292,
+      "ok": true,
+      "state": "NORMAL",
+      "engine_version": "v147-connection-pressure-shadow-db-v1",
+      "summary": null,
+      "cache": {
+        "state": "REFRESHED",
+        "compute_ms": 2398.6,
+        "ttl_minutes": 2,
+        "refreshed_at": "2026-10-01T16:55:18.435137+00:00"
+      },
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "automatic_pool_reconfiguration": false,
+        "automatic_connection_throttling": false,
+        "connection_pressure_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/predictive-collision-shadow",
+      "http_status": 200,
+      "elapsed_s": 8.594,
+      "ok": true,
+      "state": "REVIEW_ONLY_CANDIDATES_FOUND",
+      "engine_version": "v148-predictive-collision-shadow-db-v1",
+      "summary": {
+        "active_jobs": 94,
+        "protected_jobs": 45,
+        "ranked_candidates": 9,
+        "low_complexity_candidates": 0,
+        "review_required_candidates": 9,
+        "best_estimated_relief_index": 24.68,
+        "recommended_concurrent_ceiling": 8
+      },
+      "cache": {
+        "state": "FRESH",
+        "ttl_minutes": 10,
+        "refreshed_at": "2026-10-01T16:52:22.933757+00:00"
+      },
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "automatic_pool_reconfiguration": false,
+        "predictive_optimizer_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/latest-experiment-admission",
+      "http_status": 200,
+      "elapsed_s": 5.672,
+      "ok": true,
+      "state": "LOCKED_QA_FRESHNESS",
+      "engine_version": "v159.3-latest-experiment-admission-db-v4-safe-alternative-handoff",
+      "summary": null,
+      "cache": {
+        "state": "REFRESHED",
+        "compute_ms": 71.3,
+        "ttl_minutes": 3,
+        "refreshed_at": "2026-10-01T16:55:26.674231+00:00"
+      },
+      "governance": {
+        "action_permitted": "WAIT",
+        "automatic_rollback": false,
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "human_review_required": true,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "latest_experiment_admission_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/safe-alternative-admission-handoff",
+      "http_status": 200,
+      "elapsed_s": 7.384,
+      "ok": true,
+      "state": "HANDOFF_CLEAR_FOR_HUMAN_REVIEW",
+      "engine_version": "v165-safe-alternative-admission-handoff-db-v1",
+      "summary": null,
+      "cache": {
+        "state": "FRESH",
+        "ttl_minutes": 5,
+        "refreshed_at": "2026-10-01T16:52:22.933757+00:00"
+      },
+      "governance": {
+        "action_permitted": "WAIT",
+        "automatic_rollback": false,
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "human_review_required": true,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "handoff_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/production-closure",
+      "http_status": 200,
+      "elapsed_s": 7.91,
+      "ok": true,
+      "state": "RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED",
+      "engine_version": null,
+      "summary": null,
+      "cache": null,
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "order_submission_enabled": false,
+        "automatic_real_capital": false,
+        "automatic_rescheduling": false,
+        "automatic_rollback": false,
+        "automatic_policy_promotion": false,
+        "human_release_required": true,
+        "v166_can_unlock_capital": false
+      },
+      "error": null
+    },
+    {
+      "path": "/api/gold-day-state",
+      "http_status": 200,
+      "elapsed_s": 7.694,
+      "ok": true,
+      "state": null,
+      "engine_version": null,
+      "summary": null,
+      "cache": null,
+      "governance": {
+        "canonical": false,
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "promotion_allowed": false,
+        "note": "Research-only day-state classification; not an execution signal."
+      },
+      "error": null
+    },
+    {
+      "path": "/api/capital-calendar",
+      "http_status": 200,
+      "elapsed_s": 6.558,
+      "ok": true,
+      "state": "OFFICIAL_STATIC_FALLBACK_ACTIVE",
+      "engine_version": null,
+      "summary": null,
+      "cache": null,
+      "governance": {
+        "trading_permission": false,
+        "event_proximity_is_context_only": true
+      },
+      "error": null
+    },
+    {
+      "path": "/api/earnings-calendar",
+      "http_status": 200,
+      "elapsed_s": 10.928,
+      "ok": true,
+      "state": "LIVE_UPSTREAM",
+      "engine_version": null,
+      "summary": null,
+      "cache": null,
+      "governance": {
+        "forecast_fields_are_provider_data": true,
+        "no_estimates_fabricated": true,
+        "trading_permission": false
+      },
+      "error": null
+    }
+  ],
+  "v150_latency": {
+    "before_http_seconds": 15.409426,
+    "after_http_seconds": 8.084,
+    "database_read_ms": 27.541,
+    "note": "Single observed requests; network and workload conditions vary. These are not a latency SLA."
+  },
+  "execution_readiness": {
+    "state": "RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED",
+    "closure": {
+      "platform_research_ready": true,
+      "autonomous_paper_ready": true,
+      "scheduler_review_ready": false,
+      "live_execution_ready": false,
+      "real_money_launch_complete": false,
+      "note": "The research/paper product can operate while real-money execution remains fail-closed."
+    },
+    "blockers": [
+      "MARKET_FEED_DELAYED",
+      "EXECUTION_GRADE_QUOTE_UNAVAILABLE",
+      "MATURE_SAMPLE_BELOW_30",
+      "BROKER_ADAPTER_NOT_CONNECTED",
+      "BROKER_SPREAD_NOT_MEASURED",
+      "SLIPPAGE_NOT_MEASURED",
+      "ORDER_RECONCILIATION_NOT_TESTED",
+      "KILL_SWITCH_NOT_TESTED",
+      "HIGH_FRICTION_STRESS_EDGE_NOT_PROVEN",
+      "PRODUCTION_BROKER_NOT_VERIFIED",
+      "MEASURED_SPREAD_UNAVAILABLE",
+      "MEASURED_SLIPPAGE_UNAVAILABLE",
+      "HUMAN_RELEASE_REVIEW_REQUIRED",
+      "SCHEDULER_HUMAN_REVIEW_GATE_NOT_CLEAR",
+      "LIVE_EXECUTION_RELEASE_NOT_READY"
+    ],
+    "evidence": {
+      "resolved_shadow_sample": 10,
+      "mature_sample_required": 30,
+      "sample_state": "EARLY_SHADOW_EVIDENCE",
+      "execution_evidence_state": "NOT_EXECUTION_GRADE",
+      "public_statistics": {
+        "average_gross_r": -0.879,
+        "average_low_friction_stress_r": -0.899,
+        "average_moderate_friction_stress_r": -0.929,
+        "average_high_friction_stress_r": -0.979,
+        "high_stress_positive_count": 2,
+        "high_stress_positive_rate_pct": 20,
+        "high_stress_total_r": -9.793
+      },
+      "broker_adapter_state": "NOT_CONNECTED",
+      "infrastructure_passed": 0,
+      "infrastructure_total": 6,
+      "broker_lab_state": "PASS_SIMULATION_ONLY",
+      "production_broker_readiness": "NOT_TESTED"
+    }
+  },
+  "security": {
+    "advisor_errors": 0,
+    "advisor_warnings": 0,
+    "informational_rls_without_policy_tables": 130,
+    "v150_rpc_anon_execute": false,
+    "v150_rpc_authenticated_execute": false,
+    "v150_rpc_service_execute": true
+  }
+}
