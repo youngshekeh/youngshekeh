@@ -139,5 +139,3 @@ begin
   );
 end;
 $function$
-
-
