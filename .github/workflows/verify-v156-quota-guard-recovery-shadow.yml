@@ -1,0 +1,42 @@
+name: Verify V156 Quota Guard Recovery Shadow
+on:
+  push:
+    branches:
+      - tfa-v156-quota-guard-recovery
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+permissions:
+  contents: read
+jobs:
+  v156-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/quota-guard-recovery-shadow.js
+      - name: Verify recovery state machine assets
+        run: |
+          test -f supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          test -f supabase/functions/runtime-v156-quota-guard-recovery-shadow/index.ts
+          grep -q "v156-quota-guard-recovery-shadow-db-v1" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "QUOTA_RESTRICTED_LOAD_SHEDDING_CONSISTENT" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "RECOVERY_PENDING_GUARD_RELEASE" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "RECOVERY_CONFIRMED_RESTORED" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "GUARD_STATE_DIVERGENCE" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "ENFORCER_UNHEALTHY" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+      - name: Reject guard mutation
+        run: |
+          if grep -Eq "(perform|select)[[:space:]]+cron\.alter_job|apply_v72_edge_load_shedding\(" supabase/recovery/v156-quota-guard-recovery-shadow.sql; then
+            echo "V156 must remain read-only"
+            exit 1
+          fi
+          grep -q "'automatic_guard_release',false" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v156-quota-guard-recovery-shadow.sql
+          grep -q "capital_permission:'0R'" api/quota-guard-recovery-shadow.js
