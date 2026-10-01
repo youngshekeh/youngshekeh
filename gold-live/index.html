@@ -117,6 +117,55 @@
 
 
 
+      <section id="v149-dependency-isolation-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V149 · DEPENDENCY & FAILURE-ISOLATION AUDITOR</span>
+            <h3 id="v149-state">CHECKING</h3>
+            <p id="v149-copy">Inspecting V148 candidates for hidden writes, privileged functions, network I/O and protected-data side effects before any schedule move.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v149-cleared">--</span><small>CLEARED</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">DEPENDENCY AUDIT · SHADOW</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO APPLY · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>AUDITED</span><strong id="v149-audited">CHECKING</strong></article>
+          <article><span>DEPENDENCY CLEARED</span><strong id="v149-cleared-count">CHECKING</strong></article>
+          <article><span>NETWORK JOBS</span><strong id="v149-network">CHECKING</strong></article>
+          <article><span>PROTECTED DATA</span><strong id="v149-protected">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>DATABASE WRITES</span><strong id="v149-writes">CHECKING</strong></article>
+          <article><span>PRIVILEGED FUNCTIONS</span><strong id="v149-privileged">CHECKING</strong></article>
+          <article><span>MISSING FUNCTIONS</span><strong id="v149-missing">CHECKING</strong></article>
+          <article><span>V146.1 OBSERVATION</span><strong id="v149-v1461-age">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>DEPENDENCY GATE</span><strong id="v149-gate">LOCKED</strong><small>No schedule plan opens unless a candidate clears the side-effect audit.</small></article>
+          <article><span>AUTO RESCHEDULING</span><strong id="v149-rescheduling">OFF</strong><small>V149 audits only.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v149-orders">OFF</strong><small>Infrastructure reviews cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v149-capital">0R</strong><small>The canonical capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>DEPENDENCY VERDICTS</span>
+          <small>Protected data writes, privileged functions, network SLAs and unresolved call chains remain blocked or review-only.</small>
+        </div>
+        <div id="v149-audit-list" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">AUDITING V148 CANDIDATES</span></div>
+        <p id="v149-detail" class="autonomy-detail">V149 can reject a scheduler candidate but cannot approve capital, place orders, or mutate cron.</p>
+      </section>
+
       <section id="v148-predictive-collision-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>

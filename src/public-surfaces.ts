@@ -536,6 +536,69 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV149DependencyIsolationShadow() {
+  const audit = await readLocal('/api/dependency-isolation-shadow', 20000);
+  if (!audit?.ok) {
+    set('v149-state', 'DEPENDENCY AUDIT · FAIL CLOSED');
+    set('v149-copy', 'The dependency auditor is unavailable. No candidate may advance to controlled schedule planning.');
+    for (const id of ['v149-cleared','v149-audited','v149-cleared-count','v149-network','v149-protected','v149-writes','v149-privileged','v149-missing','v149-v1461-age']) set(id, null);
+    set('v149-gate', 'LOCKED');
+    set('v149-rescheduling', 'OFF');
+    set('v149-orders', 'OFF');
+    set('v149-capital', '0R');
+    return;
+  }
+
+  const summary = audit?.summary ?? {};
+  const deps = audit?.dependencies ?? {};
+  const audits = Array.isArray(audit?.audits) ? audit.audits : [];
+  const cleared = Number(summary?.dependency_cleared_candidates || 0);
+  const observation = Number(deps?.v1461_observation_minutes);
+
+  set('v149-state', `DEPENDENCY · ${first(audit?.state, 'UNKNOWN')}`);
+  set('v149-copy',
+    cleared > 0
+      ? 'At least one V148 candidate has a lower-risk dependency shape, but it still cannot advance until V146.1 matures and a rollback-controlled plan passes human review.'
+      : 'No V148 candidate currently clears dependency and failure-isolation review. Hidden writes, protected data surfaces or network SLAs keep the next schedule mutation locked.'
+  );
+
+  set('v149-cleared', cleared);
+  set('v149-audited', summary?.audited_candidates ?? null);
+  set('v149-cleared-count', cleared);
+  set('v149-network', summary?.direct_network_candidates ?? null);
+  set('v149-protected', summary?.protected_data_candidates ?? null);
+  set('v149-writes', summary?.database_write_candidates ?? null);
+  set('v149-privileged', summary?.privileged_function_candidates ?? null);
+  set('v149-missing', summary?.missing_function_candidates ?? null);
+  set('v149-v1461-age', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
+  set('v149-gate', cleared > 0 ? 'REVIEW ONLY' : 'LOCKED');
+  set('v149-rescheduling', 'OFF');
+  set('v149-orders', 'OFF');
+  set('v149-capital', '0R');
+
+  const host = byId('v149-audit-list');
+  if (host) {
+    host.replaceChildren();
+    if (!audits.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'NO AUDIT RESULTS';
+      host.appendChild(chip);
+    } else {
+      for (const item of audits.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = item?.dependency_cleared ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+        chip.textContent = `${String(item?.jobname || 'job')} · ${String(item?.dependency_verdict || 'REVIEW')} · relief ${Number(item?.estimated_relief_index || 0).toFixed(2)}`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v149-detail',
+    `Audited ${Number(summary?.audited_candidates || 0)} · cleared ${cleared} · network ${Number(summary?.direct_network_candidates || 0)} · protected data ${Number(summary?.protected_data_candidates || 0)} · writes ${Number(summary?.database_write_candidates || 0)} · privileged ${Number(summary?.privileged_function_candidates || 0)} · V146.1 ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · rescheduling OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV148PredictiveCollisionShadow() {
   const model = await readLocal('/api/predictive-collision-shadow', 20000);
   if (!model?.ok) {
@@ -2206,6 +2269,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV149DependencyIsolationShadow(),
       loadV148PredictiveCollisionShadow(),
       loadV147ConnectionPressureShadow(),
       loadV1461ControlledPeakSpreader(),
