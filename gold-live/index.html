@@ -117,6 +117,55 @@
 
 
 
+      <section id="v156-quota-guard-recovery-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V156 · QUOTA GUARD RECOVERY INTEGRITY</span>
+            <h3 id="v156-state">CHECKING</h3>
+            <p id="v156-copy">Tracing quota restriction, V72 load shedding and exact guard restoration so platform recovery is proven rather than assumed.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v156-restored">--</span><small>RESTORED</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">RECOVERY INTEGRITY · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO GUARD RELEASE · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>QUOTA SIGNAL</span><strong id="v156-quota">CHECKING</strong></article>
+          <article><span>LOAD SHED</span><strong id="v156-shed">CHECKING</strong></article>
+          <article><span>GUARD PAUSED</span><strong id="v156-paused">CHECKING</strong></article>
+          <article><span>MISMATCHES</span><strong id="v156-mismatch">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>ENFORCER</span><strong id="v156-enforcer">CHECKING</strong></article>
+          <article><span>SIGNAL AGE</span><strong id="v156-signal-age">CHECKING</strong></article>
+          <article><span>V146.1</span><strong id="v156-v1461">CHECKING</strong></article>
+          <article><span>V147 PRESSURE</span><strong id="v156-pressure">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>RECOVERY HANDOFF</span><strong id="v156-handoff">CHECKING</strong><small>Quota recovery must reconcile guard state with the live cron graph.</small></article>
+          <article><span>AUTO GUARD RELEASE</span><strong id="v156-auto-release">OFF</strong><small>V156 observes only. V72 remains authoritative.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v156-orders">OFF</strong><small>Platform recovery cannot enable trading.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v156-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>RECOVERY INTEGRITY BLOCKERS</span>
+          <small>Fresh quota signal, healthy V72 enforcer, exact guard/live-job consistency and correct load-shed event state are required.</small>
+        </div>
+        <div id="v156-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING QUOTA RECOVERY</span></div>
+        <p id="v156-detail" class="autonomy-detail">V156 proves the protection-to-recovery handoff only. It cannot release guards, mutate cron, or change capital permission.</p>
+      </section>
+
       <section id="v154-rollback-rehearsal-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
