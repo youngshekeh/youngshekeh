@@ -1,0 +1,45 @@
+name: Verify V152 Post Shift Observer
+
+on:
+  push:
+    branches:
+      - tfa-v152-post-shift-observer
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v152-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/post-shift-observer.js
+      - name: Verify post-shift observer assets
+        run: |
+          test -f supabase/recovery/v152-post-shift-observer.sql
+          test -f supabase/functions/runtime-v152-post-shift-observer/index.ts
+          grep -q "v152-post-shift-observer-db-v1" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "WAITING_FOR_FIRST_GOVERNED_RUN" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "POST_SHIFT_HEALTHY" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "TARGET_FAILURE_ROLLBACK_RECOMMENDED" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "SCHEDULE_DRIFT_ROLLBACK_RECOMMENDED" supabase/recovery/v152-post-shift-observer.sql
+      - name: Reject automatic mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v152-post-shift-observer.sql; then
+            echo "V152 must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_rollback',false" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v152-post-shift-observer.sql
+          grep -q "capital_permission:'0R'" api/post-shift-observer.js
+          grep -q "live_order_routing:false" api/post-shift-observer.js
