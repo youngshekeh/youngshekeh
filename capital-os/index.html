@@ -70,7 +70,7 @@
             <label class="full"><span>POST-TRADE / POST-DECISION REVIEW</span><textarea name="review" placeholder="Execution quality, emotion, mistakes, what changed, what to repeat."></textarea></label>
             <label><span>STATUS</span><select name="status"><option value="CLOSED">CLOSED</option><option value="OPEN">OPEN</option><option value="WATCHLIST">WATCHLIST</option></select></label>
             <label><span>DATE</span><input name="date" type="datetime-local" /></label>
-            <div class="capital-actions" style="grid-column:span 12"><button type="submit" class="capital-btn primary">ADD TO IMMUTABLE-STYLE LEDGER</button></div>
+            <div class="capital-actions" style="grid-column:span 12"><button type="submit" class="capital-btn primary">ADD TO DECISION LEDGER</button></div>
           </form>
         </article>
         <article class="capital-card span-12"><div class="capital-label">JOURNAL LEDGER</div><div class="capital-table-wrap"><table class="capital-table"><thead><tr><th>DATE</th><th>TYPE</th><th>ASSET</th><th>SIDE</th><th>SETUP</th><th class="number">P&L</th><th class="number">R</th><th class="number">PROCESS</th><th>STATUS</th><th></th></tr></thead><tbody id="journal-body"></tbody></table></div></article>
@@ -114,7 +114,7 @@
     <section id="panel-earnings" class="capital-panel">
       <div class="capital-grid">
         <article class="capital-card span-4"><div class="capital-label">EARNINGS FEED</div><h2 id="earnings-feed-state">CHECKING</h2><p id="earnings-feed-copy" class="capital-muted">No estimated earnings data is substituted when the upstream feed is unavailable.</p></article>
-        <article class="capital-card span-4"><div class="capital-label">REPORTS TODAY</div><div id="earnings-today-count" class="capital-kpi">—</div></article>
+        <article class="capital-card span-4"><div class="capital-label">REPORTS LOADED</div><div id="earnings-today-count" class="capital-kpi">—</div></article>
         <article class="capital-card span-4"><div class="capital-label">LARGE-CAP RADAR</div><div id="earnings-large-count" class="capital-kpi">—</div></article>
         <article class="capital-card span-12"><div class="capital-row"><div><div class="capital-label">EARNINGS INTELLIGENCE</div><h2>Upcoming reports, consensus and timing when verified.</h2></div><div class="capital-actions"><input id="earnings-date" type="date" class="capital-btn" style="color:#eee"><button id="refresh-earnings" class="capital-btn">LOAD DATE</button></div></div><div id="earnings-list" class="event-list" style="margin-top:14px"></div><p id="earnings-source-line" class="source-line" style="margin-top:12px">Source status pending.</p></article>
       </div>
