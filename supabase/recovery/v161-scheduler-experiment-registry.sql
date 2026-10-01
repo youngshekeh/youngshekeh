@@ -1,6 +1,6 @@
--- V161 Scheduler Experiment Registry
--- Canonical read-only registry for all controlled scheduler experiments.
--- Unifies historical and latest experiment state without mutating cron.
+-- V161.1 Scheduler Experiment Registry Performance Hotfix
+-- Canonical read-only registry for controlled scheduler experiments.
+-- Deliberately avoids recursive calls into V159/V160 to keep the private runtime bounded.
 
 create or replace function public.get_v161_scheduler_experiment_registry()
 returns jsonb
@@ -12,9 +12,6 @@ declare
   v_now timestamptz := now();
   v_v152 jsonb := '{}'::jsonb;
   v_v158 jsonb := '{}'::jsonb;
-  v_v159 jsonb := '{}'::jsonb;
-  v_v160 jsonb := '{}'::jsonb;
-
   v_registry jsonb := '[]'::jsonb;
   v_total integer := 0;
   v_accepted integer := 0;
@@ -24,18 +21,30 @@ declare
   v_latest_id text;
   v_latest_state text;
   v_chain_state text := 'EMPTY';
+  v_alter_job_available boolean := false;
 begin
-  begin v_v152 := public.get_v152_post_shift_observer();
-  exception when others then v_v152 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
+  begin
+    v_v152 := public.get_v152_post_shift_observer();
+  exception when others then
+    v_v152 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+  end;
 
-  begin v_v158 := public.get_v158_member_alert_post_shift_observer();
-  exception when others then v_v158 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
+  begin
+    v_v158 := public.get_v158_member_alert_post_shift_observer();
+  exception when others then
+    v_v158 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+  end;
 
-  begin v_v159 := public.get_v159_latest_experiment_admission();
-  exception when others then v_v159 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-
-  begin v_v160 := public.get_v160_latest_rollback_rehearsal();
-  exception when others then v_v160 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
+  select exists(
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='cron'
+      and p.proname='alter_job'
+      and pg_get_function_identity_arguments(p.oid)
+        ='job_id bigint, schedule text, command text, database text, username text, active boolean'
+  )
+  into v_alter_job_available;
 
   with experiments as (
     select
@@ -57,19 +66,8 @@ begin
         'cron_succeeded',coalesce((v_v152->'post_change'->>'cron_succeeded')::integer,0),
         'business_succeeded',coalesce((v_v152->'post_change'->>'business_succeeded')::integer,0)
       ) as observer,
-      jsonb_build_object(
-        'state',case
-          when coalesce(v_v160->'latest_experiment'->>'experiment','')='V1511_OWNER_ANOMALY_SHIFT_001'
-            then v_v160->>'state'
-          else 'HISTORICAL_NOT_LATEST'
-        end,
-        'ready',case
-          when coalesce(v_v160->'latest_experiment'->>'experiment','')='V1511_OWNER_ANOMALY_SHIFT_001'
-            then coalesce((v_v160->'rehearsal'->>'ready')::boolean,false)
-          else true
-        end
-      ) as rollback_rehearsal,
-      null::jsonb as admission_snapshot
+      null::jsonb as admission_snapshot,
+      'supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql'::text as rollback_file
     from private.v1511_controlled_shift_ledger l
     where l.plan_id='V1511_OWNER_ANOMALY_SHIFT_001'
 
@@ -94,19 +92,8 @@ begin
         'cron_succeeded',coalesce((v_v158->'post_change'->>'cron_succeeded')::integer,0),
         'business_succeeded',coalesce((v_v158->'post_change'->>'business_succeeded')::integer,0)
       ),
-      jsonb_build_object(
-        'state',case
-          when coalesce(v_v160->'latest_experiment'->>'experiment','')='V157_MEMBER_ALERT_SHIFT_001'
-            then v_v160->>'state'
-          else 'HISTORICAL_NOT_LATEST'
-        end,
-        'ready',case
-          when coalesce(v_v160->'latest_experiment'->>'experiment','')='V157_MEMBER_ALERT_SHIFT_001'
-            then coalesce((v_v160->'rehearsal'->>'ready')::boolean,false)
-          else true
-        end
-      ),
-      l.admission_evidence
+      l.admission_evidence,
+      'supabase/recovery/v157-controlled-member-alert-shift-rollback.sql'
     from private.v157_controlled_shift_ledger l
     where l.plan_id='V157_MEMBER_ALERT_SHIFT_001'
   ),
@@ -136,7 +123,19 @@ begin
           and coalesce(e.admission_snapshot->'previous_shift'->>'state','')='POST_SHIFT_HEALTHY'
         else false
       end as prior_acceptance_verified,
-      coalesce((e.receipt_evidence->>'protected_business')::boolean,true) as protected_business
+      coalesce((e.receipt_evidence->>'protected_business')::boolean,true) as protected_business,
+      (
+        e.rollback_file is not null
+        and e.previous_schedule is not null
+        and e.governed_schedule is not null
+        and e.previous_schedule<>e.governed_schedule
+        and v_alter_job_available
+        and (
+          (e.rolled_back_at is null and coalesce(j.active,false) and j.schedule=e.governed_schedule)
+          or
+          (e.rolled_back_at is not null and j.schedule=e.previous_schedule)
+        )
+      ) as rollback_rehearsal_ready
     from experiments e
     left join cron.job j on j.jobid=e.jobid
   ),
@@ -147,7 +146,7 @@ begin
         schedule_consistent
         and prior_acceptance_verified
         and not protected_business
-        and coalesce((rollback_rehearsal->>'ready')::boolean,false)
+        and rollback_rehearsal_ready
       ) as chain_compliant
     from enriched
   )
@@ -173,7 +172,12 @@ begin
       'chain_compliant',chain_compliant,
       'admission_basis',admission_basis,
       'observer',observer,
-      'rollback_rehearsal',rollback_rehearsal
+      'rollback_rehearsal',jsonb_build_object(
+        'ready',rollback_rehearsal_ready,
+        'rollback_file',rollback_file,
+        'primitive_available',v_alter_job_available,
+        'mode','DIRECT_LEDGER_REHEARSAL'
+      )
     ) order by sequence_no),'[]'::jsonb),
     count(*)::int,
     count(*) filter(where lifecycle_state='ACCEPTED')::int,
@@ -201,7 +205,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v161-scheduler-experiment-registry-db-v1',
+    'version','v161.1-scheduler-experiment-registry-db-v2-bounded',
     'generated_at',v_now,
     'state',v_chain_state,
     'summary',jsonb_build_object(
@@ -216,10 +220,15 @@ begin
     'experiments',v_registry,
     'authoritative_admission',jsonb_build_object(
       'engine','V159',
-      'state',v_v159->>'state',
-      'admitted',v_v159->'admission'->'admitted',
-      'gates_passed',v_v159->'admission'->'gates_passed',
-      'gate_count',v_v159->'admission'->'gate_count'
+      'source','/api/latest-experiment-admission',
+      'state','SEPARATE_AUTHORITATIVE_SURFACE',
+      'registry_does_not_evaluate_admission',true
+    ),
+    'runtime_budget',jsonb_build_object(
+      'recursive_v159_calls',0,
+      'recursive_v160_calls',0,
+      'observer_calls',2,
+      'bounded_registry',true
     ),
     'chain_rules',jsonb_build_object(
       'previous_experiment_must_be_accepted_before_next_apply',true,
@@ -237,7 +246,7 @@ begin
       'automatic_policy_promotion',false,
       'registry_can_unlock_capital',false
     ),
-    'truth_label','SCHEDULER_EXPERIMENT_REGISTRY_NOT_TRADING_PERMISSION'
+    'truth_label','BOUNDED_SCHEDULER_EXPERIMENT_REGISTRY_NOT_TRADING_PERMISSION'
   );
 end;
 $function$;

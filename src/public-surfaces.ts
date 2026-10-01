@@ -571,7 +571,13 @@ async function loadV161SchedulerExperimentRegistry() {
   set('v161-violations', violations);
   set('v161-latest', summary?.latest_experiment ?? 'NONE');
   set('v161-lifecycle', summary?.latest_lifecycle_state ?? 'WITHHELD');
-  set('v161-admission', admission?.admitted ? `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} READY` : `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} LOCKED`);
+  set('v161-admission',
+    admission?.registry_does_not_evaluate_admission
+      ? 'V159 SEPARATE'
+      : admission?.admitted
+        ? `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} READY`
+        : `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} LOCKED`
+  );
   set('v161-rollback-review', rollbackReview);
   set('v161-auto-rollback', 'OFF');
   set('v161-orders', 'OFF');
@@ -596,7 +602,7 @@ async function loadV161SchedulerExperimentRegistry() {
   }
 
   set('v161-detail',
-    `State ${String(registry?.state || 'unknown')} · experiments ${Number(summary?.experiments_total || 0)} · accepted ${accepted} · observing ${observing} · violations ${violations} · latest ${String(summary?.latest_experiment || 'none')} · V159 ${String(admission?.state || 'n/a')} · admission ${admission?.admitted ? 'review eligible' : 'locked'} · auto mutation OFF · capital 0R.`
+    `State ${String(registry?.state || 'unknown')} · experiments ${Number(summary?.experiments_total || 0)} · accepted ${accepted} · observing ${observing} · violations ${violations} · latest ${String(summary?.latest_experiment || 'none')} · V159 ${String(admission?.state || 'separate')} · admission authority externalized · auto mutation OFF · capital 0R.`
   );
 }
 
