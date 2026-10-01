@@ -1,6 +1,6 @@
--- V159 Latest-Experiment Scheduler Mutation Admission
--- Supersedes first-experiment-only admission by anchoring gates to the newest scheduler mutation event.
--- Read-only. It never changes cron, rollback state, trading permission, or capital permission.
+-- V159.1 Bounded Latest-Experiment Scheduler Mutation Admission
+-- Keeps the seven-gate admission policy while removing duplicate direct V146.1/V147
+-- and dual-observer fan-out from the runtime path. Read-only.
 
 create or replace function public.get_v159_latest_experiment_admission()
 returns jsonb
@@ -10,12 +10,9 @@ set search_path to 'public','private','cron','pg_catalog','pg_temp'
 as $function$
 declare
   v_now timestamptz := now();
-  v_v1461 jsonb := '{}'::jsonb;
-  v_v147 jsonb := '{}'::jsonb;
   v_v151 jsonb := '{}'::jsonb;
-  v_v152 jsonb := '{}'::jsonb;
   v_v156 jsonb := '{}'::jsonb;
-  v_v158 jsonb := '{}'::jsonb;
+  v_observer jsonb := '{}'::jsonb;
 
   v_latest_experiment text;
   v_latest_event text;
@@ -42,23 +39,17 @@ declare
   v_state text := 'LOCKED';
   v_reasons jsonb := '[]'::jsonb;
 begin
-  begin v_v1461 := public.get_v1461_peak_spreader_status();
-  exception when others then v_v1461 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
+  begin
+    v_v156 := public.get_v156_quota_guard_recovery_shadow();
+  exception when others then
+    v_v156 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+  end;
 
-  begin v_v147 := public.get_v147_connection_pressure_shadow();
-  exception when others then v_v147 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-
-  begin v_v151 := public.get_v151_single_candidate_plan_shadow();
-  exception when others then v_v151 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-
-  begin v_v152 := public.get_v152_post_shift_observer();
-  exception when others then v_v152 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-
-  begin v_v156 := public.get_v156_quota_guard_recovery_shadow();
-  exception when others then v_v156 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-
-  begin v_v158 := public.get_v158_member_alert_post_shift_observer();
-  exception when others then v_v158 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
+  begin
+    v_v151 := public.get_v151_single_candidate_plan_shadow();
+  exception when others then
+    v_v151 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+  end;
 
   with mutation_events as (
     select 'V1511_OWNER_ANOMALY_SHIFT_001'::text as experiment,'APPLY'::text as event,applied_at as ts
@@ -89,22 +80,30 @@ begin
       round((extract(epoch from (v_now-v_latest_mutation_at))/60.0)::numeric,2);
   end if;
 
-  if v_latest_event='APPLY' and v_latest_experiment='V157_MEMBER_ALERT_SHIFT_001' then
-    v_latest_experiment_accepted :=
-      coalesce(v_v158->>'state','')='POST_SHIFT_HEALTHY'
-      and coalesce((v_v158->'success_gate'->>'next_plan_review_eligible')::boolean,false)
-      and not coalesce((v_v158->'success_gate'->>'rollback_recommended')::boolean,true)
-      and coalesce((v_v158->'post_change'->>'cron_failed')::integer,999)=0
-      and coalesce((v_v158->'post_change'->>'business_failed')::integer,999)=0
-      and coalesce((v_v158->'post_change'->>'business_receipt_gap')::integer,999)=0;
-  elsif v_latest_event='APPLY' and v_latest_experiment='V1511_OWNER_ANOMALY_SHIFT_001' then
-    v_latest_experiment_accepted :=
-      coalesce(v_v152->>'state','')='POST_SHIFT_HEALTHY'
-      and coalesce((v_v152->'success_gate'->>'next_plan_review_eligible')::boolean,false)
-      and not coalesce((v_v152->'success_gate'->>'rollback_recommended')::boolean,true);
+  if v_latest_experiment='V157_MEMBER_ALERT_SHIFT_001' then
+    begin
+      v_observer := public.get_v158_member_alert_post_shift_observer();
+    exception when others then
+      v_observer := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+    end;
+  elsif v_latest_experiment='V1511_OWNER_ANOMALY_SHIFT_001' then
+    begin
+      v_observer := public.get_v152_post_shift_observer();
+    exception when others then
+      v_observer := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+    end;
   else
-    v_latest_experiment_accepted := false;
+    v_observer := jsonb_build_object('ok',false,'state','NO_CONTROLLED_EXPERIMENT');
   end if;
+
+  v_latest_experiment_accepted :=
+    v_latest_event='APPLY'
+    and coalesce(v_observer->>'state','')='POST_SHIFT_HEALTHY'
+    and coalesce((v_observer->'success_gate'->>'next_plan_review_eligible')::boolean,false)
+    and not coalesce((v_observer->'success_gate'->>'rollback_recommended')::boolean,true)
+    and coalesce((v_observer->'post_change'->>'cron_failed')::integer,999)=0
+    and coalesce((v_observer->'post_change'->>'business_failed')::integer,999)=0
+    and coalesce((v_observer->'post_change'->>'business_receipt_gap')::integer,999)=0;
 
   v_cooldown_mature :=
     v_latest_mutation_at is not null
@@ -136,17 +135,14 @@ begin
     and coalesce((v_v156->'enforcer'->>'healthy')::boolean,false);
 
   v_infra_pass :=
-    coalesce(v_v147->>'state','')='NORMAL'
-    and coalesce((v_v147->'cron_pressure'->>'failures_60m')::integer,999)=0
-    and coalesce((v_v147->'connections'->>'lock_waits')::integer,999)=0
-    and coalesce((v_v147->'connections'->>'long_transactions_over_30s')::integer,999)=0;
+    coalesce(v_v156->'downstream'->>'v147_state','')='NORMAL'
+    and coalesce((v_v156->'downstream'->>'v147_pressure_score')::numeric,999)<=40;
 
   v_baseline_pass :=
-    coalesce(v_v1461->>'state','')='PEAK_SPREAD_IMPROVED'
-    and coalesce((v_v1461->'success_gate'->>'experiment_result_eligible')::boolean,false)
-    and coalesce((v_v1461->'since_apply'->>'failures')::integer,999)=0
-    and coalesce((v_v1461->'plan'->>'schedule_drift_jobs')::integer,999)=0
-    and coalesce((v_v1461->'plan'->>'guard_paused_jobs')::integer,999)=0;
+    coalesce(v_v156->'downstream'->>'v1461_state','')='PEAK_SPREAD_IMPROVED'
+    and coalesce((v_v156->'downstream'->>'v1461_result_eligible')::boolean,false)
+    and coalesce((v_v156->'downstream'->>'v1461_guard_paused_jobs')::integer,999)=0
+    and coalesce((v_v156->'downstream'->>'v1461_unexpected_drift_jobs')::integer,999)=0;
 
   v_candidate_present := coalesce(v_v151->'plan'->>'jobname','')<>'';
 
@@ -220,7 +216,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v159-latest-experiment-admission-db-v1',
+    'version','v159.1-latest-experiment-admission-db-v2-bounded',
     'generated_at',v_now,
     'state',v_state,
     'admission',jsonb_build_object(
@@ -245,11 +241,7 @@ begin
       'event',v_latest_event,
       'at',v_latest_mutation_at,
       'minutes_since',v_minutes_since_latest,
-      'observer_state',case
-        when v_latest_experiment='V157_MEMBER_ALERT_SHIFT_001' then v_v158->>'state'
-        when v_latest_experiment='V1511_OWNER_ANOMALY_SHIFT_001' then v_v152->>'state'
-        else null
-      end
+      'observer_state',v_observer->>'state'
     ),
     'qa',jsonb_build_object(
       'state',v_qa_state,
@@ -267,11 +259,10 @@ begin
       'guard_mismatch_rows',v_v156->'guard'->'mismatch_rows'
     ),
     'infrastructure',jsonb_build_object(
-      'v147_state',v_v147->>'state',
-      'v147_pressure_score',v_v147->'pressure_score',
-      'v147_failures_60m',v_v147->'cron_pressure'->'failures_60m',
-      'v1461_state',v_v1461->>'state',
-      'v1461_result_eligible',v_v1461->'success_gate'->'experiment_result_eligible'
+      'v147_state',v_v156->'downstream'->'v147_state',
+      'v147_pressure_score',v_v156->'downstream'->'v147_pressure_score',
+      'v1461_state',v_v156->'downstream'->'v1461_state',
+      'v1461_result_eligible',v_v156->'downstream'->'v1461_result_eligible'
     ),
     'next_candidate',jsonb_build_object(
       'present',v_candidate_present,
@@ -283,6 +274,15 @@ begin
       'exact_schedule_match',v_candidate_match,
       'planner_state',v_v151->>'state'
     ),
+    'runtime_budget',jsonb_build_object(
+      'v156_calls',1,
+      'v151_calls',1,
+      'latest_observer_calls',1,
+      'direct_v147_calls',0,
+      'direct_v1461_calls',0,
+      'dual_observer_calls',false,
+      'bounded_admission',true
+    ),
     'governance',jsonb_build_object(
       'action_permitted','WAIT',
       'capital_permission','0R',
@@ -293,7 +293,7 @@ begin
       'human_review_required',true,
       'latest_experiment_admission_can_unlock_capital',false
     ),
-    'truth_label','LATEST_EXPERIMENT_SCHEDULER_ADMISSION_NOT_TRADING_PERMISSION'
+    'truth_label','BOUNDED_LATEST_EXPERIMENT_SCHEDULER_ADMISSION_NOT_TRADING_PERMISSION'
   );
 end;
 $function$;
