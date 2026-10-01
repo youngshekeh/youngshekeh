@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - tfa-v161-scheduler-experiment-registry
+      - tfa-v1611-registry-performance-hotfix
       - the-father-analytics-staging
       - the-father-analytics-deploy
   pull_request:
