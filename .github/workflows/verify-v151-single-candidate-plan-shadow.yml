@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - tfa-v151-single-candidate-plan-shadow
+      - tfa-v165-safe-alternative-admission-handoff
       - the-father-analytics-staging
       - the-father-analytics-deploy
   pull_request:
@@ -23,7 +24,12 @@ jobs:
         run: |
           test -f supabase/recovery/v151-single-candidate-plan-shadow.sql
           test -f supabase/functions/runtime-v151-single-candidate-plan-shadow/index.ts
-          grep -q "v151-single-candidate-plan-shadow-db-v1" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "v151.2-single-candidate-plan-shadow-db-v2-bounded-evidence" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          test -f supabase/recovery/v1512-bounded-evidence-bundle.sql
+          grep -q "get_v149_dependency_isolation_from_v148" supabase/recovery/v1512-bounded-evidence-bundle.sql
+          grep -q "get_v150_network_sla_evidence_from_v149" supabase/recovery/v1512-bounded-evidence-bundle.sql
+          grep -q "get_v149_dependency_isolation_from_v148(v_v148,v_v1461)" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "get_v150_network_sla_evidence_from_v149(v_v149,v_v1461)" supabase/recovery/v151-single-candidate-plan-shadow.sql
           grep -q "one_job_max',true" supabase/recovery/v151-single-candidate-plan-shadow.sql
           grep -q "READY_FOR_HUMAN_CONTROLLED_APPLY" supabase/recovery/v151-single-candidate-plan-shadow.sql
           grep -q "requires_exact_current_schedule_match',true" supabase/recovery/v151-single-candidate-plan-shadow.sql

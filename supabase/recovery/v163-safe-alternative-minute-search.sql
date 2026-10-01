@@ -1,6 +1,6 @@
 -- V163 Safe Alternative Minute Search Shadow
 -- Finds a safer replacement minute for the current V151 candidate using the live cron graph.
--- Read-only. It never mutates cron, rollback state, trading permission, or capital permission.
+-- Read-only. It never mutates cron, rollback state, trading permission, or capital permission.\n-- V163.1 performance hotfix: aggregate the 24h run history once before candidate joins.
 
 create or replace function public.get_v163_safe_alternative_minute_search()
 returns jsonb
@@ -43,7 +43,7 @@ begin
   if v_jobid is null or v_jobname is null then
     return jsonb_build_object(
       'ok',true,
-      'version','v163-safe-alternative-minute-search-db-v1',
+      'version','v163.1-safe-alternative-minute-search-db-v2-fast-history',
       'generated_at',v_now,
       'state','NO_CANDIDATE',
       'search',jsonb_build_object('eligible_count',0,'alternatives','[]'::jsonb),
@@ -76,7 +76,7 @@ begin
      or v_max_shift<=0 then
     return jsonb_build_object(
       'ok',true,
-      'version','v163-safe-alternative-minute-search-db-v1',
+      'version','v163.1-safe-alternative-minute-search-db-v2-fast-history',
       'generated_at',v_now,
       'state',case when v_live_schedule<>v_current_schedule then 'CANDIDATE_LIVE_SCHEDULE_DRIFT' else 'UNSUPPORTED_OR_EMPTY_SEARCH_WINDOW' end,
       'candidate',jsonb_build_object(
@@ -170,16 +170,21 @@ begin
     where sm.minute_of_hour<>v_current_minute
     group by sm.minute_of_hour
   ),
+  history_rollup as (
+    select
+      extract(minute from d.start_time)::integer as minute_of_hour,
+      count(*)::integer as starts_24h
+    from cron.job_run_details d
+    where d.start_time>=v_now-interval '24 hours'
+    group by 1
+  ),
   historical as (
     select
       sm.minute_of_hour,
-      count(d.runid)::integer as starts_24h
+      coalesce(hr.starts_24h,0)::integer as starts_24h
     from search_minutes sm
-    left join cron.job_run_details d
-      on d.start_time>=v_now-interval '24 hours'
-     and extract(minute from d.start_time)::integer=sm.minute_of_hour
+    left join history_rollup hr using(minute_of_hour)
     where sm.minute_of_hour<>v_current_minute
-    group by sm.minute_of_hour
   ),
   candidates as (
     select
@@ -280,7 +285,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v163-safe-alternative-minute-search-db-v1',
+    'version','v163.1-safe-alternative-minute-search-db-v2-fast-history',
     'generated_at',v_now,
     'state',v_state,
     'candidate',jsonb_build_object(

@@ -1,5 +1,5 @@
--- V159.2 Live-Revalidated Bounded Latest-Experiment Scheduler Mutation Admission
--- Extends bounded admission with V162 live-graph collision revalidation while keeping
+-- V159.3 Safe-Alternative-Revalidated Bounded Latest-Experiment Scheduler Mutation Admission
+-- Extends bounded admission with V165 direct-or-safe-alternative handoff while keeping
 -- direct V146.1/V147 and direct V151 fan-out out of the runtime path. Read-only.
 
 create or replace function public.get_v159_latest_experiment_admission()
@@ -10,7 +10,7 @@ set search_path to 'public','private','cron','pg_catalog','pg_temp'
 as $function$
 declare
   v_now timestamptz := now();
-  v_v162 jsonb := '{}'::jsonb;
+  v_v165 jsonb := '{}'::jsonb;
   v_v156 jsonb := '{}'::jsonb;
   v_observer jsonb := '{}'::jsonb;
 
@@ -47,9 +47,9 @@ begin
   end;
 
   begin
-    v_v162 := public.get_v162_prospective_collision_revalidation();
+    v_v165 := public.get_v165_safe_alternative_admission_handoff();
   exception when others then
-    v_v162 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+    v_v165 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
   end;
 
   with mutation_events as (
@@ -145,15 +145,15 @@ begin
     and coalesce((v_v156->'downstream'->>'v1461_guard_paused_jobs')::integer,999)=0
     and coalesce((v_v156->'downstream'->>'v1461_unexpected_drift_jobs')::integer,999)=0;
 
-  v_candidate_present := coalesce(v_v162->'candidate'->>'jobname','')<>'';
+  v_candidate_present := coalesce(v_v165->'selected_candidate'->>'jobname','')<>'';
   v_candidate_match :=
     v_candidate_present
-    and coalesce((v_v162->'candidate'->>'exact_live_schedule_match')::boolean,false);
+    and coalesce((v_v165->'selected_candidate'->>'exact_live_schedule_match')::boolean,false);
 
   v_candidate_revalidation_pass :=
     v_candidate_present
-    and coalesce(v_v162->>'state','')='REVALIDATION_CLEAR_FOR_HUMAN_REVIEW'
-    and coalesce((v_v162->'revalidation'->>'clear')::boolean,false);
+    and coalesce(v_v165->>'state','')='HANDOFF_CLEAR_FOR_HUMAN_REVIEW'
+    and coalesce((v_v165->'revalidation'->>'clear')::boolean,false);
 
   v_gate_passed :=
     (case when v_latest_experiment_accepted then 1 else 0 end)
@@ -220,7 +220,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v159.2-latest-experiment-admission-db-v3-live-revalidated',
+    'version','v159.3-latest-experiment-admission-db-v4-safe-alternative-handoff',
     'generated_at',v_now,
     'state',v_state,
     'admission',jsonb_build_object(
@@ -271,26 +271,33 @@ begin
     ),
     'next_candidate',jsonb_build_object(
       'present',v_candidate_present,
-      'jobname',v_v162->'candidate'->>'jobname',
-      'current_schedule',v_v162->'candidate'->>'planner_current_schedule',
-      'recommended_schedule',v_v162->'candidate'->>'recommended_schedule',
-      'rollback_schedule',v_v162->'candidate'->>'planner_current_schedule',
-      'estimated_relief_index',v_v162->'planner_context'->'estimated_relief_index',
+      'jobname',v_v165->'selected_candidate'->>'jobname',
+      'current_schedule',v_v165->'selected_candidate'->>'current_schedule',
+      'recommended_schedule',v_v165->'selected_candidate'->>'recommended_schedule',
+      'rollback_schedule',v_v165->'selected_candidate'->>'rollback_schedule',
+      'estimated_relief_index',v_v165->'selected_candidate'->'estimated_relief_index',
       'exact_schedule_match',v_candidate_match,
-      'planner_state',v_v162->'planner_context'->>'v151_state'
+      'planner_state',v_v165->>'state',
+      'route',v_v165->>'route',
+      'source',v_v165->'selected_candidate'->>'source'
     ),
     'prospective_revalidation',jsonb_build_object(
-      'state',v_v162->>'state',
-      'clear',v_v162->'revalidation'->'clear',
-      'blockers',v_v162->'revalidation'->'blockers',
-      'current_peer_triggers',v_v162->'live_density'->'current_peer_triggers',
-      'proposed_peer_triggers',v_v162->'live_density'->'proposed_peer_triggers',
-      'peer_trigger_delta',v_v162->'live_density'->'peer_trigger_delta',
-      'controlled_overlap_count',v_v162->'controlled_experiment_reservations'->'overlap_count'
+      'state',v_v165->>'state',
+      'clear',v_v165->'revalidation'->'clear',
+      'blockers',v_v165->'revalidation'->'blockers',
+      'route',v_v165->>'route',
+      'current_peer_triggers',v_v165->'selected_candidate'->'current_peer_triggers',
+      'proposed_peer_triggers',v_v165->'selected_candidate'->'proposed_peer_triggers',
+      'peer_trigger_delta',v_v165->'selected_candidate'->'peer_trigger_delta',
+      'controlled_overlap_count',v_v165->'selected_candidate'->'controlled_overlap_count',
+      'original_v162_state',v_v165->'direct_path'->'v162_state',
+      'original_v162_blockers',v_v165->'direct_path'->'v162_blockers'
     ),
     'runtime_budget',jsonb_build_object(
       'v156_calls',1,
-      'v162_calls',1,
+      'v165_calls',1,
+      'v162_calls_indirect',v_v165->'runtime_budget'->'v162_calls',
+      'v163_calls_indirect',v_v165->'runtime_budget'->'v163_calls',
       'direct_v151_calls',0,
       'latest_observer_calls',1,
       'direct_v147_calls',0,
@@ -308,7 +315,7 @@ begin
       'human_review_required',true,
       'latest_experiment_admission_can_unlock_capital',false
     ),
-    'truth_label','LIVE_REVALIDATED_BOUNDED_LATEST_EXPERIMENT_ADMISSION_NOT_TRADING_PERMISSION'
+    'truth_label','SAFE_ALTERNATIVE_REVALIDATED_BOUNDED_LATEST_EXPERIMENT_ADMISSION_NOT_TRADING_PERMISSION'
   );
 end;
 $function$;

@@ -215,6 +215,56 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v165-safe-alternative-admission-handoff" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V165 · SAFE ALTERNATIVE ADMISSION HANDOFF</span>
+            <h3 id="v165-state">CHECKING</h3>
+            <p id="v165-copy">Revalidating the direct candidate first, then allowing a V163 replacement only for eligible collision or density blockers.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v165-route">--</span><small>ROUTE</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">LIVE REVALIDATION · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">HUMAN REVIEW · REQUIRED</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CANDIDATE</span><strong id="v165-job">CHECKING</strong></article>
+          <article><span>SELECTED MOVE</span><strong id="v165-move">CHECKING</strong></article>
+          <article><span>PEERS NOW</span><strong id="v165-current-peers">CHECKING</strong></article>
+          <article><span>PEERS SELECTED</span><strong id="v165-proposed-peers">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PEER DELTA</span><strong id="v165-delta">CHECKING</strong></article>
+          <article><span>CONTROLLED OVERLAPS</span><strong id="v165-overlaps">CHECKING</strong></article>
+          <article><span>DIRECT V162</span><strong id="v165-direct">CHECKING</strong></article>
+          <article><span>V163 ALTERNATIVE</span><strong id="v165-alt">CHECKING</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>HANDOFF BLOCKERS</span>
+          <small>Schedule drift and unsupported V162 rejection classes can never be bypassed by the alternative route.</small>
+        </div>
+        <div id="v165-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">REVALIDATING HANDOFF</span></div>
+
+        <div class="integrity-governance-grid">
+          <article><span>HUMAN REVIEW</span><strong id="v165-human">REQUIRED</strong><small>V165 can route a plan, never apply it.</small></article>
+          <article><span>AUTO RESCHEDULING</span><strong>OFF</strong><small>No cron mutation is permitted by this engine.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v165-orders">OFF</strong><small>Scheduler admission cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v165-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <p id="v165-detail" class="autonomy-detail">V165 is a fail-closed route selector between direct V162 revalidation and a safe V163 alternative.</p>
+      </section>
+
       <section id="v163-safe-alternative-minute-search" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
