@@ -117,6 +117,55 @@
 
 
 
+      <section id="v1461-controlled-peak-spreader" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V146.1 · CONTROLLED PEAK SPREADER</span>
+            <h3 id="v1461-state">CHECKING</h3>
+            <p id="v1461-copy">Measuring the controlled three-job quarter-hour spread against its frozen pre-change baseline.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v1461-orb">--</span><small>PEAK</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">CONTROLLED EXPERIMENT · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO RESCHEDULE · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>OBSERVATION</span><strong id="v1461-observation">CHECKING</strong></article>
+          <article><span>PLAN COMPLIANCE</span><strong id="v1461-compliance">CHECKING</strong></article>
+          <article><span>BASELINE QUARTER PEAK</span><strong id="v1461-baseline-quarter">CHECKING</strong></article>
+          <article><span>MEASURED QUARTER PEAK</span><strong id="v1461-measured-quarter">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>15M PEAK STARTS</span><strong id="v1461-15m-peak">CHECKING</strong></article>
+          <article><span>15M FAILURES</span><strong id="v1461-15m-failures">CHECKING</strong></article>
+          <article><span>SINCE APPLY RUNS</span><strong id="v1461-runs">CHECKING</strong></article>
+          <article><span>SCHEDULE DRIFT</span><strong id="v1461-drift">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>ROLLBACK</span><strong id="v1461-rollback">READY</strong><small>Original schedules were frozen before the experiment.</small></article>
+          <article><span>AUTO ROLLBACK</span><strong id="v1461-auto-rollback">OFF</strong><small>Rollback remains an explicit governed action.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v1461-orders">OFF</strong><small>Scheduler tuning cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v1461-capital">0R</strong><small>The canonical capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>CONTROLLED TARGETS</span>
+          <small>Only the approved smoke, enterprise-monitor and shadow-observation jobs are moved. GOLD capture and safety lanes are excluded.</small>
+        </div>
+        <div id="v1461-target-list" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">READING CONTROLLED SCHEDULES</span></div>
+        <p id="v1461-detail" class="autonomy-detail">V146.1 compares the post-change scheduler against a frozen 60-minute baseline. It cannot change capital permission.</p>
+      </section>
+
       <section id="v145-connection-admission-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>

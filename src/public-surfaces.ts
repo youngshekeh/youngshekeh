@@ -536,6 +536,79 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV1461ControlledPeakSpreader() {
+  const spreader = await readLocal('/api/peak-minute-spreader-status', 18000);
+  if (!spreader?.ok) {
+    set('v1461-state', 'SPREADER · FAIL CLOSED');
+    set('v1461-copy', 'The controlled scheduler experiment status is unavailable. No further scheduler action is permitted from this surface.');
+    for (const id of ['v1461-orb','v1461-observation','v1461-compliance','v1461-baseline-quarter','v1461-measured-quarter','v1461-15m-peak','v1461-15m-failures','v1461-runs','v1461-drift']) set(id, null);
+    set('v1461-rollback', 'READY');
+    set('v1461-auto-rollback', 'OFF');
+    set('v1461-orders', 'OFF');
+    set('v1461-capital', '0R');
+    return;
+  }
+
+  const plan = spreader?.plan ?? {};
+  const baseline = spreader?.baseline ?? {};
+  const since = spreader?.since_apply ?? {};
+  const rolling15 = spreader?.rolling?.last_15m ?? {};
+  const gate = spreader?.success_gate ?? {};
+  const jobs = Array.isArray(plan?.jobs) ? plan.jobs : [];
+  const observation = Number(spreader?.observation_minutes);
+  const baselineQuarter = Number(baseline?.quarter_hour_peak_starts);
+  const measuredQuarter = Number(since?.quarter_hour_peak_starts);
+  const peak15 = Number(rolling15?.peak_starts_per_minute);
+
+  set('v1461-state', `SPREADER · ${first(spreader?.state, 'UNKNOWN')}`);
+  set('v1461-copy',
+    spreader?.state === 'PEAK_SPREAD_IMPROVED'
+      ? 'The controlled offsets reduced the measured quarter-hour launch peak without introducing scheduler failures. Rollback remains available.'
+      : spreader?.state === 'OBSERVING'
+        ? 'The three approved offsets are live and compliant. V146.1 is accumulating the required post-change evidence window before judging the experiment.'
+        : spreader?.state === 'ROLLBACK_REVIEW_FAILURES'
+          ? 'New scheduler failures appeared after the controlled change. V146.1 is holding further action and surfacing rollback review.'
+          : spreader?.state === 'SCHEDULE_DRIFT_BLOCKED'
+            ? 'One or more controlled schedules drifted from the approved plan. Further scheduler changes are blocked.'
+            : 'The experiment is measured against its frozen baseline; no automatic promotion or rescheduling is allowed.'
+  );
+  set('v1461-observation', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
+  set('v1461-compliance', `${Number(plan?.compliant_jobs || 0)}/${Number(plan?.target_jobs || 0)}`);
+  set('v1461-baseline-quarter', Number.isFinite(baselineQuarter) ? `${baselineQuarter}/MIN` : 'WITHHELD');
+  set('v1461-measured-quarter', Number.isFinite(measuredQuarter) ? `${measuredQuarter}/MIN` : 'WITHHELD');
+  set('v1461-15m-peak', Number.isFinite(peak15) ? `${peak15}/MIN` : 'WITHHELD');
+  set('v1461-15m-failures', Number(rolling15?.failures || 0));
+  set('v1461-runs', Number(since?.runs || 0));
+  set('v1461-drift', Number(plan?.schedule_drift_jobs || 0));
+  set('v1461-orb', Number.isFinite(measuredQuarter) && Number(since?.runs || 0) > 0 ? measuredQuarter : '--');
+  set('v1461-rollback', spreader?.rollback?.available ? 'READY' : 'WITHHELD');
+  set('v1461-auto-rollback', 'OFF');
+  set('v1461-orders', 'OFF');
+  set('v1461-capital', '0R');
+
+  const host = byId('v1461-target-list');
+  if (host) {
+    host.replaceChildren();
+    if (!jobs.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'CONTROLLED TARGETS UNAVAILABLE';
+      host.appendChild(chip);
+    } else {
+      for (const job of jobs.slice(0, 3)) {
+        const chip = document.createElement('span');
+        chip.className = job?.compliant ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+        chip.textContent = `${String(job?.jobname || 'job')} · ${String(job?.current_schedule || 'schedule unavailable')} · ${job?.compliant ? 'COMPLIANT' : 'DRIFT'}`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v1461-detail',
+    `Baseline quarter-hour peak ${Number.isFinite(baselineQuarter) ? baselineQuarter : 'n/a'} · measured ${Number.isFinite(measuredQuarter) && Number(since?.runs || 0) > 0 ? measuredQuarter : 'collecting'} · observation ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · failures since apply ${Number(since?.failures || 0)} · rollback ${spreader?.rollback?.available ? 'ready' : 'withheld'} · success gate ${gate?.quarter_hour_peak_reduced ? 'peak reduced' : 'not yet matured'} · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV145ConnectionAdmissionShadow() {
   const admission = await readLocal('/api/admission-shadow', 18000);
   if (!admission?.ok) {
@@ -2000,6 +2073,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV1461ControlledPeakSpreader(),
       loadV145ConnectionAdmissionShadow(),
       loadV144SchedulerLoadGovernor(),
       loadV143StabilityConfirmation(),
