@@ -536,6 +536,70 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV162ProspectiveCollisionRevalidation() {
+  const live = await readLocal('/api/prospective-collision-revalidation', 20000);
+  if (!live?.ok) {
+    set('v162-state', 'LIVE REVALIDATION · FAIL CLOSED');
+    set('v162-copy', 'The prospective collision revalidator is unavailable. The next scheduler candidate must remain blocked.');
+    for (const id of ['v162-clear','v162-job','v162-move','v162-current-peers','v162-proposed-peers','v162-peer-delta','v162-overlaps','v162-live-match','v162-relief']) set(id, null);
+    set('v162-reservations', 'RESERVED');
+    set('v162-rescheduling', 'OFF');
+    set('v162-orders', 'OFF');
+    set('v162-capital', '0R');
+    return;
+  }
+
+  const candidate = live?.candidate ?? {};
+  const density = live?.live_density ?? {};
+  const reserved = live?.controlled_experiment_reservations ?? {};
+  const gate = live?.revalidation ?? {};
+  const planner = live?.planner_context ?? {};
+  const clear = Boolean(gate?.clear);
+  const blockers = Array.isArray(gate?.blockers) ? gate.blockers.map((x: unknown) => String(x)) : [];
+
+  set('v162-state', `LIVE REVALIDATION · ${first(live?.state, 'UNKNOWN')}`);
+  set('v162-copy',
+    clear
+      ? 'The candidate survives live schedule, controlled-minute and peer-density revalidation. It may proceed only to the remaining admission gates.'
+      : 'The planner recommendation is rejected by the current live graph. Historical relief cannot override controlled-minute reservations or unchanged peer density.'
+  );
+  set('v162-clear', clear ? 'CLEAR' : 'REJECT');
+  set('v162-job', candidate?.jobname ?? 'NONE');
+  set('v162-move', candidate?.jobname ? `${String(candidate?.planner_current_schedule || '?')} → ${String(candidate?.recommended_schedule || '?')}` : 'NONE');
+  set('v162-current-peers', density?.current_peer_triggers ?? null);
+  set('v162-proposed-peers', density?.proposed_peer_triggers ?? null);
+  set('v162-peer-delta', density?.peer_trigger_delta ?? null);
+  set('v162-overlaps', reserved?.overlap_count ?? null);
+  set('v162-live-match', candidate?.exact_live_schedule_match ? 'MATCH' : 'DRIFT');
+  set('v162-relief', planner?.estimated_relief_index == null ? 'WITHHELD' : Number(planner.estimated_relief_index).toFixed(2));
+  set('v162-reservations', reserved?.clear ? 'CLEAR' : 'BLOCKED');
+  set('v162-rescheduling', 'OFF');
+  set('v162-orders', 'OFF');
+  set('v162-capital', '0R');
+
+  const host = byId('v162-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO LIVE REVALIDATION BLOCKERS';
+      host.appendChild(chip);
+    } else {
+      for (const item of blockers.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = item.replaceAll('_', ' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v162-detail',
+    `State ${String(live?.state || 'unknown')} · candidate ${String(candidate?.jobname || 'none')} · peers ${Number(density?.current_peer_triggers || 0)} → ${Number(density?.proposed_peer_triggers || 0)} · delta ${Number(density?.peer_trigger_delta || 0)} · controlled overlaps ${Number(reserved?.overlap_count || 0)} · live match ${candidate?.exact_live_schedule_match ? 'yes' : 'no'} · admission ${clear ? 'revalidation clear' : 'blocked'} · capital 0R.`
+  );
+}
+
 async function loadV161SchedulerExperimentRegistry() {
   const registry = await readLocal('/api/scheduler-experiment-registry', 20000);
   if (!registry?.ok) {
@@ -692,6 +756,7 @@ async function loadV159LatestExperimentAdmission() {
   const platform = gate?.platform ?? {};
   const infra = gate?.infrastructure ?? {};
   const next = gate?.next_candidate ?? {};
+  const prospective = gate?.prospective_revalidation ?? {};
   const passed = Number(admission?.gates_passed || 0);
   const total = Number(admission?.gate_count || 0);
   const admitted = Boolean(admission?.admitted);
@@ -727,6 +792,7 @@ async function loadV159LatestExperimentAdmission() {
       [Boolean(gates?.platform_clear), 'PLATFORM CLEAR'],
       [Boolean(gates?.infrastructure_normal), 'INFRA NORMAL'],
       [Boolean(gates?.baseline_eligible), 'V146.1 ELIGIBLE'],
+      [Boolean(gates?.prospective_collision_revalidation), 'LIVE COLLISION REVALIDATION'],
       [Boolean(gates?.candidate_exact_schedule_match), 'CANDIDATE EXACT MATCH']
     ];
     for (const [pass,label] of items) {
@@ -739,7 +805,7 @@ async function loadV159LatestExperimentAdmission() {
 
   const reasons = Array.isArray(admission?.block_reasons) ? admission.block_reasons.join(', ').replaceAll('_',' ') : 'none';
   set('v159-detail',
-    `Admission ${admitted ? 'review eligible' : 'locked'} · gates ${passed}/${total} · latest ${String(latest?.experiment || 'none')} ${String(latest?.event || '')} · observer ${String(latest?.observer_state || 'n/a')} · age ${Number.isFinite(age) ? age.toFixed(1) : 'n/a'}m · next ${String(next?.jobname || 'none')} · blockers ${reasons} · capital 0R.`
+    `Admission ${admitted ? 'review eligible' : 'locked'} · gates ${passed}/${total} · latest ${String(latest?.experiment || 'none')} ${String(latest?.event || '')} · observer ${String(latest?.observer_state || 'n/a')} · age ${Number.isFinite(age) ? age.toFixed(1) : 'n/a'}m · next ${String(next?.jobname || 'none')} · live revalidation ${String(prospective?.state || 'n/a')} · blockers ${reasons} · capital 0R.`
   );
 }
 
@@ -2966,6 +3032,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV162ProspectiveCollisionRevalidation(),
       loadV161SchedulerExperimentRegistry(),
       loadV160LatestRollbackRehearsal(),
       loadV159LatestExperimentAdmission(),
