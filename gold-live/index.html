@@ -117,6 +117,55 @@
 
 
 
+      <section id="v147-connection-pressure-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V147 · CONNECTION PRESSURE GOVERNOR SHADOW</span>
+            <h3 id="v147-state">CHECKING</h3>
+            <p id="v147-copy">Separating true backend pressure from harmless idle client waits before any further scheduler decision.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v147-score">--</span><small>PRESSURE</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">PRESSURE MODEL · SHADOW</span>
+          <span class="autonomy-chip autonomy-chip-lock">POOL TUNING · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CLIENT BACKENDS</span><strong id="v147-clients">CHECKING</strong></article>
+          <article><span>UTILIZATION</span><strong id="v147-util">CHECKING</strong></article>
+          <article><span>HEADROOM</span><strong id="v147-headroom">CHECKING</strong></article>
+          <article><span>ACTIVE CLIENTS</span><strong id="v147-active">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>LOCK WAITS</span><strong id="v147-locks">CHECKING</strong></article>
+          <article><span>LONG TX</span><strong id="v147-long-tx">CHECKING</strong></article>
+          <article><span>CRON PEAK 15M</span><strong id="v147-cron15">CHECKING</strong></article>
+          <article><span>CRON FAILURES 15M</span><strong id="v147-cronfail">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>CONNECTION THROTTLING</span><strong id="v147-throttle">OFF</strong><small>V147 measures pressure only.</small></article>
+          <article><span>POOL RECONFIGURATION</span><strong id="v147-pool">OFF</strong><small>No automatic Supavisor or database-pool changes.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v147-orders">OFF</strong><small>Infrastructure state cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v147-capital">0R</strong><small>The canonical capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>PRESSURE ACTION QUEUE</span>
+          <small>Recommendations are diagnostic only and cannot mutate connections, schedules, or trading permissions.</small>
+        </div>
+        <div id="v147-actions" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">READING DATABASE PRESSURE</span></div>
+        <p id="v147-detail" class="autonomy-detail">V147 is a backend-pressure proxy. It does not claim direct Supavisor pool occupancy and cannot unlock capital.</p>
+      </section>
+
       <section id="v1461-controlled-peak-spreader" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
