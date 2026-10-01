@@ -215,6 +215,56 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v161-scheduler-experiment-registry" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V161 · SCHEDULER EXPERIMENT REGISTRY</span>
+            <h3 id="v161-state">CHECKING</h3>
+            <p id="v161-copy">One canonical chain of controlled scheduler experiments: admission, live schedule, acceptance, rollback readiness and integrity.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v161-chain">--</span><small>CHAIN</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">EXPERIMENT REGISTRY · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO MUTATION · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>EXPERIMENTS</span><strong id="v161-total">CHECKING</strong></article>
+          <article><span>ACCEPTED</span><strong id="v161-accepted">CHECKING</strong></article>
+          <article><span>OBSERVING</span><strong id="v161-observing">CHECKING</strong></article>
+          <article><span>VIOLATIONS</span><strong id="v161-violations">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>LATEST</span><strong id="v161-latest">CHECKING</strong></article>
+          <article><span>LIFECYCLE</span><strong id="v161-lifecycle">CHECKING</strong></article>
+          <article><span>ADMISSION</span><strong id="v161-admission">CHECKING</strong></article>
+          <article><span>ROLLBACK REVIEW</span><strong id="v161-rollback-review">CHECKING</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>EXPERIMENT CHAIN</span>
+          <small>Every experiment must follow an accepted predecessor, remain on its recorded schedule, exclude protected business workflows, and retain a rehearsable rollback.</small>
+        </div>
+        <div id="v161-experiments" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">LOADING EXPERIMENT CHAIN</span></div>
+
+        <div class="integrity-governance-grid">
+          <article><span>CHAIN POLICY</span><strong>ONE UNACCEPTED MAX</strong><small>New experiments cannot stack on top of an unproven mutation.</small></article>
+          <article><span>AUTO ROLLBACK</span><strong id="v161-auto-rollback">OFF</strong><small>Registry is evidence, not an actuator.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v161-orders">OFF</strong><small>Infrastructure history cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v161-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <p id="v161-detail" class="autonomy-detail">V161 is the scheduler experiment system-of-record. V159 remains the authoritative admission gate for any future mutation.</p>
+      </section>
+
       <section id="v160-latest-rollback-rehearsal" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
