@@ -536,6 +536,72 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV160LatestRollbackRehearsal() {
+  const rollback = await readLocal('/api/latest-rollback-rehearsal', 20000);
+  if (!rollback?.ok) {
+    set('v160-state', 'LATEST ROLLBACK · FAIL CLOSED');
+    set('v160-copy', 'The latest rollback rehearsal is unavailable. Further scheduler mutation should remain locked until rollback readiness is restored.');
+    for (const id of ['v160-ready','v160-experiment','v160-live','v160-from','v160-to','v160-observer','v160-identity','v160-consistency','v160-recommended']) set(id, null);
+    set('v160-drift-rule', 'REFUSED');
+    set('v160-file', 'WITHHELD');
+    set('v160-orders', 'OFF');
+    set('v160-capital', '0R');
+    return;
+  }
+
+  const latest = rollback?.latest_experiment ?? {};
+  const target = rollback?.target ?? {};
+  const rehearsal = rollback?.rehearsal ?? {};
+  const sim = rollback?.simulated_rollback ?? {};
+  const blockers = Array.isArray(rehearsal?.blockers) ? rehearsal.blockers.map((x: unknown) => String(x)) : [];
+  const ready = Boolean(rehearsal?.ready);
+  const recommended = Boolean(rehearsal?.rollback_recommended);
+
+  set('v160-state', `LATEST ROLLBACK · ${first(rollback?.state, 'UNKNOWN')}`);
+  set('v160-copy',
+    recommended && ready
+      ? 'The newest experiment has a rollback condition and V160 has verified its exact rollback path. Automatic rollback remains disabled.'
+      : ready
+        ? 'The newest experiment has an exact, rehearsed rollback path available if its post-change observer later requires it.'
+        : 'The newest experiment rollback contract has a blocker. No further scheduler mutation should be admitted.'
+  );
+  set('v160-ready', ready ? 'READY' : 'LOCKED');
+  set('v160-experiment', latest?.experiment ?? 'NONE');
+  set('v160-live', target?.live_schedule ?? 'WITHHELD');
+  set('v160-from', sim?.from_schedule ?? 'WITHHELD');
+  set('v160-to', sim?.to_schedule ?? 'WITHHELD');
+  set('v160-observer', latest?.observer_state ?? 'WITHHELD');
+  set('v160-identity', target?.identity_match ? 'MATCH' : 'LOCKED');
+  set('v160-consistency', target?.ledger_state_consistent ? 'CONSISTENT' : 'LOCKED');
+  set('v160-recommended', recommended ? 'YES' : 'NO');
+  set('v160-drift-rule', sim?.unknown_drift_refused ? 'REFUSED' : 'WITHHELD');
+  set('v160-file', rehearsal?.rollback_file ? 'READY' : 'WITHHELD');
+  set('v160-orders', 'OFF');
+  set('v160-capital', '0R');
+
+  const host = byId('v160-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO LATEST ROLLBACK CONTRACT BLOCKERS';
+      host.appendChild(chip);
+    } else {
+      for (const item of blockers.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = item.replaceAll('_', ' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v160-detail',
+    `State ${String(rollback?.state || 'unknown')} · experiment ${String(latest?.experiment || 'none')} · observer ${String(latest?.observer_state || 'n/a')} · live ${String(target?.live_schedule || 'n/a')} · simulated ${String(sim?.from_schedule || 'n/a')} → ${String(sim?.to_schedule || 'n/a')} · identity ${target?.identity_match ? 'match' : 'blocked'} · ledger ${target?.ledger_state_consistent ? 'consistent' : 'blocked'} · rollback recommended ${recommended ? 'yes' : 'no'} · auto rollback OFF · capital 0R.`
+  );
+}
+
 async function loadV159LatestExperimentAdmission() {
   const gate = await readLocal('/api/latest-experiment-admission', 20000);
   if (!gate?.ok) {
@@ -2830,6 +2896,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV160LatestRollbackRehearsal(),
       loadV159LatestExperimentAdmission(),
       loadV158MemberAlertPostShiftObserver(),
       loadV156QuotaGuardRecoveryShadow(),
