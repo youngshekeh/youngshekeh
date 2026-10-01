@@ -536,6 +536,70 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV161SchedulerExperimentRegistry() {
+  const registry = await readLocal('/api/scheduler-experiment-registry', 20000);
+  if (!registry?.ok) {
+    set('v161-state', 'EXPERIMENT REGISTRY · FAIL CLOSED');
+    set('v161-copy', 'The scheduler experiment registry is unavailable. New scheduler mutation should remain locked.');
+    for (const id of ['v161-chain','v161-total','v161-accepted','v161-observing','v161-violations','v161-latest','v161-lifecycle','v161-admission','v161-rollback-review']) set(id, null);
+    set('v161-auto-rollback', 'OFF');
+    set('v161-orders', 'OFF');
+    set('v161-capital', '0R');
+    return;
+  }
+
+  const summary = registry?.summary ?? {};
+  const admission = registry?.authoritative_admission ?? {};
+  const experiments = Array.isArray(registry?.experiments) ? registry.experiments : [];
+  const violations = Number(summary?.chain_integrity_violations || 0);
+  const accepted = Number(summary?.accepted || 0);
+  const observing = Number(summary?.observing || 0);
+  const rollbackReview = Number(summary?.rollback_recommended || 0);
+
+  set('v161-state', `EXPERIMENT REGISTRY · ${first(registry?.state, 'UNKNOWN')}`);
+  set('v161-copy',
+    violations > 0
+      ? 'The controlled scheduler experiment chain has an integrity violation. Further mutation must remain locked.'
+      : observing > 0
+        ? 'The experiment chain is internally consistent, but the newest mutation is still under observation.'
+        : 'The experiment chain is internally consistent and all recorded experiments are accepted or rolled back.'
+  );
+  set('v161-chain', violations === 0 ? 'CLEAN' : 'LOCKED');
+  set('v161-total', summary?.experiments_total ?? 0);
+  set('v161-accepted', accepted);
+  set('v161-observing', observing);
+  set('v161-violations', violations);
+  set('v161-latest', summary?.latest_experiment ?? 'NONE');
+  set('v161-lifecycle', summary?.latest_lifecycle_state ?? 'WITHHELD');
+  set('v161-admission', admission?.admitted ? `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} READY` : `${Number(admission?.gates_passed || 0)}/${Number(admission?.gate_count || 0)} LOCKED`);
+  set('v161-rollback-review', rollbackReview);
+  set('v161-auto-rollback', 'OFF');
+  set('v161-orders', 'OFF');
+  set('v161-capital', '0R');
+
+  const host = byId('v161-experiments');
+  if (host) {
+    host.replaceChildren();
+    if (!experiments.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'NO CONTROLLED EXPERIMENTS';
+      host.appendChild(chip);
+    } else {
+      for (const exp of experiments.slice(0, 8)) {
+        const chip = document.createElement('span');
+        chip.className = exp?.chain_compliant ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+        chip.textContent = `#${Number(exp?.sequence || 0)} ${String(exp?.jobname || 'job')} · ${String(exp?.previous_schedule || '?')} → ${String(exp?.governed_schedule || '?')} · ${String(exp?.lifecycle_state || 'UNKNOWN')} · rollback ${exp?.rollback_rehearsal?.ready ? 'READY' : 'LOCKED'}`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v161-detail',
+    `State ${String(registry?.state || 'unknown')} · experiments ${Number(summary?.experiments_total || 0)} · accepted ${accepted} · observing ${observing} · violations ${violations} · latest ${String(summary?.latest_experiment || 'none')} · V159 ${String(admission?.state || 'n/a')} · admission ${admission?.admitted ? 'review eligible' : 'locked'} · auto mutation OFF · capital 0R.`
+  );
+}
+
 async function loadV160LatestRollbackRehearsal() {
   const rollback = await readLocal('/api/latest-rollback-rehearsal', 20000);
   if (!rollback?.ok) {
@@ -2896,6 +2960,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV161SchedulerExperimentRegistry(),
       loadV160LatestRollbackRehearsal(),
       loadV159LatestExperimentAdmission(),
       loadV158MemberAlertPostShiftObserver(),
