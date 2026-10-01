@@ -1,0 +1,44 @@
+name: Verify V160 Latest Rollback Rehearsal
+
+on:
+  push:
+    branches:
+      - tfa-v160-latest-rollback-rehearsal
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v160-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/latest-rollback-rehearsal.js
+      - name: Verify rehearsal assets
+        run: |
+          test -f supabase/recovery/v160-latest-rollback-rehearsal.sql
+          test -f supabase/functions/runtime-v160-latest-rollback-rehearsal/index.ts
+          test -f supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          test -f supabase/recovery/v157-controlled-member-alert-shift-rollback.sql
+          grep -q "v160-latest-rollback-rehearsal-db-v1" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "LATEST_ROLLBACK_REHEARSAL_READY" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "LATEST_ROLLBACK_RECOMMENDED_AND_REHEARSED" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "unknown_drift_refused',true" supabase/recovery/v160-latest-rollback-rehearsal.sql
+      - name: Reject automatic rollback
+        run: |
+          if grep -Eq "(perform|select)[[:space:]]+cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v160-latest-rollback-rehearsal.sql; then
+            echo "V160 rehearsal must not execute rollback"
+            exit 1
+          fi
+          grep -q "'automatic_rollback',false" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v160-latest-rollback-rehearsal.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v160-latest-rollback-rehearsal.sql

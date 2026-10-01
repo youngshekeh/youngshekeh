@@ -215,6 +215,55 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v160-latest-rollback-rehearsal" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V160 · LATEST-MUTATION ROLLBACK REHEARSAL</span>
+            <h3 id="v160-state">CHECKING</h3>
+            <p id="v160-copy">Following the newest controlled scheduler experiment and continuously proving its exact rollback contract without executing rollback.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v160-ready">--</span><small>ROLLBACK</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">LATEST ROLLBACK · REHEARSED</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO ROLLBACK · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>EXPERIMENT</span><strong id="v160-experiment">CHECKING</strong></article>
+          <article><span>LIVE SCHEDULE</span><strong id="v160-live">CHECKING</strong></article>
+          <article><span>SIMULATED FROM</span><strong id="v160-from">CHECKING</strong></article>
+          <article><span>SIMULATED TO</span><strong id="v160-to">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>OBSERVER</span><strong id="v160-observer">CHECKING</strong></article>
+          <article><span>IDENTITY</span><strong id="v160-identity">CHECKING</strong></article>
+          <article><span>LEDGER</span><strong id="v160-consistency">CHECKING</strong></article>
+          <article><span>RECOMMENDED</span><strong id="v160-recommended">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>UNKNOWN DRIFT</span><strong id="v160-drift-rule">REFUSED</strong><small>Rollback refuses schedules outside the recorded pair.</small></article>
+          <article><span>ROLLBACK FILE</span><strong id="v160-file">CHECKING</strong><small>Selected from the newest experiment ledger.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v160-orders">OFF</strong><small>Rollback rehearsal cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v160-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>LATEST ROLLBACK CONTRACT</span>
+          <small>Target identity, ledger consistency, schedule pair and cron rollback primitive must remain valid for the newest experiment.</small>
+        </div>
+        <div id="v160-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING LATEST ROLLBACK</span></div>
+        <p id="v160-detail" class="autonomy-detail">V160 rehearses rollback only. Human review remains mandatory and automatic rollback stays disabled.</p>
+      </section>
+
       <section id="v159-latest-experiment-admission" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
