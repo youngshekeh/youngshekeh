@@ -171,7 +171,7 @@ begin
       where plan_id='V157_MEMBER_ALERT_SHIFT_001'
         and rolled_back_at is null
     ),
-    overlaps as (
+    overlap_rows as (
       select
         c.experiment_id,
         c.jobid,
@@ -194,7 +194,7 @@ begin
         'minute_of_hour',minute_of_hour
       ) order by minute_of_hour,experiment_id),'[]'::jsonb)
     into v_controlled_overlap_count,v_controlled_overlaps
-    from overlaps;
+    from overlap_rows;
 
     select count(*)::int
     into v_historical_current_starts
