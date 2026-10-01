@@ -1,0 +1,44 @@
+name: Verify V158 Member Alert Post Shift Observer
+
+on:
+  push:
+    branches:
+      - tfa-v158-member-alert-post-shift-observer
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v158-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/member-alert-post-shift-observer.js
+      - name: Verify observer assets
+        run: |
+          test -f supabase/recovery/v158-member-alert-post-shift-observer.sql
+          test -f supabase/functions/runtime-v158-member-alert-post-shift-observer/index.ts
+          test -f supabase/recovery/v157-controlled-member-alert-shift-rollback.sql
+          grep -q "v158-member-alert-post-shift-observer-db-v1" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "WAITING_FOR_FIRST_GOVERNED_RUN" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "PLATFORM_GUARD_OBSERVATION_SUSPENDED" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "POST_SHIFT_HEALTHY" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "BUSINESS_RECEIPT_GAP_ROLLBACK_REVIEW" supabase/recovery/v158-member-alert-post-shift-observer.sql
+      - name: Reject automatic mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v158-member-alert-post-shift-observer.sql; then
+            echo "V158 must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_rollback',false" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v158-member-alert-post-shift-observer.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v158-member-alert-post-shift-observer.sql
