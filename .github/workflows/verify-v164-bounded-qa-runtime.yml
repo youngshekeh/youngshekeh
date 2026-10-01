@@ -21,16 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify bounded QA runtime
-        run: |
-          test -f supabase/functions/runtime-v115-autonomous-qa/index.ts
-          grep -q "v164-bounded-autonomous-regression-matrix-v45" supabase/functions/runtime-v115-autonomous-qa/index.ts
-          grep -q "async function tfaBoundedAll" supabase/functions/runtime-v115-autonomous-qa/index.ts
-          grep -q "await tfaBoundedAll" supabase/functions/runtime-v115-autonomous-qa/index.ts
-          grep -q "],8);" supabase/functions/runtime-v115-autonomous-qa/index.ts
-          if grep -q "]=await Promise.all(\[" supabase/functions/runtime-v115-autonomous-qa/index.ts; then
-            echo "Unbounded primary QA fan-out still present"
-            exit 1
-          fi
+        run: node scripts/verify-qa-concurrency.mjs
       - name: Preserve QA safety contracts
         run: |
           grep -q "v112_capital_firewall" supabase/functions/runtime-v115-autonomous-qa/index.ts

@@ -27,3 +27,9 @@ WAIT / 0R and live orders OFF remain enforced. Production broker readiness is NO
 Continue with a broker quote adapter in paper mode once its data source is available, then verify measured costs and production-style reconciliation/kill-switch behavior without granting real-capital permission. Preserve the full report architecture and daily/weekly/monthly/quarterly zones. Track the intermittent breakout self-test transport failure if it recurs.
 
 The migration is definition-guarded and intentionally refuses reapplication or drift. Apply the recovery SQL and test SQL together in one transaction. The rollback restores the prior V134 evaluator only after checking the exact V171 definition hash. The private validator can remain installed; no historical receipts need deletion. Neither direction changes cron schedules, trading policies or live order routing.
+
+## Repository QA correction
+
+Post-save CI completed 24 of 25 workflows successfully. The V164 bounded-runtime workflow failed because it pinned a superseded V164 version label and an exact concurrency of eight. The live V169 runtime uses three concurrent workers. The workflow now calls `scripts/verify-qa-concurrency.mjs`, which requires explicit primary QA limits from one through eight, rejects unbounded primary fan-out, and ignores release-label changes. Eight local guard cases passed, including zero, nine and missing-limit rejection. This change only affects repository checks; it does not alter the live runtime or weaken capital/authentication contracts.
+
+The existing hourly broker-lab job completed successfully at 18:17:00 UTC after V171 deployment, reusing the same-hour immutable run 30 without duplicate events or real orders.
