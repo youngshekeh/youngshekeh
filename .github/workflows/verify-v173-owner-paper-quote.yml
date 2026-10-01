@@ -1,0 +1,19 @@
+name: Verify V173 Owner Paper Quote
+on:
+  push:
+    branches: [tfa-v173-owner-paper-quote, the-father-analytics-staging, the-father-analytics-deploy]
+  pull_request:
+    branches: [the-father-analytics-staging, the-father-analytics-deploy]
+permissions:
+  contents: read
+jobs:
+  owner-paper-quote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/v172-paper-quote-*.test.mjs tests/v173-owner-paper-*.test.mjs
+      - run: node scripts/verify-qa-concurrency.mjs
