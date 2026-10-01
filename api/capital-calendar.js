@@ -1,5 +1,6 @@
 const BLS_ICS='https://www.bls.gov/schedule/news_release/bls.ics';
 const FED_SOURCE='https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm';
+const BEA_SOURCE='https://www.bea.gov/news/schedule/';
 
 function unfold(text){return text.replace(/\r?\n[ \t]/g,'')}
 function clean(v=''){return v.replace(/\\,/g,',').replace(/\\n/g,' ').replace(/\\;/g,';').trim()}
@@ -17,4 +18,15 @@ function fedEvents(){const base=[
 ['2026-12-08T14:00:00-05:00','FOMC Meeting · Day 1','FOMC'],
 ['2026-12-09T14:00:00-05:00','FOMC Policy Decision + Press Conference Window','FOMC']
 ];return base.map(([datetime,title,s])=>({id:`fed-${datetime}`,datetime,timezone:'America/New_York',title,short:s,impact:'HIGH',country:'US',source:'Federal Reserve',source_url:FED_SOURCE,notes:'Official meeting/minutes schedule. The displayed 14:00 ET is a dashboard event window, not a claim that every meeting-day activity occurs exactly then.'}))}
-export default async function handler(req,res){res.setHeader('Cache-Control','s-maxage=900, stale-while-revalidate=3600');res.setHeader('X-TFA-Engine','V167-CALENDAR');if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,state:'METHOD_NOT_ALLOWED',events:[]})}let bls=[],blsOk=false,detail='';try{const r=await fetch(BLS_ICS,{headers:{'User-Agent':'THE-FATHER-ANALYTICS-V167/1.0',Accept:'text/calendar'},signal:AbortSignal.timeout(8000)});if(r.ok){bls=parseBls(await r.text());blsOk=bls.length>0}else detail=`BLS returned ${r.status}`}catch(e){detail=String(e).slice(0,140)}const now=Date.now()-7*864e5;const events=[...bls,...fedEvents()].filter(x=>new Date(x.datetime).getTime()>=now).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));return res.status(200).json({ok:events.length>0,state:blsOk?'LIVE_OFFICIAL_SCHEDULES':'DEGRADED_FED_OFFICIAL_ONLY',generated_at:new Date().toISOString(),detail:blsOk?`Parsed ${bls.length} BLS scheduled releases plus Federal Reserve policy events.`:`BLS calendar unavailable; Federal Reserve official events retained. ${detail}`,events,governance:{trading_permission:false,event_proximity_is_context_only:true}})}
+function beaEvents(){const base=[
+['2026-10-06T08:30:00-04:00','U.S. International Trade in Goods and Services · August 2026','TRADE','MEDIUM'],
+['2026-10-29T08:30:00-04:00','GDP · Advance Estimate · Q3 2026','GDP','HIGH'],
+['2026-10-29T08:30:00-04:00','Personal Income and Outlays · September 2026','PCE','HIGH'],
+['2026-11-04T08:30:00-05:00','U.S. International Trade in Goods and Services · September 2026','TRADE','MEDIUM'],
+['2026-11-25T08:30:00-05:00','GDP · Second Estimate + Corporate Profits · Q3 2026','GDP','HIGH'],
+['2026-11-25T08:30:00-05:00','Personal Income and Outlays · October 2026','PCE','HIGH'],
+['2026-12-08T08:30:00-05:00','U.S. International Trade in Goods and Services · October 2026','TRADE','MEDIUM'],
+['2026-12-23T08:30:00-05:00','GDP · Third Estimate + Corporate Profits · Q3 2026','GDP','HIGH'],
+['2026-12-23T08:30:00-05:00','Personal Income and Outlays · November 2026','PCE','HIGH']
+];return base.map(([datetime,title,s,impact])=>({id:`bea-${datetime}-${s}`,datetime,timezone:'America/New_York',title,short:s,impact,country:'US',source:'U.S. Bureau of Economic Analysis',source_url:BEA_SOURCE,notes:'Official BEA release schedule.'}))}
+export default async function handler(req,res){res.setHeader('Cache-Control','s-maxage=900, stale-while-revalidate=3600');res.setHeader('X-TFA-Engine','V167-CALENDAR');if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,state:'METHOD_NOT_ALLOWED',events:[]})}let bls=[],blsOk=false,detail='';try{const r=await fetch(BLS_ICS,{headers:{'User-Agent':'THE-FATHER-ANALYTICS-V167/1.0',Accept:'text/calendar'},signal:AbortSignal.timeout(8000)});if(r.ok){bls=parseBls(await r.text());blsOk=bls.length>0}else detail=`BLS returned ${r.status}`}catch(e){detail=String(e).slice(0,140)}const now=Date.now()-7*864e5;const events=[...bls,...fedEvents(),...beaEvents()].filter(x=>new Date(x.datetime).getTime()>=now).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));return res.status(200).json({ok:events.length>0,state:blsOk?'LIVE_OFFICIAL_SCHEDULES':'DEGRADED_FED_OFFICIAL_ONLY',generated_at:new Date().toISOString(),detail:blsOk?`Parsed ${bls.length} BLS scheduled releases plus Federal Reserve and BEA official events.`:`BLS calendar unavailable; Federal Reserve and BEA official events retained. ${detail}`,events,governance:{trading_permission:false,event_proximity_is_context_only:true}})}
