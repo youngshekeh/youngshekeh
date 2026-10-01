@@ -24,7 +24,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v164-bounded-autonomous-regression-matrix-v45';
+const VERSION='v169.0-integrated-engine-certification-v48';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -68,6 +68,15 @@ async function fetchAbsolutePost(url:string,body:any,timeout=10000){
   }
 }
 
+
+async function tfaRetry(task:()=>Promise<any>,delay=250){
+  const first=await task();
+  if(first?.status>0&&first.status<500)return first;
+  await new Promise(resolve=>setTimeout(resolve,delay));
+  const second=await task();
+  return second;
+}
+
 async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=8){
   const results=new Array(tasks.length);
   let cursor=0;
@@ -90,27 +99,30 @@ function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,lat
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
 async function legacyHandler(req:any,res:any){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission]=await tfaBoundedAll([
+  const [home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission]=await tfaBoundedAll([
     ()=>fetchAny('/'),
+    ()=>fetchAny('/capital-os/'),
+    ()=>fetchAny('/api/capital-calendar',12000),
+    ()=>fetchAny('/api/earnings-calendar',12000),
     ()=>fetchAny('/gold-live/'),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-desk',12000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-learning-state',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-outcome-learning',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-transition-state',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-trigger-watch',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-signal-reputation',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-intelligence',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-disagreement-intelligence',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-contextual-disagreement',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-priority',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-freshness',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-autonomous-shadow-trader',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-shadow-portfolio-brain',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-reality',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-broker-adapter-lab',8000),
-    ()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-opportunity-governor',10000),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-desk',12000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-learning-state',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-outcome-learning',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-transition-state',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-trigger-watch',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-signal-reputation',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-intelligence',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-disagreement-intelligence',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-contextual-disagreement',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-priority',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-freshness',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-autonomous-shadow-trader',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-shadow-portfolio-brain',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-reality',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-broker-adapter-lab',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-opportunity-governor',10000)),
     ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/owner-gold-review-actions',{action:'queue'},8000),
-    ()=>fetchAbsolute(PRIVATE_LOCK_PROBE),
+    ()=>tfaRetry(()=>fetchAbsolute(PRIVATE_LOCK_PROBE)),
     ()=>fetchAny('/api/autonomous-state'),
     ()=>fetchAny('/api/gold-day-state'),
     ()=>fetchAny('/api/data-quality-sentinel'),
@@ -124,9 +136,59 @@ async function legacyHandler(req:any,res:any){
     ()=>fetchAny('/api/gold-breakout-acceptance'),
     ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1'),
     ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000)
-  ],8);
+  ],3);
+  const productionClosure=await tfaRetry(()=>fetchAny('/api/production-closure',30000),350);
   const ownerSurface=await fetchAny('/owner/');
   const tests=[];
+
+  tests.push(result('v167_capital_os_surface_contract',
+    capitalSurface.status===200
+      &&typeof capitalSurface.body==='string'
+      &&capitalSurface.body.includes('PORTFOLIO MANAGER')
+      &&capitalSurface.body.includes('ASSET ALLOCATOR')
+      &&capitalSurface.body.includes('ECONOMIC CALENDAR')
+      &&capitalSurface.body.includes('id="journal-form"')
+      &&capitalSurface.body.includes('id="portfolio-form"'),
+    `status=${capitalSurface.status}, journal=${typeof capitalSurface.body==='string'&&capitalSurface.body.includes('id="journal-form"')?'present':'missing'}, portfolio=${typeof capitalSurface.body==='string'&&capitalSurface.body.includes('id="portfolio-form"')?'present':'missing'}`,
+    capitalSurface.latency_ms));
+  tests.push(result('v167_official_macro_calendar_contract',
+    capitalCalendar.status===200
+      &&capitalCalendar.body?.ok===true
+      &&Array.isArray(capitalCalendar.body?.events)
+      &&capitalCalendar.body.events.length>=1
+      &&['LIVE_OFFICIAL_SCHEDULES','OFFICIAL_STATIC_FALLBACK_ACTIVE'].includes(String(capitalCalendar.body?.state||''))
+      &&capitalCalendar.body?.governance?.trading_permission===false
+      &&capitalCalendar.body?.governance?.event_proximity_is_context_only===true,
+    `status=${capitalCalendar.status}, state=${capitalCalendar.body?.state}, events=${capitalCalendar.body?.events?.length ?? 0}, trading=${capitalCalendar.body?.governance?.trading_permission}`,
+    capitalCalendar.latency_ms));
+  tests.push(result('v167_earnings_truth_contract',
+    earningsCalendar.status===200
+      &&(
+        (earningsCalendar.body?.ok===true
+          &&earningsCalendar.body?.state==='LIVE_UPSTREAM'
+          &&Array.isArray(earningsCalendar.body?.rows)
+          &&earningsCalendar.body?.governance?.no_estimates_fabricated===true
+          &&earningsCalendar.body?.governance?.trading_permission===false)
+        ||
+        (earningsCalendar.body?.ok===false
+          &&earningsCalendar.body?.state==='UPSTREAM_UNAVAILABLE'
+          &&Array.isArray(earningsCalendar.body?.rows)
+          &&earningsCalendar.body.rows.length===0)
+      ),
+    `status=${earningsCalendar.status}, state=${earningsCalendar.body?.state}, rows=${earningsCalendar.body?.rows?.length ?? 0}`,
+    earningsCalendar.latency_ms));
+  tests.push(result('v166_production_closure_contract',
+    productionClosure.status===200
+      &&productionClosure.body?.ok===true
+      &&productionClosure.body?.closure?.platform_research_ready===true
+      &&productionClosure.body?.closure?.autonomous_paper_ready===true
+      &&productionClosure.body?.closure?.live_execution_ready===false
+      &&productionClosure.body?.governance?.action_permitted==='WAIT'
+      &&productionClosure.body?.governance?.capital_permission==='0R'
+      &&productionClosure.body?.governance?.order_submission_enabled===false
+      &&productionClosure.body?.governance?.automatic_real_capital===false,
+    `status=${productionClosure.status}, state=${productionClosure.body?.state}, research=${productionClosure.body?.closure?.platform_research_ready}, paper=${productionClosure.body?.closure?.autonomous_paper_ready}, live=${productionClosure.body?.closure?.live_execution_ready}, capital=${productionClosure.body?.governance?.capital_permission}`,
+    productionClosure.latency_ms));
   tests.push(result('homepage_http',home.status===200,`status=${home.status}`,home.latency_ms));
   tests.push(result('gold_surface_http',gold.status===200,`status=${gold.status}`,gold.latency_ms));
   tests.push(result('v126_owner_review_surface_contract',
@@ -736,6 +798,49 @@ async function legacyHandler(req:any,res:any){
     `state=${health?.state}, readiness=${health?.readiness_pct ?? 'n/a'}%, critical=${health?.summary?.critical_failures ?? 'n/a'}, capital=${health?.governance?.capital_permission}`,mission.latency_ms));
   tests.push(result('v1132_release_integrity',release?.ok===true&&release?.state==='PRODUCTION_SOURCE_VERIFIED'&&release?.environment==='production'&&release?.git_branch==='the-father-analytics-deploy'&&/^[a-f0-9]{40}$/i.test(String(release?.git_commit_sha??''))&&release?.governance?.capital_permission==='0R',
     `state=${release?.state}, env=${release?.environment}, branch=${release?.git_branch}, sha=${release?.git_commit_short??'withheld'}, capital=${release?.governance?.capital_permission}`,mission.latency_ms));
+
+
+  const registry=Array.isArray(mission.body?.engine_registry)?mission.body.engine_registry:[];
+  const registryNames=new Set(registry.map((engine:any)=>String(engine?.name||'')));
+  const invalidRegistryRows=registry.filter((engine:any)=>!engine?.name||!engine?.state||!engine?.detail);
+  const hardFailureRegistryRows=registry.filter((engine:any)=>/^(FAIL|FAILED|CRITICAL|ERROR|UNAVAILABLE)$/i.test(String(engine?.state||'').trim()));
+  const brierEngine=registry.find((engine:any)=>engine?.name==='Brier Calibration');
+  const evEngine=registry.find((engine:any)=>engine?.name==='Expected Value Engine');
+  const portfolioEngine=registry.find((engine:any)=>engine?.name==='Portfolio Risk');
+  tests.push(result('v168_engine_registry_completeness',
+    mission.status===200&&registry.length>=44&&registryNames.size===registry.length,
+    `registry=${registry.length}, unique=${registryNames.size}`,mission.latency_ms));
+  tests.push(result('v168_engine_registry_schema_integrity',
+    registry.length>=44&&invalidRegistryRows.length===0,
+    `invalid_rows=${invalidRegistryRows.length}`,mission.latency_ms));
+  tests.push(result('v168_engine_registry_no_hard_failure',
+    registry.length>=44&&hardFailureRegistryRows.length===0,
+    `hard_failures=${hardFailureRegistryRows.map((x:any)=>x.name+':'+x.state).join('|')||'none'}`,mission.latency_ms));
+  tests.push(result('v168_learning_gates_truthful',
+    brierEngine?.state==='GATED'
+      &&['LEARNING','EVIDENCE-GATED'].includes(String(evEngine?.state||''))
+      &&portfolioEngine?.state==='OBSERVATION ONLY',
+    `brier=${brierEngine?.state}, ev=${evEngine?.state}, portfolio=${portfolioEngine?.state}`,mission.latency_ms));
+  const v169RequiredModules=[
+    'Professional Capital OS',
+    'Official Macro Calendar',
+    'Earnings Intelligence',
+    'Production Closure Gate',
+    'Full-Engine Certification',
+    'Scheduler Evidence Cache'
+  ];
+  const v169Missing=v169RequiredModules.filter((name)=>!registryNames.has(name));
+  tests.push(result('v169_integrated_registry_modules',
+    registry.length>=44&&v169Missing.length===0,
+    `registry=${registry.length}, missing=${v169Missing.join('|')||'none'}`,
+    mission.latency_ms));
+  tests.push(result('v168_global_capital_invariant',
+    mission.body?.governance?.action_permitted==='WAIT'
+      &&mission.body?.governance?.capital_permission==='0R'
+      &&mission.body?.autonomous_health?.governance?.action_permitted==='WAIT'
+      &&mission.body?.autonomous_health?.governance?.capital_permission==='0R',
+    `mission=${mission.body?.governance?.action_permitted}/${mission.body?.governance?.capital_permission}, health=${mission.body?.autonomous_health?.governance?.action_permitted}/${mission.body?.autonomous_health?.governance?.capital_permission}`,
+    mission.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
