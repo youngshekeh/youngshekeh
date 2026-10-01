@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - tfa-v159-latest-experiment-admission
+      - tfa-v1591-bounded-admission-hotfix
       - the-father-analytics-staging
       - the-father-analytics-deploy
   pull_request:
@@ -27,11 +28,22 @@ jobs:
           test -f supabase/recovery/v159-latest-experiment-admission.sql
           test -f supabase/functions/runtime-v159-latest-experiment-admission/index.ts
           test -f supabase/recovery/v158-member-alert-post-shift-observer.sql
-          grep -q "v159-latest-experiment-admission-db-v1" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "v159.1-latest-experiment-admission-db-v2-bounded" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "LOCKED_LATEST_SHIFT_OBSERVATION" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "READY_FOR_NEXT_HUMAN_REVIEW" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "minimum_minutes_between_mutations',75" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "one_unaccepted_scheduler_experiment_max',true" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'direct_v147_calls',0" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'direct_v1461_calls',0" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'latest_observer_calls',1" supabase/recovery/v159-latest-experiment-admission.sql
+          if grep -q "get_v147_connection_pressure_shadow" supabase/recovery/v159-latest-experiment-admission.sql; then
+            echo "V159 must not directly call V147"
+            exit 1
+          fi
+          if grep -q "get_v1461_peak_spreader_status" supabase/recovery/v159-latest-experiment-admission.sql; then
+            echo "V159 must not directly call V146.1"
+            exit 1
+          fi
       - name: Reject mutation paths
         run: |
           if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v159-latest-experiment-admission.sql; then
