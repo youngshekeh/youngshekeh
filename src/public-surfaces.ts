@@ -536,6 +536,76 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV152PostShiftObserver() {
+  const obs = await readLocal('/api/post-shift-observer', 20000);
+  if (!obs?.ok) {
+    set('v152-state', 'POST-SHIFT · FAIL CLOSED');
+    set('v152-copy', 'The post-shift observer is unavailable. A second scheduler mutation is not permitted.');
+    for (const id of ['v152-runs','v152-schedule','v152-cron-ok','v152-receipts','v152-gap','v152-cron-fail','v152-business-fail','v152-pressure','v152-age']) set(id, null);
+    set('v152-rollback', 'STANDBY');
+    set('v152-next-review', 'LOCKED');
+    set('v152-orders', 'OFF');
+    set('v152-capital', '0R');
+    return;
+  }
+
+  const plan = obs?.plan ?? {};
+  const post = obs?.post_change ?? {};
+  const system = obs?.system ?? {};
+  const gate = obs?.success_gate ?? {};
+  const age = Number(plan?.minutes_since_apply);
+  const pressure = Number(system?.v147_pressure_score);
+  const rollback = Boolean(gate?.rollback_recommended);
+  const eligible = Boolean(gate?.next_plan_review_eligible);
+
+  set('v152-state', `POST-SHIFT · ${first(obs?.state, 'UNKNOWN')}`);
+  set('v152-copy',
+    rollback
+      ? 'The governed target has tripped a rollback condition. Do not advance scheduler changes until the exact V151.1 rollback path is reviewed.'
+      : eligible
+        ? 'The governed phase has survived the post-change acceptance window. A future scheduler candidate may return to human review, but automatic mutation remains disabled.'
+        : 'The governed phase is still collecting real cron and first-party business receipt evidence. The next scheduler mutation remains locked.'
+  );
+
+  set('v152-runs', post?.cron_runs ?? 0);
+  set('v152-schedule', plan?.live_schedule ?? 'WITHHELD');
+  set('v152-cron-ok', post?.cron_succeeded ?? 0);
+  set('v152-receipts', post?.business_succeeded ?? 0);
+  set('v152-gap', post?.business_receipt_gap ?? 0);
+  set('v152-cron-fail', post?.cron_failed ?? 0);
+  set('v152-business-fail', post?.business_failed ?? 0);
+  set('v152-pressure', Number.isFinite(pressure) ? `${pressure}/100` : 'WITHHELD');
+  set('v152-age', Number.isFinite(age) ? `${age.toFixed(1)}m / 45m` : 'WITHHELD');
+  set('v152-rollback', rollback ? 'RECOMMENDED' : 'STANDBY');
+  set('v152-next-review', eligible ? 'ELIGIBLE' : 'LOCKED');
+  set('v152-orders', 'OFF');
+  set('v152-capital', '0R');
+
+  const host = byId('v152-gates');
+  if (host) {
+    host.replaceChildren();
+    const gates = [
+      [post?.cron_succeeded >= 2, '2 GOVERNED RUNS'],
+      [post?.business_succeeded >= 2, '2 BUSINESS RECEIPTS'],
+      [Number(post?.cron_failed || 0) === 0, 'ZERO CRON FAILURES'],
+      [Number(post?.business_failed || 0) === 0, 'ZERO BUSINESS FAILURES'],
+      [Number(post?.business_receipt_gap || 0) === 0, 'ZERO RECEIPT GAP'],
+      [Boolean(gate?.zero_schedule_drift), 'ZERO SCHEDULE DRIFT'],
+      [Number.isFinite(age) && age >= Number(gate?.minimum_observation_minutes || 45), '45M OBSERVATION']
+    ];
+    for (const [pass,label] of gates) {
+      const chip = document.createElement('span');
+      chip.className = pass ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = `${String(label)} · ${pass ? 'PASS' : 'LOCKED'}`;
+      host.appendChild(chip);
+    }
+  }
+
+  set('v152-detail',
+    `State ${String(obs?.state || 'unknown')} · schedule ${String(plan?.live_schedule || 'n/a')} · cron ${Number(post?.cron_succeeded || 0)}/${Number(post?.cron_runs || 0)} succeeded · receipts ${Number(post?.business_succeeded || 0)} · failures ${Number(post?.cron_failed || 0) + Number(post?.business_failed || 0)} · receipt gap ${Number(post?.business_receipt_gap || 0)} · V147 pressure ${Number.isFinite(pressure) ? pressure : 'n/a'}/100 · rollback ${rollback ? 'RECOMMENDED' : 'standby'} · next plan ${eligible ? 'review eligible' : 'locked'} · capital 0R.`
+  );
+}
+
 async function loadV151SingleCandidatePlanShadow() {
   const plan = await readLocal('/api/single-candidate-plan-shadow', 20000);
   if (!plan?.ok) {
@@ -2406,6 +2476,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV152PostShiftObserver(),
       loadV151SingleCandidatePlanShadow(),
       loadV150NetworkSlaEvidenceShadow(),
       loadV149DependencyIsolationShadow(),

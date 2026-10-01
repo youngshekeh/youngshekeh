@@ -117,6 +117,55 @@
 
 
 
+      <section id="v152-post-shift-observer" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V152 · POST-SHIFT OBSERVER</span>
+            <h3 id="v152-state">CHECKING</h3>
+            <p id="v152-copy">Watching the governed anomaly-monitor phase after V151.1. A schedule change is not considered successful until real cron runs and business receipts survive it.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v152-runs">--</span><small>POST RUNS</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">POST-SHIFT WATCH · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">SECOND MUTATION · LOCKED</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>LIVE SCHEDULE</span><strong id="v152-schedule">CHECKING</strong></article>
+          <article><span>CRON SUCCEEDED</span><strong id="v152-cron-ok">CHECKING</strong></article>
+          <article><span>BUSINESS RECEIPTS</span><strong id="v152-receipts">CHECKING</strong></article>
+          <article><span>RECEIPT GAP</span><strong id="v152-gap">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CRON FAILURES</span><strong id="v152-cron-fail">CHECKING</strong></article>
+          <article><span>BUSINESS FAILURES</span><strong id="v152-business-fail">CHECKING</strong></article>
+          <article><span>V147 PRESSURE</span><strong id="v152-pressure">CHECKING</strong></article>
+          <article><span>OBSERVATION</span><strong id="v152-age">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>ROLLBACK</span><strong id="v152-rollback">STANDBY</strong><small>Exact rollback remains available from the V151.1 ledger.</small></article>
+          <article><span>NEXT PLAN REVIEW</span><strong id="v152-next-review">LOCKED</strong><small>Requires ≥45m, 2 successful governed runs, 2 successful business receipts and zero drift/failures.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v152-orders">OFF</strong><small>Scheduler evidence cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v152-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>POST-CHANGE ACCEPTANCE GATE</span>
+          <small>Rollback is recommended if the target fails, the business receipt fails, the job becomes inactive, or the schedule drifts.</small>
+        </div>
+        <div id="v152-gates" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">WAITING FOR GOVERNED EVIDENCE</span></div>
+        <p id="v152-detail" class="autonomy-detail">V152 observes only. Automatic rollback, automatic rescheduling, live orders and capital promotion remain disabled.</p>
+      </section>
+
       <section id="v151-single-candidate-plan-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
