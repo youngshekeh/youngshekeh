@@ -45,7 +45,7 @@ jobs:
           grep -q "LOCKED_PROSPECTIVE_COLLISION_REVALIDATION" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'prospective_collision_revalidation',v_candidate_revalidation_pass" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "get_v165_safe_alternative_admission_handoff" supabase/recovery/v159-latest-experiment-admission.sql
-          grep -q "SAFE_ALTERNATIVE_V163" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'source',v_v165->'selected_candidate'->>'source'" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'route',v_v165->>'route'" supabase/recovery/v159-latest-experiment-admission.sql
           if grep -q "get_v151_single_candidate_plan_shadow" supabase/recovery/v159-latest-experiment-admission.sql; then
             echo "V159 must use V165 rather than call V151 directly"
