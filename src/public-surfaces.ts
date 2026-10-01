@@ -563,7 +563,7 @@ async function loadV145ConnectionAdmissionShadow() {
   set('v145-copy',
     candidates.length
       ? 'V145 has identified same-cadence SQL groups that could reduce connection pressure if they are later bundled sequentially. Every candidate remains shadow-only until call-graph, transaction and failure-isolation review passes.'
-      : 'No low-complexity bundle is cleared even for shadow candidacy. V145 will not force serialization across unresolved dependencies or external I/O.'
+      : 'No bundle currently clears the deep shadow screen. V145.2 will not serialize across nested function calls, hidden network I/O, recent failures, or unresolved transaction semantics.'
   );
   set('v145-active', summary?.active_jobs ?? null);
   set('v145-groups', summary?.collision_groups ?? null);
