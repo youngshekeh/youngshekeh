@@ -1,0 +1,59 @@
+name: Verify V146.1 Controlled Peak Spreader
+
+on:
+  push:
+    branches:
+      - tfa-v1461-controlled-peak-spreader
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v1461-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/peak-minute-spreader-status.js
+      - name: Verify database and rollback assets
+        run: |
+          test -f supabase/recovery/v1461-controlled-peak-spreader.sql
+          test -f supabase/recovery/v1461-controlled-peak-spreader-rollback.sql
+          test -f supabase/functions/runtime-v1461-peak-spreader-status/index.ts
+          grep -q "v146.1-controlled-peak-spreader-db-v1" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "cron.alter_job" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "previous_schedule" supabase/recovery/v1461-controlled-peak-spreader-rollback.sql
+      - name: Verify scope and fail-closed governance
+        run: |
+          grep -q "tfa-production-smoke-sweep" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "tfa-enterprise-monitor-evaluator" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "tfa-v71-shadow-observation" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'6,21,36,51 \* \* \* \*'" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'8,23,38,53 \* \* \* \*'" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'9,24,39,54 \* \* \* \*'" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v1461-controlled-peak-spreader.sql
+          grep -q "capital_permission:'0R'" api/peak-minute-spreader-status.js
+          grep -q "live_order_routing:false" api/peak-minute-spreader-status.js
+          grep -q "automatic_rescheduling:false" api/peak-minute-spreader-status.js
+      - name: Reject protected lane edits
+        run: |
+          for protected in \
+            tfa-v119-gold-desk-capture \
+            tfa-v80-gold-state-capture \
+            tfa-v86-capital-permission-firewall \
+            tfa-v136-gold-execution-firewall \
+            tfa-v1371-paper-risk-consensus; do
+            if grep -q "$protected" supabase/recovery/v1461-controlled-peak-spreader.sql; then
+              echo "Protected lane unexpectedly included: $protected"
+              exit 1
+            fi
+          done
