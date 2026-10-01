@@ -1,0 +1,43 @@
+name: Verify V166 Production Closure Gate
+
+on:
+  push:
+    branches:
+      - tfa-v166-production-closure-gate
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v166-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify V166 route syntax
+        run: |
+          node --check api/production-closure.js
+          grep -q "v166-production-closure-gate-v1" api/production-closure.js
+          grep -q "RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED" api/production-closure.js
+          grep -q "PRODUCTION_CLOSURE_GATE_NOT_TRADING_PERMISSION" api/production-closure.js
+      - name: Verify fail-closed capital and execution invariants
+        run: |
+          grep -q "capital_permission:'0R'" api/production-closure.js
+          grep -q "live_order_routing:false" api/production-closure.js
+          grep -q "order_submission_enabled:false" api/production-closure.js
+          grep -q "automatic_real_capital:false" api/production-closure.js
+          grep -q "automatic_rescheduling:false" api/production-closure.js
+          grep -q "automatic_rollback:false" api/production-closure.js
+          grep -q "v166_can_unlock_capital:false" api/production-closure.js
+      - name: Reject mutation and order submission paths
+        run: |
+          if grep -Eq "cron\\.(alter_job|schedule|unschedule)|placeOrder|submitOrder|sendOrder|broker.*POST" api/production-closure.js; then
+            echo "V166 must remain read-only and non-executing"
+            exit 1
+          fi
