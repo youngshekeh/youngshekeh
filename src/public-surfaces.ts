@@ -536,6 +536,149 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV159LatestExperimentAdmission() {
+  const gate = await readLocal('/api/latest-experiment-admission', 20000);
+  if (!gate?.ok) {
+    set('v159-state', 'LATEST ADMISSION · FAIL CLOSED');
+    set('v159-copy', 'The latest-experiment admission governor is unavailable. No further scheduler mutation is permitted.');
+    for (const id of ['v159-gate-score','v159-admitted','v159-latest','v159-cooldown','v159-qa','v159-platform','v159-infra','v159-baseline','v159-next-job']) set(id, null);
+    set('v159-observer', 'LOCKED');
+    set('v159-next-move', 'WITHHELD');
+    set('v159-orders', 'OFF');
+    set('v159-capital', '0R');
+    return;
+  }
+
+  const admission = gate?.admission ?? {};
+  const gates = gate?.gates ?? {};
+  const latest = gate?.latest_mutation ?? {};
+  const qa = gate?.qa ?? {};
+  const platform = gate?.platform ?? {};
+  const infra = gate?.infrastructure ?? {};
+  const next = gate?.next_candidate ?? {};
+  const passed = Number(admission?.gates_passed || 0);
+  const total = Number(admission?.gate_count || 0);
+  const admitted = Boolean(admission?.admitted);
+  const age = Number(latest?.minutes_since);
+
+  set('v159-state', `LATEST ADMISSION · ${first(gate?.state, 'UNKNOWN')}`);
+  set('v159-copy',
+    admitted
+      ? 'The newest scheduler experiment has completed its own acceptance window and every current admission gate passes. A future candidate may enter human review only.'
+      : 'The newest scheduler experiment is authoritative. Older healthy experiments cannot authorize another mutation while any latest-experiment gate remains locked.'
+  );
+  set('v159-gate-score', `${passed}/${total}`);
+  set('v159-admitted', admitted ? 'REVIEW ELIGIBLE' : 'LOCKED');
+  set('v159-latest', latest?.experiment ?? 'NONE');
+  set('v159-cooldown', Number.isFinite(age) ? `${age.toFixed(1)}m / ${Number(admission?.minimum_minutes_between_mutations || 75)}m` : 'WITHHELD');
+  set('v159-qa', gates?.qa_fresh_pass ? `PASS · ${Number(qa?.age_minutes || 0).toFixed(1)}m` : 'LOCKED');
+  set('v159-platform', gates?.platform_clear ? 'CLEAR' : String(platform?.v156_state || 'LOCKED'));
+  set('v159-infra', gates?.infrastructure_normal ? 'NORMAL' : 'LOCKED');
+  set('v159-baseline', gates?.baseline_eligible ? 'ELIGIBLE' : 'LOCKED');
+  set('v159-next-job', next?.jobname ?? 'NONE');
+  set('v159-observer', latest?.observer_state ?? 'WITHHELD');
+  set('v159-next-move', next?.jobname ? `${String(next?.current_schedule || '?')} → ${String(next?.recommended_schedule || '?')}` : 'NONE');
+  set('v159-orders', 'OFF');
+  set('v159-capital', '0R');
+
+  const host = byId('v159-gates');
+  if (host) {
+    host.replaceChildren();
+    const items = [
+      [Boolean(gates?.latest_experiment_accepted), 'LATEST SHIFT ACCEPTED'],
+      [Boolean(gates?.cooldown_mature), '75M COOLDOWN'],
+      [Boolean(gates?.qa_fresh_pass), 'FRESH QA PASS'],
+      [Boolean(gates?.platform_clear), 'PLATFORM CLEAR'],
+      [Boolean(gates?.infrastructure_normal), 'INFRA NORMAL'],
+      [Boolean(gates?.baseline_eligible), 'V146.1 ELIGIBLE'],
+      [Boolean(gates?.candidate_exact_schedule_match), 'CANDIDATE EXACT MATCH']
+    ];
+    for (const [pass,label] of items) {
+      const chip = document.createElement('span');
+      chip.className = pass ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = `${String(label)} · ${pass ? 'PASS' : 'LOCKED'}`;
+      host.appendChild(chip);
+    }
+  }
+
+  const reasons = Array.isArray(admission?.block_reasons) ? admission.block_reasons.join(', ').replaceAll('_',' ') : 'none';
+  set('v159-detail',
+    `Admission ${admitted ? 'review eligible' : 'locked'} · gates ${passed}/${total} · latest ${String(latest?.experiment || 'none')} ${String(latest?.event || '')} · observer ${String(latest?.observer_state || 'n/a')} · age ${Number.isFinite(age) ? age.toFixed(1) : 'n/a'}m · next ${String(next?.jobname || 'none')} · blockers ${reasons} · capital 0R.`
+  );
+}
+
+async function loadV158MemberAlertPostShiftObserver() {
+  const obs = await readLocal('/api/member-alert-post-shift-observer', 20000);
+  if (!obs?.ok) {
+    set('v158-state', 'MEMBER ALERT SHIFT · FAIL CLOSED');
+    set('v158-copy', 'The V157 post-shift observer is unavailable. No subsequent scheduler mutation is permitted.');
+    for (const id of ['v158-runs','v158-schedule','v158-cron-ok','v158-receipts','v158-gap','v158-cron-fail','v158-business-fail','v158-platform','v158-age']) set(id, null);
+    set('v158-rollback', 'STANDBY');
+    set('v158-next-review', 'LOCKED');
+    set('v158-orders', 'OFF');
+    set('v158-capital', '0R');
+    return;
+  }
+
+  const plan = obs?.plan ?? {};
+  const post = obs?.post_change ?? {};
+  const system = obs?.system ?? {};
+  const gate = obs?.success_gate ?? {};
+  const age = Number(plan?.minutes_since_apply);
+  const rollback = Boolean(gate?.rollback_recommended);
+  const eligible = Boolean(gate?.next_plan_review_eligible);
+
+  set('v158-state', `MEMBER ALERT SHIFT · ${first(obs?.state, 'UNKNOWN')}`);
+  set('v158-copy',
+    rollback
+      ? 'V157 has tripped a target or receipt rollback condition. Further mutation is locked pending review of the exact V157 rollback path.'
+      : obs?.state === 'PLATFORM_GUARD_OBSERVATION_SUSPENDED'
+        ? 'An external quota or guard condition is active. Observation is suspended without blaming the V157 phase shift or forcing rollback.'
+        : eligible
+          ? 'V157 has survived the required governed runs, business receipts and observation window. A future candidate may return to human review.'
+          : 'V157 is still collecting real hourly cron and first-party receipt evidence. The next scheduler mutation remains locked.'
+  );
+
+  set('v158-runs', post?.cron_runs ?? 0);
+  set('v158-schedule', plan?.live_schedule ?? 'WITHHELD');
+  set('v158-cron-ok', post?.cron_succeeded ?? 0);
+  set('v158-receipts', post?.business_succeeded ?? 0);
+  set('v158-gap', post?.business_receipt_gap ?? 0);
+  set('v158-cron-fail', post?.cron_failed ?? 0);
+  set('v158-business-fail', post?.business_failed ?? 0);
+  set('v158-platform', gate?.platform_clear ? 'CLEAR' : String(system?.v156_state || 'LOCKED'));
+  set('v158-age', Number.isFinite(age) ? `${age.toFixed(1)}m / ${Number(gate?.minimum_observation_minutes || 75)}m` : 'WITHHELD');
+  set('v158-rollback', rollback ? 'RECOMMENDED' : 'STANDBY');
+  set('v158-next-review', eligible ? 'ELIGIBLE' : 'LOCKED');
+  set('v158-orders', 'OFF');
+  set('v158-capital', '0R');
+
+  const host = byId('v158-gates');
+  if (host) {
+    host.replaceChildren();
+    const items = [
+      [Number(post?.cron_succeeded || 0) >= Number(gate?.minimum_successful_governed_runs || 2), '2 GOVERNED RUNS'],
+      [Number(post?.business_succeeded || 0) >= Number(gate?.minimum_successful_business_receipts || 2), '2 BUSINESS RECEIPTS'],
+      [Boolean(gate?.platform_clear), 'PLATFORM CLEAR'],
+      [Number(post?.cron_failed || 0) === 0, 'ZERO CRON FAILURES'],
+      [Number(post?.business_failed || 0) === 0, 'ZERO BUSINESS FAILURES'],
+      [Number(post?.business_receipt_gap || 0) === 0, 'ZERO RECEIPT GAP'],
+      [Boolean(gate?.zero_schedule_drift), 'ZERO SCHEDULE DRIFT'],
+      [Number.isFinite(age) && age >= Number(gate?.minimum_observation_minutes || 75), '75M OBSERVATION']
+    ];
+    for (const [pass,label] of items) {
+      const chip = document.createElement('span');
+      chip.className = pass ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = `${String(label)} · ${pass ? 'PASS' : 'LOCKED'}`;
+      host.appendChild(chip);
+    }
+  }
+
+  set('v158-detail',
+    `State ${String(obs?.state || 'unknown')} · schedule ${String(plan?.live_schedule || 'n/a')} · cron ${Number(post?.cron_succeeded || 0)}/${Number(post?.cron_runs || 0)} succeeded · receipts ${Number(post?.business_succeeded || 0)} · failures ${Number(post?.cron_failed || 0) + Number(post?.business_failed || 0)} · receipt gap ${Number(post?.business_receipt_gap || 0)} · platform ${gate?.platform_clear ? 'clear' : 'suspended'} · rollback ${rollback ? 'RECOMMENDED' : 'standby'} · next plan ${eligible ? 'review eligible' : 'locked'} · capital 0R.`
+  );
+}
+
 async function loadV156QuotaGuardRecoveryShadow() {
   const recovery = await readLocal('/api/quota-guard-recovery-shadow', 20000);
   if (!recovery?.ok) {
@@ -2687,6 +2830,8 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV159LatestExperimentAdmission(),
+      loadV158MemberAlertPostShiftObserver(),
       loadV156QuotaGuardRecoveryShadow(),
       loadV154RollbackRehearsalShadow(),
       loadV153SchedulerMutationAdmission(),
