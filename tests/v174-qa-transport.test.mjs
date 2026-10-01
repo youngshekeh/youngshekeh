@@ -61,6 +61,32 @@ test('worker concurrency stays at three even if a caller requests eight', async 
   const probes = await transport.all(Array.from({length: 12}, () => () => transport.json('https://fixture.invalid/state')), 8);
   assert.equal(peak, 3); assert.equal(probes.length, 12); assert.ok(probes.every(x => x.ok));
 });
+
+test('pressure circuit stops new probes after slow backend failure threshold', async t => {
+  let calls = 0;
+  const transport = context(t, {
+    pressureFailureThreshold: 3,
+    slowFailureMs: 1,
+    fetchImpl: async () => {
+      calls++;
+      await new Promise(resolve => setTimeout(resolve, 3));
+      return json({ok: false}, 503);
+    }
+  });
+  const probes = await transport.all(
+    Array.from({length: 10}, () => () => transport.json('https://fixture.invalid/state')),
+    1
+  );
+  const status = transport.summary(probes);
+  assert.equal(calls, 3);
+  assert.equal(status.pressure_circuit.open, true);
+  assert.equal(status.pressure_circuit.policy, 'STOP_NEW_PROBES_ONLY');
+  assert.equal(status.pressure_circuit.slow_failure_count, 3);
+  assert.equal(status.pressure_circuit.withheld_probes, 7);
+  assert.equal(status.incomplete, true);
+  assert.ok(probes.slice(3).every(x => x.started === false && x.error === 'qa_pressure_circuit_open'));
+});
+
 test('deadline cancels active HTTP requests and never starts queued probes', async t => {
   let calls = 0, aborted = 0;
   const transport = context(t, {budgetMs: 60, fetchImpl: async (_url, {signal}) => {

@@ -1,0 +1,38 @@
+name: Verify V179 QA Pressure Circuit
+
+on:
+  push:
+    branches:
+      - tfa-v179-qa-pressure-circuit
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  pressure-circuit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run QA transport and handler regressions
+        run: node --test tests/v174-qa-transport.test.mjs tests/v174-qa-handler.test.mjs
+      - name: Verify V179 circuit invariants
+        run: |
+          grep -q "pressureFailureThreshold = 3" supabase/functions/runtime-v115-autonomous-qa/transport.mjs
+          grep -q "slowFailureMs = 2500" supabase/functions/runtime-v115-autonomous-qa/transport.mjs
+          grep -q "STOP_NEW_PROBES_ONLY" supabase/functions/runtime-v115-autonomous-qa/transport.mjs
+          grep -q "QUICK_TRANSPORT_FAILURE_ONLY" supabase/functions/runtime-v115-autonomous-qa/transport.mjs
+          grep -q "http_5xx_retry: false" supabase/functions/runtime-v115-autonomous-qa/transport.mjs
+          grep -q "v179.0-integrated-engine-certification-v52-pressure-circuit" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "action_permitted:'WAIT'" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "capital_permission:'0R'" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "automatic_promotion:false" supabase/functions/runtime-v115-autonomous-qa/index.ts
