@@ -1,0 +1,43 @@
+name: Verify V146 Peak Minute Spreader
+
+on:
+  push:
+    branches:
+      - tfa-v146-peak-minute-spreader-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v146-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify V146 planner syntax
+        run: node --check api/peak-minute-spreader-shadow.js
+      - name: Verify fail-closed governance
+        run: |
+          grep -q "v146-peak-minute-spreader-shadow-v1" api/peak-minute-spreader-shadow.js
+          grep -q "automatic_rescheduling:false" api/peak-minute-spreader-shadow.js
+          grep -q "live_order_routing:false" api/peak-minute-spreader-shadow.js
+          grep -q "capital_permission:'0R'" api/peak-minute-spreader-shadow.js
+          grep -q "action_permitted:'WAIT'" api/peak-minute-spreader-shadow.js
+          grep -q "recommendations_are_advisory_only:true" api/peak-minute-spreader-shadow.js
+          grep -q "requires_human_review:true" api/peak-minute-spreader-shadow.js
+          grep -q "expected_peak_start_relief_if_approved" api/peak-minute-spreader-shadow.js
+      - name: Verify protected target scope
+        run: |
+          grep -q "tfa-production-smoke-sweep" api/peak-minute-spreader-shadow.js
+          grep -q "tfa-enterprise-monitor-evaluator" api/peak-minute-spreader-shadow.js
+          grep -q "tfa-v71-shadow-observation" api/peak-minute-spreader-shadow.js
+          if grep -q "cron.alter_job" api/peak-minute-spreader-shadow.js; then
+            echo "Planner must never alter cron jobs"
+            exit 1
+          fi
