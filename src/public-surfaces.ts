@@ -536,6 +536,69 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV165SafeAlternativeAdmissionHandoff() {
+  const handoff = await readLocal('/api/safe-alternative-admission-handoff', 30000);
+  if (!handoff?.ok) {
+    set('v165-state', 'HANDOFF · FAIL CLOSED');
+    set('v165-copy', 'The safe-alternative admission handoff is unavailable. No scheduler candidate should advance to review.');
+    for (const id of ['v165-route','v165-job','v165-move','v165-current-peers','v165-proposed-peers','v165-delta','v165-overlaps','v165-direct','v165-alt']) set(id, null);
+    set('v165-human', 'REQUIRED');
+    set('v165-orders', 'OFF');
+    set('v165-capital', '0R');
+    return;
+  }
+
+  const selected = handoff?.selected_candidate ?? {};
+  const gate = handoff?.revalidation ?? {};
+  const direct = handoff?.direct_path ?? {};
+  const alt = handoff?.alternative_path ?? {};
+  const clear = Boolean(gate?.clear);
+  const route = String(handoff?.route || 'NONE');
+
+  set('v165-state', `HANDOFF · ${first(handoff?.state, 'UNKNOWN')}`);
+  set('v165-copy',
+    clear
+      ? 'A live-revalidated scheduler plan is eligible for human review. V165 selected the safe route without mutating cron.'
+      : 'No scheduler route currently satisfies the fail-closed handoff gates. The next mutation remains locked.'
+  );
+  set('v165-route', route === 'SAFE_ALTERNATIVE_V163' ? 'ALT' : route === 'DIRECT_V151_V162' ? 'DIRECT' : '--');
+  set('v165-job', selected?.jobname ?? 'NONE');
+  set('v165-move', clear ? `${String(selected?.current_schedule || '?')} → ${String(selected?.recommended_schedule || '?')}` : 'NONE');
+  set('v165-current-peers', selected?.current_peer_triggers ?? null);
+  set('v165-proposed-peers', selected?.proposed_peer_triggers ?? null);
+  set('v165-delta', selected?.peer_trigger_delta ?? null);
+  set('v165-overlaps', selected?.controlled_overlap_count ?? null);
+  set('v165-direct', direct?.v162_clear ? 'CLEAR' : String(direct?.v162_state || 'BLOCKED'));
+  set('v165-alt', alt?.v163_state ?? 'NOT CALLED');
+  set('v165-human', 'REQUIRED');
+  set('v165-orders', 'OFF');
+  set('v165-capital', '0R');
+
+  const blockers = Array.isArray(gate?.blockers) ? gate.blockers.map((x: unknown) => String(x)) : [];
+  const host = byId('v165-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'HANDOFF CLEAR · HUMAN REVIEW ONLY';
+      host.appendChild(chip);
+    } else {
+      for (const blocker of blockers) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = blocker.replaceAll('_',' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v165-detail',
+    `State ${String(handoff?.state || 'unknown')} · route ${route} · candidate ${String(selected?.jobname || 'none')} · schedule ${String(selected?.current_schedule || 'n/a')} → ${String(selected?.recommended_schedule || 'n/a')} · peers ${String(selected?.current_peer_triggers ?? 'n/a')} → ${String(selected?.proposed_peer_triggers ?? 'n/a')} · overlaps ${String(selected?.controlled_overlap_count ?? 'n/a')} · human review REQUIRED · capital 0R.`
+  );
+}
+
+
 async function loadV163SafeAlternativeMinuteSearch() {
   const search = await readLocal('/api/safe-alternative-minute-search', 20000);
   if (!search?.ok) {
@@ -3094,6 +3157,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV165SafeAlternativeAdmissionHandoff(),
       loadV163SafeAlternativeMinuteSearch(),
       loadV162ProspectiveCollisionRevalidation(),
       loadV161SchedulerExperimentRegistry(),
