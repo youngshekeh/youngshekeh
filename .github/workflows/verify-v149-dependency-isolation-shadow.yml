@@ -1,0 +1,44 @@
+name: Verify V149 Dependency Isolation Shadow
+
+on:
+  push:
+    branches:
+      - tfa-v149-dependency-isolation-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v149-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/dependency-isolation-shadow.js
+      - name: Verify dependency auditor assets
+        run: |
+          test -f supabase/recovery/v149-dependency-isolation-shadow.sql
+          test -f supabase/functions/runtime-v149-dependency-isolation-shadow/index.ts
+          grep -q "v149-dependency-isolation-shadow-db-v1" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "DEPENDENCY_FAILURE_ISOLATION_SHADOW_NOT_TRADING_PERMISSION" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "BLOCKED_PROTECTED_DATA_SIDE_EFFECT" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "REVIEW_NETWORK_SLA_AND_FAILURE_ISOLATION" supabase/recovery/v149-dependency-isolation-shadow.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v149-dependency-isolation-shadow.sql; then
+            echo "V149 must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_apply',false" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v149-dependency-isolation-shadow.sql
+          grep -q "capital_permission:'0R'" api/dependency-isolation-shadow.js
+          grep -q "live_order_routing:false" api/dependency-isolation-shadow.js
