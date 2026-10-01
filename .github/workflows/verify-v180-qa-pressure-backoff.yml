@@ -1,0 +1,34 @@
+name: Verify V180 QA Pressure Backoff
+
+on:
+  push:
+    branches:
+      - tfa-v180-qa-pressure-backoff
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  pressure-backoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run QA handler regressions
+        run: node --test tests/v174-qa-handler.test.mjs
+      - name: Verify pressure backoff invariants
+        run: |
+          grep -q "pressureBackoffUntil" src/main.ts
+          grep -q "300_000" src/main.ts
+          grep -q "QA PRESSURE COOLDOWN" src/main.ts
+          grep -q "evidence stays fail-closed" src/main.ts
+          grep -q "pressure_circuit" tests/v174-qa-handler.test.mjs

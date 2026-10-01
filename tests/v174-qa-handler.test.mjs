@@ -48,13 +48,14 @@ test('completed requests with invalid engine payloads fail instead of passing QA
 const frontend = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8');
 const loaderSource = stripTypeScriptTypes(frontend.slice(frontend.indexOf('async function loadQaMatrix()'),
   frontend.indexOf('\nasync function ', frontend.indexOf('async function loadQaMatrix()') + 1)));
-async function runLoader(response) {
+async function runLoader(response, times = 1) {
   let calls = 0; const displayed = new Map(); const detail = {textContent: ''};
   const document = {querySelector: query => query.endsWith(' p') ? detail : {dataset: {}}};
   const fetch = async () => {calls++; if (response instanceof Error) throw response; return response;};
   const load = new Function('fetch', 'missionText', 'updateMissionTapeItem', 'document',
     `${loaderSource}\nreturn loadQaMatrix;`)(fetch, (id, text) => displayed.set(id, text), () => {}, document);
-  await load(); return {calls, displayed, detail};
+  for (let i = 0; i < times; i++) await load();
+  return {calls, displayed, detail};
 }
 test('dashboard retains an incomplete matrix and never launches an automatic retry', async () => {
   const ctx = await runLoader({ok: true, json: async () => ({state: 'INCOMPLETE', summary: {passed: 12, total: 78},
@@ -62,6 +63,21 @@ test('dashboard retains an incomplete matrix and never launches an automatic ret
   assert.equal(ctx.calls, 1); assert.equal(ctx.displayed.get('briefQA'), '12/78 INCOMPLETE');
   assert.match(ctx.detail.textContent, /29 probes not reached/);
 });
+test('dashboard enters five-minute QA backoff after V179 pressure circuit opens', async () => {
+  const ctx = await runLoader({ok: true, json: async () => ({
+    state: 'INCOMPLETE',
+    summary: {passed: 39, total: 78},
+    transport: {
+      incomplete: true,
+      not_started_probes: 26,
+      pressure_circuit: {open: true, policy: 'STOP_NEW_PROBES_ONLY'}
+    }
+  })}, 2);
+  assert.equal(ctx.calls, 1);
+  assert.match(ctx.displayed.get('briefQA'), /PRESSURE COOLDOWN/);
+  assert.match(ctx.detail.textContent, /automatic QA checks paused/);
+});
+
 test('dashboard reports failed HTTP or network access without launching another QA run', async () => {
   for (const response of [{ok: false}, new Error('fixture network failure')]) {
     const ctx = await runLoader(response);

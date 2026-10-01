@@ -716,6 +716,25 @@ function renderEngines(engines: MissionEngine[]) {
 
 
 async function loadQaMatrix() {
+  const now = Date.now();
+  const pressureBackoffUntil = Number((loadQaMatrix as any).pressureBackoffUntil || 0);
+  if (pressureBackoffUntil > now) {
+    const remainingMinutes = Math.max(1, Math.ceil((pressureBackoffUntil - now) / 60_000));
+    const value = `PRESSURE COOLDOWN · ${remainingMinutes}M`;
+    missionText('briefQA', value);
+    missionText('calibrationQA', value);
+    updateMissionTapeItem('AUTONOMOUS QA', value);
+    const quantStatus = document.querySelector<HTMLElement>('[data-desk-id="quant"] strong');
+    if (quantStatus) {
+      quantStatus.textContent = 'QA PRESSURE COOLDOWN';
+      quantStatus.dataset.state = 'INCOMPLETE';
+    }
+    const quantDetail = document.querySelector<HTMLElement>('[data-desk-id="quant"] p');
+    if (quantDetail) quantDetail.textContent =
+      `V179 pressure circuit remains authoritative · automatic QA checks paused for ${remainingMinutes}m · evidence stays fail-closed`;
+    return;
+  }
+
   try {
     const response = await fetch(`/api/autonomous-qa-matrix?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error('QA channel unavailable');
@@ -723,6 +742,12 @@ async function loadQaMatrix() {
     const passed = Number(qa?.summary?.passed ?? 0);
     const total = Number(qa?.summary?.total ?? 0);
     const state = String(qa?.state ?? 'WITHHELD');
+    const pressureOpen = qa?.transport?.pressure_circuit?.open === true;
+    if (pressureOpen) {
+      (loadQaMatrix as any).pressureBackoffUntil = Date.now() + 300_000;
+    } else {
+      (loadQaMatrix as any).pressureBackoffUntil = 0;
+    }
     const value = total > 0 ? `${passed}/${total} ${state.replaceAll('_', ' ')}` : state.replaceAll('_', ' ');
     missionText('briefQA', value);
     missionText('calibrationQA', value);
@@ -733,9 +758,13 @@ async function loadQaMatrix() {
       quantStatus.dataset.state = state === 'PASS' ? 'QA PASS' : state;
     }
     const quantDetail = document.querySelector<HTMLElement>('[data-desk-id="quant"] p');
-    if (quantDetail) quantDetail.textContent = qa?.transport?.incomplete === true
-      ? `${passed}/${total || '?'} invariants confirmed · ${Number(qa.transport.not_started_probes || 0)} probes not reached · refresh to check again`
-      : `${passed}/${total || '?'} autonomous invariants · forecast ledger · Brier · MFE/MAE`;
+    if (quantDetail) {
+      quantDetail.textContent = pressureOpen
+        ? `${passed}/${total || '?'} invariants confirmed · V179 pressure circuit open · new QA checks paused for 5 minutes`
+        : qa?.transport?.incomplete === true
+          ? `${passed}/${total || '?'} invariants confirmed · ${Number(qa.transport.not_started_probes || 0)} probes not reached · evidence remains fail-closed`
+          : `${passed}/${total || '?'} autonomous invariants · forecast ledger · Brier · MFE/MAE`;
+    }
   } catch {
     missionText('briefQA', 'QA CHANNEL UNAVAILABLE');
     missionText('calibrationQA', 'UNAVAILABLE');
