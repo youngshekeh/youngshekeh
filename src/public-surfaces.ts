@@ -536,6 +536,75 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV151SingleCandidatePlanShadow() {
+  const plan = await readLocal('/api/single-candidate-plan-shadow', 20000);
+  if (!plan?.ok) {
+    set('v151-state', 'CONTROLLED PLAN · FAIL CLOSED');
+    set('v151-copy', 'The single-candidate planner is unavailable. No scheduler mutation is permitted.');
+    for (const id of ['v151-shift','v151-job','v151-current','v151-proposed','v151-rollback','v151-relief','v151-coverage','v151-success','v151-v1461-age']) set(id, null);
+    set('v151-scope', 'ONE JOB MAX');
+    set('v151-rescheduling', 'OFF');
+    set('v151-orders', 'OFF');
+    set('v151-capital', '0R');
+    return;
+  }
+
+  const selected = plan?.plan ?? {};
+  const deps = plan?.dependencies ?? {};
+  const gates = plan?.promotion_gate ?? {};
+  const observation = Number(deps?.v1461_observation_minutes);
+  const delta = Number(selected?.delta_minutes);
+  const relief = Number(selected?.estimated_relief_index);
+  const coverage = Number(selected?.receipt_coverage_pct);
+  const success = Number(selected?.receipt_success_pct);
+
+  set('v151-state', `CONTROLLED PLAN · ${first(plan?.state, 'UNKNOWN')}`);
+  set('v151-copy',
+    plan?.state === 'READY_FOR_HUMAN_CONTROLLED_APPLY'
+      ? 'Exactly one rollback-ready scheduler candidate has cleared the evidence chain. Automatic application remains disabled.'
+      : selected?.jobname
+        ? 'A single candidate is selected, but the V146.1 maturity or improvement gate is still locking application.'
+        : 'No candidate currently clears the combined collision, dependency, SLA and one-job policy screens.'
+  );
+
+  set('v151-shift', Number.isFinite(delta) ? (delta > 0 ? `+${delta}` : String(delta)) : '--');
+  set('v151-job', selected?.jobname ?? 'NONE');
+  set('v151-current', selected?.current_schedule ?? 'WITHHELD');
+  set('v151-proposed', selected?.recommended_schedule ?? 'WITHHELD');
+  set('v151-rollback', selected?.rollback_ready ? selected?.rollback_schedule : 'WITHHELD');
+  set('v151-relief', Number.isFinite(relief) ? relief.toFixed(2) : 'WITHHELD');
+  set('v151-coverage', Number.isFinite(coverage) ? `${coverage.toFixed(0)}%` : 'WITHHELD');
+  set('v151-success', Number.isFinite(success) ? `${success.toFixed(0)}%` : 'WITHHELD');
+  set('v151-v1461-age', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
+  set('v151-scope', 'ONE JOB MAX');
+  set('v151-rescheduling', 'OFF');
+  set('v151-orders', 'OFF');
+  set('v151-capital', '0R');
+
+  const host = byId('v151-gates');
+  if (host) {
+    host.replaceChildren();
+    const gateItems = [
+      [Number.isFinite(observation) && observation >= Number(gates?.minimum_v1461_observation_minutes || 60), 'V146.1 MATURITY'],
+      [deps?.v1461_state === gates?.requires_v1461_state, 'PEAK SPREAD IMPROVED'],
+      [Number(deps?.v1461_failures_since_apply || 0) === 0, 'ZERO FAILURES'],
+      [Number(deps?.v1461_schedule_drift_jobs || 0) === 0, 'ZERO DRIFT'],
+      [Boolean(selected?.rollback_ready), 'ROLLBACK READY'],
+      [Boolean(selected?.jobname), 'SINGLE CANDIDATE']
+    ];
+    for (const [pass,label] of gateItems) {
+      const chip = document.createElement('span');
+      chip.className = pass ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = `${String(label)} · ${pass ? 'PASS' : 'LOCKED'}`;
+      host.appendChild(chip);
+    }
+  }
+
+  set('v151-detail',
+    `Candidate ${String(selected?.jobname || 'none')} · ${String(selected?.current_schedule || 'n/a')} → ${String(selected?.recommended_schedule || 'n/a')} · rollback ${String(selected?.rollback_schedule || 'n/a')} · relief ${Number.isFinite(relief) ? relief.toFixed(2) : 'n/a'} · V146.1 ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · auto apply OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV150NetworkSlaEvidenceShadow() {
   const sla = await readLocal('/api/network-sla-evidence-shadow', 20000);
   if (!sla?.ok) {
@@ -2337,6 +2406,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV151SingleCandidatePlanShadow(),
       loadV150NetworkSlaEvidenceShadow(),
       loadV149DependencyIsolationShadow(),
       loadV148PredictiveCollisionShadow(),

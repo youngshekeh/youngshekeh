@@ -1,0 +1,42 @@
+name: Verify V151 Single Candidate Plan Shadow
+on:
+  push:
+    branches:
+      - tfa-v151-single-candidate-plan-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+permissions:
+  contents: read
+jobs:
+  v151-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/single-candidate-plan-shadow.js
+      - name: Verify plan assets
+        run: |
+          test -f supabase/recovery/v151-single-candidate-plan-shadow.sql
+          test -f supabase/functions/runtime-v151-single-candidate-plan-shadow/index.ts
+          grep -q "v151-single-candidate-plan-shadow-db-v1" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "one_job_max',true" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "READY_FOR_HUMAN_CONTROLLED_APPLY" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "requires_exact_current_schedule_match',true" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "requires_rollback_snapshot',true" supabase/recovery/v151-single-candidate-plan-shadow.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v151-single-candidate-plan-shadow.sql; then
+            echo "V151 shadow plan must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_apply',false" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v151-single-candidate-plan-shadow.sql
+          grep -q "capital_permission:'0R'" api/single-candidate-plan-shadow.js
+          grep -q "live_order_routing:false" api/single-candidate-plan-shadow.js
