@@ -1,0 +1,39 @@
+name: Verify V155 Guard-Aware V146.1 Status
+
+on:
+  push:
+    branches:
+      - tfa-v155-guard-aware-v1461
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v155-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify guard-aware status patch
+        run: |
+          test -f supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "v146.1-controlled-peak-spreader-db-v2-guard-aware" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "GUARD_PAUSED_OBSERVATION_DEGRADED" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "autonomous_cron_guard_state" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "'guard_pause_absent',v_guard_paused=0" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "'experiment_result_eligible',v_drift=0 and v_guard_paused=0" supabase/recovery/v155-guard-aware-v1461-status.sql
+      - name: Reject scheduler mutation
+        run: |
+          if grep -Eq "(perform|select)[[:space:]]+cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v155-guard-aware-v1461-status.sql; then
+            echo "V155 must remain status-only"
+            exit 1
+          fi
+          grep -q "'capital_permission','0R'" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v155-guard-aware-v1461-status.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v155-guard-aware-v1461-status.sql
