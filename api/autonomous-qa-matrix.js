@@ -32,7 +32,19 @@ export default async function handler(req,res){
       signal:AbortSignal.timeout(30000)
     });
     const body=await upstream.json().catch(()=>null);
-    res.setHeader('Cache-Control','no-store');
+    const pressureOpen=body?.transport?.pressure_circuit?.open===true;
+    // Keep browsers uncached. Only a truthful pressure-open result is shared at Vercel's CDN
+    // for the current five-minute URL bucket to suppress cross-client diagnostic amplification.
+    res.setHeader('Cache-Control','private, no-store');
+    if(pressureOpen){
+      res.setHeader('CDN-Cache-Control','public, max-age=300');
+      res.setHeader('Vercel-CDN-Cache-Control','public, max-age=300');
+      res.setHeader('X-TFA-Pressure-Cache','ACTIVE_5M');
+    }else{
+      res.setHeader('CDN-Cache-Control','no-store');
+      res.setHeader('Vercel-CDN-Cache-Control','no-store');
+      res.setHeader('X-TFA-Pressure-Cache','BYPASS');
+    }
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
     return res.status(upstream.ok?200:upstream.status).json(body??{ok:false,error:'private_runtime_unavailable'});

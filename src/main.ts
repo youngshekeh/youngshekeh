@@ -736,7 +736,8 @@ async function loadQaMatrix() {
   }
 
   try {
-    const response = await fetch(`/api/autonomous-qa-matrix?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const qaBucket = Math.floor(Date.now() / 300_000);
+    const response = await fetch(`/api/autonomous-qa-matrix?ui_bucket=${qaBucket}`, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error('QA channel unavailable');
     const qa = await response.json();
     const passed = Number(qa?.summary?.passed ?? 0);

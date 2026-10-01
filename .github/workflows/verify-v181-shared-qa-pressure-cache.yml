@@ -1,0 +1,36 @@
+name: Verify V181 Shared QA Pressure Cache
+
+on:
+  push:
+    branches:
+      - tfa-v181-shared-qa-pressure-cache
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  shared-pressure-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V181 cache regressions
+        run: node --test tests/v181-shared-qa-pressure-cache.test.mjs
+      - name: Re-run QA dashboard regressions
+        run: node --test tests/v174-qa-handler.test.mjs
+      - name: Verify fail-closed cache policy
+        run: |
+          grep -q "CDN-Cache-Control','public, max-age=300" api/autonomous-qa-matrix.js
+          grep -q "Vercel-CDN-Cache-Control','public, max-age=300" api/autonomous-qa-matrix.js
+          grep -q "Cache-Control','private, no-store" api/autonomous-qa-matrix.js
+          grep -q "ui_bucket" src/main.ts
+          grep -q "300_000" src/main.ts
