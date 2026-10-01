@@ -1042,11 +1042,13 @@ async function loadV1461ControlledPeakSpreader() {
         : spreader?.state === 'ROLLBACK_REVIEW_FAILURES'
           ? 'New scheduler failures appeared after the controlled change. V146.1 is holding further action and surfacing rollback review.'
           : spreader?.state === 'SCHEDULE_DRIFT_BLOCKED'
-            ? 'One or more controlled schedules drifted from the approved plan. Further scheduler changes are blocked.'
-            : 'The experiment is measured against its frozen baseline; no automatic promotion or rescheduling is allowed.'
+            ? 'One or more controlled schedules have unexplained drift from the approved plan. Further scheduler changes are blocked.'
+            : spreader?.state === 'GUARD_PAUSED_OBSERVATION_DEGRADED'
+              ? 'A higher-priority protective guard intentionally paused one or more V146.1 targets. The schedule itself is intact, but experiment certification is withheld until the guard releases the target.'
+              : 'The experiment is measured against its frozen baseline; no automatic promotion or rescheduling is allowed.'
   );
   set('v1461-observation', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
-  set('v1461-compliance', `${Number(plan?.compliant_jobs || 0)}/${Number(plan?.target_jobs || 0)}`);
+  set('v1461-compliance', `${Number(plan?.compliant_jobs || 0)}/${Number(plan?.target_jobs || 0)}${Number(plan?.guard_paused_jobs || 0) ? ` · ${Number(plan?.guard_paused_jobs || 0)} GUARD` : ''}`);
   set('v1461-baseline-quarter', Number.isFinite(baselineQuarter) ? `${baselineQuarter}/MIN` : 'WITHHELD');
   set('v1461-measured-quarter', Number.isFinite(measuredQuarter) ? `${measuredQuarter}/MIN` : 'WITHHELD');
   set('v1461-15m-peak', Number.isFinite(peak15) ? `${peak15}/MIN` : 'WITHHELD');
@@ -1070,15 +1072,16 @@ async function loadV1461ControlledPeakSpreader() {
     } else {
       for (const job of jobs.slice(0, 3)) {
         const chip = document.createElement('span');
+        const guardPaused = Boolean(job?.guard_paused);
         chip.className = job?.compliant ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
-        chip.textContent = `${String(job?.jobname || 'job')} · ${String(job?.current_schedule || 'schedule unavailable')} · ${job?.compliant ? 'COMPLIANT' : 'DRIFT'}`;
+        chip.textContent = `${String(job?.jobname || 'job')} · ${String(job?.current_schedule || 'schedule unavailable')} · ${job?.compliant ? 'COMPLIANT' : guardPaused ? 'GUARD PAUSED' : 'DRIFT'}`;
         host.appendChild(chip);
       }
     }
   }
 
   set('v1461-detail',
-    `Baseline quarter-hour peak ${Number.isFinite(baselineQuarter) ? baselineQuarter : 'n/a'} · measured ${Number.isFinite(measuredQuarter) && Number(since?.runs || 0) > 0 ? measuredQuarter : 'collecting'} · observation ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · failures since apply ${Number(since?.failures || 0)} · rollback ${spreader?.rollback?.available ? 'ready' : 'withheld'} · success gate ${gate?.quarter_hour_peak_reduced ? 'peak reduced' : 'not yet matured'} · orders OFF · capital 0R.`
+    `Baseline quarter-hour peak ${Number.isFinite(baselineQuarter) ? baselineQuarter : 'n/a'} · measured ${Number.isFinite(measuredQuarter) && Number(since?.runs || 0) > 0 ? measuredQuarter : 'collecting'} · observation ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · guard-paused ${Number(plan?.guard_paused_jobs || 0)} · unexpected drift ${Number(plan?.schedule_drift_jobs || 0)} · failures since apply ${Number(since?.failures || 0)} · rollback ${spreader?.rollback?.available ? 'ready' : 'withheld'} · result eligible ${gate?.experiment_result_eligible ? 'yes' : 'no'} · orders OFF · capital 0R.`
   );
 }
 
