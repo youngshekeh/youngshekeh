@@ -1,0 +1,45 @@
+name: Verify V150 Network SLA Evidence Shadow
+
+on:
+  push:
+    branches:
+      - tfa-v150-network-sla-evidence-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v150-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/network-sla-evidence-shadow.js
+      - name: Verify evidence engine assets
+        run: |
+          test -f supabase/recovery/v150-network-sla-evidence-shadow.sql
+          test -f supabase/functions/runtime-v150-network-sla-evidence-shadow/index.ts
+          grep -q "v150-network-sla-evidence-shadow-db-v1" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "FIRST_PARTY_NETWORK_SLA_EVIDENCE_SHADOW_NOT_TRADING_PERMISSION" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "NETWORK_SLA_EVIDENCE_CLEARED" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "BLOCKED_PROTECTED_BUSINESS_WORKFLOW" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "protected_business_workflows_never_auto_clear',true" supabase/recovery/v150-network-sla-evidence-shadow.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v150-network-sla-evidence-shadow.sql; then
+            echo "V150 must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_apply',false" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v150-network-sla-evidence-shadow.sql
+          grep -q "capital_permission:'0R'" api/network-sla-evidence-shadow.js
+          grep -q "live_order_routing:false" api/network-sla-evidence-shadow.js

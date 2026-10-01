@@ -536,6 +536,74 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV150NetworkSlaEvidenceShadow() {
+  const sla = await readLocal('/api/network-sla-evidence-shadow', 20000);
+  if (!sla?.ok) {
+    set('v150-state', 'NETWORK SLA · FAIL CLOSED');
+    set('v150-copy', 'The network SLA evidence engine is unavailable. No network candidate may advance to controlled scheduling review.');
+    for (const id of ['v150-cleared','v150-audited','v150-cleared-count','v150-protected','v150-incomplete','v150-failures','v150-latency','v150-v1461-age']) set(id, null);
+    set('v150-payments', 'PROTECTED');
+    set('v150-rescheduling', 'OFF');
+    set('v150-orders', 'OFF');
+    set('v150-capital', '0R');
+    return;
+  }
+
+  const summary = sla?.summary ?? {};
+  const deps = sla?.dependencies ?? {};
+  const thresholds = sla?.thresholds ?? {};
+  const evidence = Array.isArray(sla?.evidence) ? sla.evidence : [];
+  const cleared = Number(summary?.network_sla_cleared_candidates || 0);
+  const observation = Number(deps?.v1461_observation_minutes);
+
+  set('v150-state', `NETWORK SLA · ${first(sla?.state, 'UNKNOWN')}`);
+  set('v150-copy',
+    sla?.state === 'NETWORK_SLA_CANDIDATES_READY_FOR_CONTROLLED_PLAN_REVIEW'
+      ? 'Network SLA evidence is strong for at least one non-payment workflow and the V146.1 observation gate has matured. Candidates may proceed only to a rollback-controlled human review plan.'
+      : cleared > 0
+        ? 'First-party receipts clear the SLA evidence screen for some non-payment workflows, but V146.1 has not yet completed its required observation window.'
+        : 'No network workflow currently clears receipt coverage, business success, freshness and latency evidence.'
+  );
+
+  set('v150-cleared', cleared);
+  set('v150-audited', summary?.network_candidates_audited ?? null);
+  set('v150-cleared-count', cleared);
+  set('v150-protected', summary?.protected_business_candidates ?? null);
+  set('v150-incomplete', summary?.incomplete_evidence_candidates ?? null);
+  set('v150-failures', summary?.failure_review_candidates ?? null);
+  set('v150-latency', summary?.latency_review_candidates ?? null);
+  set('v150-v1461-age', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
+  set('v150-coverage-threshold', thresholds?.minimum_receipt_coverage_pct == null ? '95%' : `${thresholds.minimum_receipt_coverage_pct}%`);
+  set('v150-payments', 'PROTECTED');
+  set('v150-rescheduling', 'OFF');
+  set('v150-orders', 'OFF');
+  set('v150-capital', '0R');
+
+  const host = byId('v150-evidence-list');
+  if (host) {
+    host.replaceChildren();
+    if (!evidence.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'NO NETWORK RECEIPT EVIDENCE';
+      host.appendChild(chip);
+    } else {
+      for (const item of evidence.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = item?.network_sla_cleared ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+        const coverage = Number(item?.receipt_coverage_pct);
+        const success = Number(item?.receipt_success_pct);
+        chip.textContent = `${String(item?.jobname || 'job')} · ${String(item?.evidence_verdict || 'REVIEW')} · coverage ${Number.isFinite(coverage) ? coverage.toFixed(0) : '?'}% · success ${Number.isFinite(success) ? success.toFixed(0) : '?'}% · p95 ${Number(item?.p95_business_receipt_ms || 0).toFixed(0)}ms`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v150-detail',
+    `Audited ${Number(summary?.network_candidates_audited || 0)} · SLA cleared ${cleared} · protected business ${Number(summary?.protected_business_candidates || 0)} · incomplete ${Number(summary?.incomplete_evidence_candidates || 0)} · failures ${Number(summary?.failure_review_candidates || 0)} · latency review ${Number(summary?.latency_review_candidates || 0)} · V146.1 ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · auto apply OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV149DependencyIsolationShadow() {
   const audit = await readLocal('/api/dependency-isolation-shadow', 20000);
   if (!audit?.ok) {
@@ -2269,6 +2337,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV150NetworkSlaEvidenceShadow(),
       loadV149DependencyIsolationShadow(),
       loadV148PredictiveCollisionShadow(),
       loadV147ConnectionPressureShadow(),
