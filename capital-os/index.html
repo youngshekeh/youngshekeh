@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capital OS | THE FATHER ANALYTICS</title>
+  <meta name="description" content="Professional trading and investment journal, portfolio manager, asset allocator, economic calendar and earnings intelligence inside THE FATHER ANALYTICS." />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="stylesheet" href="../src/styles.css" />
+  <style>
+    .capital-shell{padding:38px 0 80px}.capital-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:22px;align-items:stretch;margin:28px 0 22px}.capital-hero-card,.capital-governance,.capital-card{border:1px solid rgba(255,255,255,.08);border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.009));box-shadow:0 24px 70px rgba(0,0,0,.24)}.capital-hero-card{padding:30px;position:relative;overflow:hidden}.capital-hero-card:after{content:"";position:absolute;inset:auto -10% -55% 30%;height:260px;background:radial-gradient(circle,rgba(114,240,173,.18),transparent 65%);pointer-events:none}.capital-hero h1{font-size:clamp(44px,7vw,86px);line-height:.92;letter-spacing:-.06em;margin:12px 0 14px}.capital-hero h1 span{color:var(--green)}.capital-hero p{max-width:760px;color:#a8a4ae;line-height:1.65}.capital-governance{padding:22px;display:grid;align-content:space-between;gap:18px;background:radial-gradient(circle at 80% 0,rgba(106,168,255,.13),transparent 38%),rgba(255,255,255,.018)}.capital-governance .big-state{font-size:28px;font-weight:1000;letter-spacing:-.03em}.capital-badges{display:flex;flex-wrap:wrap;gap:8px}.capital-badge{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08);font-size:7px;font-weight:1000;letter-spacing:.12em}.capital-badge.good{color:#a7f5cc;border-color:rgba(114,240,173,.24);background:rgba(114,240,173,.05)}.capital-badge.warn{color:#f4dca8;border-color:rgba(243,200,107,.24);background:rgba(243,200,107,.05)}.capital-tabs{display:flex;gap:8px;overflow:auto;padding:3px 0 16px;scrollbar-width:none}.capital-tabs button{white-space:nowrap;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025);color:#8f8a95;border-radius:999px;padding:10px 14px;font:inherit;font-size:8px;font-weight:950;letter-spacing:.12em;cursor:pointer}.capital-tabs button.active{color:#06100b;background:var(--green);border-color:transparent;box-shadow:0 0 30px rgba(114,240,173,.18)}.capital-panel{display:none}.capital-panel.active{display:block}.capital-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}.capital-card{padding:20px;min-width:0}.capital-card.span-12{grid-column:span 12}.capital-card.span-8{grid-column:span 8}.capital-card.span-7{grid-column:span 7}.capital-card.span-6{grid-column:span 6}.capital-card.span-5{grid-column:span 5}.capital-card.span-4{grid-column:span 4}.capital-card.span-3{grid-column:span 3}.capital-card h2,.capital-card h3{margin:8px 0}.capital-kpi{font-size:clamp(26px,4vw,46px);font-weight:1000;letter-spacing:-.05em}.capital-kpi small{font-size:9px;color:#7f7985;letter-spacing:.06em}.capital-muted{color:#8d8792;font-size:12px;line-height:1.55}.capital-label{color:#77717e;font-size:7px;font-weight:950;letter-spacing:.13em}.capital-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.capital-form{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px}.capital-form label{grid-column:span 3;display:grid;gap:6px;color:#7f7885;font-size:7px;font-weight:900;letter-spacing:.1em}.capital-form label.wide{grid-column:span 6}.capital-form label.full{grid-column:span 12}.capital-form input,.capital-form select,.capital-form textarea{width:100%;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.22);color:#f3f2f5;padding:11px 12px;font:inherit;font-size:12px;outline:none}.capital-form textarea{min-height:84px;resize:vertical}.capital-actions{display:flex;gap:8px;flex-wrap:wrap}.capital-btn{border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.04);color:#eee;padding:10px 13px;font:inherit;font-size:8px;font-weight:950;letter-spacing:.1em;cursor:pointer}.capital-btn.primary{background:var(--green);color:#06100b;border-color:transparent}.capital-btn.danger{color:#ffb6be;border-color:rgba(255,124,134,.2)}.capital-table-wrap{overflow:auto;border:1px solid rgba(255,255,255,.055);border-radius:16px}.capital-table{width:100%;border-collapse:collapse;min-width:820px}.capital-table th,.capital-table td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.05);text-align:left;font-size:10px}.capital-table th{color:#77717e;font-size:7px;letter-spacing:.11em}.capital-table td{color:#d8d5dc}.number{text-align:right!important;font-variant-numeric:tabular-nums}.positive{color:#98f0bf!important}.negative{color:#ff9ba6!important}.allocation-bar{height:8px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden;margin-top:8px}.allocation-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green),#74b8ff);border-radius:inherit}.event-list{display:grid;gap:9px}.event-card{display:grid;grid-template-columns:115px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px;border:1px solid rgba(255,255,255,.06);border-radius:14px;background:rgba(0,0,0,.14)}.event-time{font-size:9px;color:#a6a0ab}.event-title{font-size:11px;font-weight:900}.event-meta{font-size:8px;color:#746e79;margin-top:4px}.impact{padding:7px 9px;border-radius:999px;font-size:7px;font-weight:1000;letter-spacing:.1em;border:1px solid rgba(255,255,255,.07)}.impact.high{color:#ffcad0;border-color:rgba(255,124,134,.24);background:rgba(255,124,134,.05)}.impact.medium{color:#f3d99d;border-color:rgba(243,200,107,.2);background:rgba(243,200,107,.05)}.impact.low{color:#b9d2ff;border-color:rgba(106,168,255,.2);background:rgba(106,168,255,.05)}.empty-state{padding:28px;text-align:center;color:#7d7782;border:1px dashed rgba(255,255,255,.08);border-radius:16px}.mini-bars{display:grid;gap:8px}.mini-bar-line{display:grid;grid-template-columns:90px 1fr 52px;gap:10px;align-items:center;font-size:8px}.mini-bar{height:7px;background:rgba(255,255,255,.05);border-radius:999px;overflow:hidden}.mini-bar span{display:block;height:100%;background:linear-gradient(90deg,#74b8ff,var(--green));border-radius:inherit}.source-line{font-size:7px;color:#6f6974;line-height:1.5}.countdown{font-variant-numeric:tabular-nums;color:#c9c5ce;font-size:10px}.capital-footer-note{margin-top:18px;padding:15px 18px;border:1px solid rgba(243,200,107,.13);border-radius:16px;color:#8f8995;font-size:9px;line-height:1.55;background:rgba(243,200,107,.025)}
+    @media(max-width:920px){.capital-hero{grid-template-columns:1fr}.capital-card.span-8,.capital-card.span-7,.capital-card.span-6,.capital-card.span-5,.capital-card.span-4,.capital-card.span-3{grid-column:span 12}.capital-form label,.capital-form label.wide{grid-column:span 6}.event-card{grid-template-columns:1fr auto}.event-time{grid-column:1/-1}.capital-table{min-width:700px}}@media(max-width:600px){.capital-form label,.capital-form label.wide{grid-column:span 12}.capital-hero-card{padding:22px}.capital-governance{padding:18px}}
+  </style>
+</head>
+<body class="command-body" data-surface="capital-os">
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="../"><span class="brand-mark">TF</span><span><strong>THE FATHER</strong><small>ANALYTICS</small></span></a>
+    <nav class="topnav"><a href="../live-markets/">Markets</a><a href="../gold-live/">Gold</a><a href="../intelligence/">Intelligence</a><a href="../status/">Status</a><a class="nav-cta" href="../access/">Mission Control</a></nav>
+  </header>
+  <main class="wrap capital-shell">
+    <section class="capital-hero">
+      <article class="capital-hero-card">
+        <div class="eyebrow">V167 · PROFESSIONAL CAPITAL OPERATING SYSTEM</div>
+        <h1>Journal. Allocate.<br><span>Govern capital.</span></h1>
+        <p>One professional cockpit for trading and investment review, portfolio construction, allocation drift, macro event risk and earnings intelligence. Decisions become records; records become evidence; evidence feeds learning.</p>
+        <div class="capital-badges"><span class="capital-badge good">BROWSER VAULT · ACTIVE</span><span class="capital-badge good">EXPORTABLE LEDGER</span><span class="capital-badge warn">LIVE ORDER ROUTING · OFF</span></div>
+      </article>
+      <aside class="capital-governance">
+        <div><div class="capital-label">MACHINE GOVERNANCE</div><div id="governance-state" class="big-state">SYNCING V166</div><p id="governance-copy" class="capital-muted">Reading production closure and market permission.</p></div>
+        <div class="capital-grid"><div class="capital-card span-6"><div class="capital-label">ACTION</div><div id="governance-action" class="capital-kpi">WAIT</div></div><div class="capital-card span-6"><div class="capital-label">CAPITAL</div><div id="governance-capital" class="capital-kpi">0R</div></div></div>
+      </aside>
+    </section>
+
+    <nav class="capital-tabs" aria-label="Capital OS sections">
+      <button class="active" data-tab="overview">OVERVIEW</button><button data-tab="journal">JOURNAL</button><button data-tab="portfolio">PORTFOLIO + ALLOCATOR</button><button data-tab="calendar">ECONOMIC CALENDAR</button><button data-tab="earnings">EARNINGS</button>
+    </nav>
+
+    <section id="panel-overview" class="capital-panel active">
+      <div class="capital-grid">
+        <article class="capital-card span-3"><div class="capital-label">NET CLOSED P&L</div><div id="kpi-net-pnl" class="capital-kpi">$0</div><div id="kpi-trades" class="capital-muted">0 closed trades</div></article>
+        <article class="capital-card span-3"><div class="capital-label">EXPECTANCY</div><div id="kpi-expectancy" class="capital-kpi">0.00R</div><div id="kpi-winrate" class="capital-muted">0% win rate</div></article>
+        <article class="capital-card span-3"><div class="capital-label">PORTFOLIO VALUE</div><div id="kpi-portfolio" class="capital-kpi">$0</div><div id="kpi-holdings" class="capital-muted">0 holdings</div></article>
+        <article class="capital-card span-3"><div class="capital-label">NEXT HIGH-IMPACT EVENT</div><div id="kpi-next-event" class="capital-kpi"><small>SYNCING</small></div><div id="kpi-next-countdown" class="capital-muted">Calendar loading</div></article>
+        <article class="capital-card span-7"><div class="capital-row"><div><div class="capital-label">PERFORMANCE LEDGER</div><h2>Process before P&L.</h2></div><div id="overview-profit-factor" class="capital-kpi">—</div></div><div id="overview-performance" class="mini-bars"></div></article>
+        <article class="capital-card span-5"><div class="capital-label">ALLOCATION HEALTH</div><h2 id="allocation-health">NO PORTFOLIO YET</h2><p id="allocation-health-copy" class="capital-muted">Add holdings and target weights to calculate drift, concentration and rebalance amounts.</p><div class="allocation-bar"><span id="target-completion-bar" style="width:0%"></span></div><p id="target-completion-copy" class="source-line">Target weights: 0%</p></article>
+        <article class="capital-card span-6"><div class="capital-label">MACRO RISK WINDOW</div><h2 id="overview-event-title">SYNCING CALENDAR</h2><p id="overview-event-copy" class="capital-muted">Official macro release schedules will appear here.</p><div id="overview-event-countdown" class="countdown">—</div></article>
+        <article class="capital-card span-6"><div class="capital-label">EARNINGS RADAR</div><h2 id="overview-earnings-title">SYNCING EARNINGS</h2><p id="overview-earnings-copy" class="capital-muted">Upcoming company reports and consensus fields appear only when the external feed is available.</p></article>
+      </div>
+    </section>
+
+    <section id="panel-journal" class="capital-panel">
+      <div class="capital-grid">
+        <article class="capital-card span-12"><div class="capital-row"><div><div class="capital-label">PRO TRADING + INVESTMENT JOURNAL</div><h2>Freeze the thesis before memory edits it.</h2></div><div class="capital-actions"><button id="export-journal-json" class="capital-btn">EXPORT JSON</button><button id="export-journal-csv" class="capital-btn">EXPORT CSV</button><button id="clear-journal" class="capital-btn danger">CLEAR JOURNAL</button></div></div>
+          <form id="journal-form" class="capital-form">
+            <label><span>TYPE</span><select name="type"><option value="TRADE">TRADE</option><option value="INVESTMENT">INVESTMENT</option></select></label>
+            <label><span>ASSET / SYMBOL</span><input name="symbol" required placeholder="XAUUSD / AAPL" /></label>
+            <label><span>DIRECTION</span><select name="side"><option value="LONG">LONG</option><option value="SHORT">SHORT</option><option value="LONG_TERM">LONG-TERM</option><option value="WATCH">WATCH</option></select></label>
+            <label><span>SETUP / STRATEGY</span><input name="setup" placeholder="Liquidity sweep" /></label>
+            <label><span>ENTRY</span><input name="entry" type="number" step="any" /></label>
+            <label><span>EXIT</span><input name="exit" type="number" step="any" /></label>
+            <label><span>STOP / INVALIDATION</span><input name="stop" type="number" step="any" /></label>
+            <label><span>SIZE</span><input name="size" type="number" step="any" /></label>
+            <label><span>MANUAL P&L</span><input name="pnl" type="number" step="any" placeholder="optional" /></label>
+            <label><span>MANUAL R</span><input name="r" type="number" step="any" placeholder="optional" /></label>
+            <label><span>CONFIDENCE %</span><input name="confidence" type="number" min="0" max="100" step="1" /></label>
+            <label><span>PROCESS SCORE %</span><input name="processScore" type="number" min="0" max="100" step="1" /></label>
+            <label class="wide"><span>THESIS</span><textarea name="thesis" placeholder="What must be true for this idea to work?"></textarea></label>
+            <label class="wide"><span>INVALIDATION + CATALYST</span><textarea name="invalidation" placeholder="What proves the thesis wrong? What event matters?"></textarea></label>
+            <label class="full"><span>POST-TRADE / POST-DECISION REVIEW</span><textarea name="review" placeholder="Execution quality, emotion, mistakes, what changed, what to repeat."></textarea></label>
+            <label><span>STATUS</span><select name="status"><option value="CLOSED">CLOSED</option><option value="OPEN">OPEN</option><option value="WATCHLIST">WATCHLIST</option></select></label>
+            <label><span>DATE</span><input name="date" type="datetime-local" /></label>
+            <div class="capital-actions" style="grid-column:span 12"><button type="submit" class="capital-btn primary">ADD TO DECISION LEDGER</button></div>
+          </form>
+        </article>
+        <article class="capital-card span-12"><div class="capital-label">JOURNAL LEDGER</div><div class="capital-table-wrap"><table class="capital-table"><thead><tr><th>DATE</th><th>TYPE</th><th>ASSET</th><th>SIDE</th><th>SETUP</th><th class="number">P&L</th><th class="number">R</th><th class="number">PROCESS</th><th>STATUS</th><th></th></tr></thead><tbody id="journal-body"></tbody></table></div></article>
+      </div>
+    </section>
+
+    <section id="panel-portfolio" class="capital-panel">
+      <div class="capital-grid">
+        <article class="capital-card span-12"><div class="capital-row"><div><div class="capital-label">ASSET ALLOCATOR + PORTFOLIO MANAGER</div><h2>Actual weights versus your policy targets.</h2></div><div class="capital-actions"><button id="export-portfolio" class="capital-btn">EXPORT PORTFOLIO</button><button id="clear-portfolio" class="capital-btn danger">CLEAR PORTFOLIO</button></div></div>
+          <form id="portfolio-form" class="capital-form">
+            <label><span>SYMBOL / ASSET</span><input name="symbol" required placeholder="SPY / Gold / Cash" /></label>
+            <label><span>ASSET CLASS</span><select name="assetClass"><option>Equity</option><option>Fixed Income</option><option>Commodity</option><option>Gold</option><option>Crypto</option><option>Cash</option><option>Real Estate</option><option>Private / Other</option></select></label>
+            <label><span>REGION</span><input name="region" placeholder="US / Nigeria / Global" /></label>
+            <label><span>ACCOUNT</span><input name="account" placeholder="Broker / Pension / Wallet" /></label>
+            <label><span>MARKET VALUE</span><input name="value" required type="number" min="0" step="any" /></label>
+            <label><span>TARGET WEIGHT %</span><input name="target" required type="number" min="0" max="100" step="0.01" /></label>
+            <label><span>DRIFT BAND %</span><input name="driftBand" type="number" min="0" max="100" step="0.01" value="2" /></label>
+            <label><span>CONVICTION %</span><input name="conviction" type="number" min="0" max="100" step="1" /></label>
+            <label class="full"><span>THESIS / ROLE IN PORTFOLIO</span><textarea name="thesis" placeholder="Why does this asset belong here? What risk does it own or diversify?"></textarea></label>
+            <div class="capital-actions" style="grid-column:span 12"><button type="submit" class="capital-btn primary">ADD / UPDATE HOLDING</button></div>
+          </form>
+        </article>
+        <article class="capital-card span-3"><div class="capital-label">TOTAL VALUE</div><div id="portfolio-total" class="capital-kpi">$0</div></article>
+        <article class="capital-card span-3"><div class="capital-label">TARGET SUM</div><div id="portfolio-target-sum" class="capital-kpi">0%</div></article>
+        <article class="capital-card span-3"><div class="capital-label">MAX HOLDING</div><div id="portfolio-max-weight" class="capital-kpi">0%</div></article>
+        <article class="capital-card span-3"><div class="capital-label">CONCENTRATION HHI</div><div id="portfolio-hhi" class="capital-kpi">0</div></article>
+        <article class="capital-card span-5"><div class="capital-label">ASSET CLASS MIX</div><div id="allocation-mix" class="mini-bars"></div></article>
+        <article class="capital-card span-7"><div class="capital-label">REBALANCE MAP</div><div id="rebalance-summary" class="capital-muted">Targets are user-defined policy inputs. The machine calculates drift; it does not choose your investment policy.</div><div class="capital-table-wrap" style="margin-top:12px"><table class="capital-table"><thead><tr><th>ASSET</th><th>CLASS</th><th class="number">VALUE</th><th class="number">ACTUAL</th><th class="number">TARGET</th><th class="number">DRIFT</th><th class="number">REBALANCE</th><th>STATE</th><th></th></tr></thead><tbody id="portfolio-body"></tbody></table></div></article>
+      </div>
+    </section>
+
+    <section id="panel-calendar" class="capital-panel">
+      <div class="capital-grid">
+        <article class="capital-card span-4"><div class="capital-label">NEXT HIGH-IMPACT EVENT</div><h2 id="calendar-next-title">SYNCING</h2><div id="calendar-next-time" class="countdown">—</div><p id="calendar-next-meta" class="capital-muted">Loading official release schedules.</p></article>
+        <article class="capital-card span-4"><div class="capital-label">EVENT RISK MODE</div><h2 id="calendar-risk-state">CHECKING</h2><p class="capital-muted">Calendar proximity is context, never trading permission. The execution firewall remains independent.</p></article>
+        <article class="capital-card span-4"><div class="capital-label">SOURCE HEALTH</div><h2 id="calendar-source-state">CHECKING</h2><p id="calendar-source-copy" class="source-line">BLS + Federal Reserve official schedules.</p></article>
+        <article class="capital-card span-12"><div class="capital-row"><div><div class="capital-label">ECONOMIC CALENDAR</div><h2>Scheduled macro events with provenance.</h2></div><button id="refresh-calendar" class="capital-btn">REFRESH</button></div><div id="calendar-list" class="event-list" style="margin-top:14px"></div></article>
+      </div>
+    </section>
+
+    <section id="panel-earnings" class="capital-panel">
+      <div class="capital-grid">
+        <article class="capital-card span-4"><div class="capital-label">EARNINGS FEED</div><h2 id="earnings-feed-state">CHECKING</h2><p id="earnings-feed-copy" class="capital-muted">No estimated earnings data is substituted when the upstream feed is unavailable.</p></article>
+        <article class="capital-card span-4"><div class="capital-label">REPORTS LOADED</div><div id="earnings-today-count" class="capital-kpi">—</div></article>
+        <article class="capital-card span-4"><div class="capital-label">LARGE-CAP RADAR</div><div id="earnings-large-count" class="capital-kpi">—</div></article>
+        <article class="capital-card span-12"><div class="capital-row"><div><div class="capital-label">EARNINGS INTELLIGENCE</div><h2>Upcoming reports, consensus and timing when verified.</h2></div><div class="capital-actions"><input id="earnings-date" type="date" class="capital-btn" style="color:#eee"><button id="refresh-earnings" class="capital-btn">LOAD DATE</button></div></div><div id="earnings-list" class="event-list" style="margin-top:14px"></div><p id="earnings-source-line" class="source-line" style="margin-top:12px">Source status pending.</p></article>
+      </div>
+    </section>
+
+    <p class="capital-footer-note">V167 is decision-support infrastructure, not an execution engine. Journal statistics can be distorted by small samples, inconsistent sizing, missing fees and selective logging. Allocation targets are supplied by the user; the system calculates exposure, concentration and drift without choosing a policy for you. Economic and earnings schedules may change, so source freshness is shown explicitly.</p>
+  </main>
+  <script type="module" src="../src/capital-os.js"></script>
+</body>
+</html>

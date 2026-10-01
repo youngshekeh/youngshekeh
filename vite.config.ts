@@ -21,6 +21,7 @@ export default defineConfig({
         intelligence: resolve(root, 'intelligence/index.html'),
         liveMarkets: resolve(root, 'live-markets/index.html'),
         goldLive: resolve(root, 'gold-live/index.html'),
+        capitalOs: resolve(root, 'capital-os/index.html'),
         visualLab: resolve(root, 'visual-lab/index.html'),
         worldEconomy: resolve(root, 'world-economy/index.html'),
         globalTrends: resolve(root, 'global-trends/index.html'),
