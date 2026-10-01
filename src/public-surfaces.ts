@@ -536,6 +536,68 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV163SafeAlternativeMinuteSearch() {
+  const search = await readLocal('/api/safe-alternative-minute-search', 20000);
+  if (!search?.ok) {
+    set('v163-state', 'SAFE ALTERNATIVE · FAIL CLOSED');
+    set('v163-copy', 'The live alternative search is unavailable. No replacement schedule should be reviewed.');
+    for (const id of ['v163-best','v163-job','v163-current','v163-move','v163-count','v163-peers-now','v163-peers-best','v163-improvement','v163-history']) set(id, null);
+    set('v163-reservations', 'RESERVED');
+    set('v163-human', 'REQUIRED');
+    set('v163-orders', 'OFF');
+    set('v163-capital', '0R');
+    return;
+  }
+
+  const candidate = search?.candidate ?? {};
+  const results = search?.search ?? {};
+  const best = search?.recommended_alternative ?? {};
+  const alternatives = Array.isArray(results?.alternatives) ? results.alternatives : [];
+  const found = search?.state === 'SAFE_ALTERNATIVE_FOUND' && best?.minute_of_hour != null;
+
+  set('v163-state', `SAFE ALTERNATIVE · ${first(search?.state, 'UNKNOWN')}`);
+  set('v163-copy',
+    found
+      ? 'A safer live minute exists inside the candidate’s allowed shift window. It still requires a new controlled plan and human review before any mutation.'
+      : 'No candidate minute currently satisfies strict peer-density improvement and controlled-minute reservation rules.'
+  );
+  set('v163-best', found ? best?.minute_of_hour : '--');
+  set('v163-job', candidate?.jobname ?? 'NONE');
+  set('v163-current', candidate?.current_schedule ?? 'WITHHELD');
+  set('v163-move', found ? `${String(candidate?.current_schedule || '?')} → ${String(best?.recommended_schedule || '?')}` : 'NONE');
+  set('v163-count', results?.eligible_count ?? 0);
+  set('v163-peers-now', candidate?.current_peer_triggers ?? null);
+  set('v163-peers-best', found ? best?.peer_triggers : null);
+  set('v163-improvement', found ? best?.peer_improvement : null);
+  set('v163-history', found ? best?.starts_24h : null);
+  set('v163-reservations', results?.controlled_experiment_minutes_reserved ? 'RESERVED' : 'WITHHELD');
+  set('v163-human', 'REQUIRED');
+  set('v163-orders', 'OFF');
+  set('v163-capital', '0R');
+
+  const host = byId('v163-alternatives');
+  if (host) {
+    host.replaceChildren();
+    if (!alternatives.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'NO SAFE ALTERNATIVE IN WINDOW';
+      host.appendChild(chip);
+    } else {
+      for (const alt of alternatives.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-clear';
+        chip.textContent = `#${Number(alt?.rank || 0)} minute ${String(alt?.minute_of_hour ?? '?')} · peers ${Number(alt?.peer_triggers || 0)} · shift ${Number(alt?.delta_minutes || 0)}m · 24h starts ${Number(alt?.starts_24h || 0)}`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v163-detail',
+    `State ${String(search?.state || 'unknown')} · candidate ${String(candidate?.jobname || 'none')} · current minute ${String(candidate?.current_minute ?? 'n/a')} · eligible ${Number(results?.eligible_count || 0)} · best ${found ? String(best?.minute_of_hour) : 'none'} · peer density ${Number(candidate?.current_peer_triggers || 0)} → ${found ? Number(best?.peer_triggers || 0) : 'n/a'} · auto apply OFF · capital 0R.`
+  );
+}
+
 async function loadV162ProspectiveCollisionRevalidation() {
   const live = await readLocal('/api/prospective-collision-revalidation', 20000);
   if (!live?.ok) {
@@ -3032,6 +3094,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV163SafeAlternativeMinuteSearch(),
       loadV162ProspectiveCollisionRevalidation(),
       loadV161SchedulerExperimentRegistry(),
       loadV160LatestRollbackRehearsal(),
