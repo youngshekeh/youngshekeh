@@ -15,7 +15,7 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({
       ok:false,
-      version:'v145.1-connection-admission-shadow-bridge-v1',
+      version:'v145.2-connection-admission-shadow-bridge-v2',
       state:'FAIL_CLOSED',
       error:'vercel_workload_identity_unavailable',
       governance:{
@@ -33,7 +33,7 @@ export default async function handler(req,res){
       headers:{
         Authorization:`Bearer ${oidcToken}`,
         Accept:'application/json',
-        'User-Agent':'THE-FATHER-ANALYTICS-V145.1-ADMISSION/1.0'
+        'User-Agent':'THE-FATHER-ANALYTICS-V145.2-ADMISSION/2.0'
       },
       cache:'no-store',
       signal:AbortSignal.timeout(15000)
@@ -42,10 +42,10 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
-    res.setHeader('X-TFA-Admission','V145.1');
+    res.setHeader('X-TFA-Admission','V145.2');
     return res.status(upstream.ok?200:upstream.status).json(body??{
       ok:false,
-      version:'v145.1-connection-admission-shadow-bridge-v1',
+      version:'v145.2-connection-admission-shadow-bridge-v2',
       state:'FAIL_CLOSED',
       error:'private_admission_runtime_unavailable',
       governance:{
@@ -60,7 +60,7 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({
       ok:false,
-      version:'v145.1-connection-admission-shadow-bridge-v1',
+      version:'v145.2-connection-admission-shadow-bridge-v2',
       state:'FAIL_CLOSED',
       error:'private_admission_runtime_unavailable',
       detail:String(error).slice(0,160),
