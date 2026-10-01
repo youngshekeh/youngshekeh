@@ -1,0 +1,42 @@
+name: Verify V167 Capital OS
+
+on:
+  push:
+    branches:
+      - tfa-v167-capital-os
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v167-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify V167 source syntax
+        run: |
+          node --check src/capital-os.js
+          node --check api/capital-calendar.js
+          node --check api/earnings-calendar.js
+      - name: Verify Capital OS surfaces
+        run: |
+          grep -q "V167 · PROFESSIONAL CAPITAL OPERATING SYSTEM" capital-os/index.html
+          grep -q "PRO TRADING + INVESTMENT JOURNAL" capital-os/index.html
+          grep -q "ASSET ALLOCATOR + PORTFOLIO MANAGER" capital-os/index.html
+          grep -q "ECONOMIC CALENDAR" capital-os/index.html
+          grep -q "EARNINGS INTELLIGENCE" capital-os/index.html
+      - name: Preserve execution firewall
+        run: |
+          grep -q "trading_permission:false" api/capital-calendar.js
+          grep -q "trading_permission:false" api/earnings-calendar.js
+          if grep -Eq "placeOrder|submitOrder|sendOrder|broker.*POST|automatic_real_capital:true" src/capital-os.js api/capital-calendar.js api/earnings-calendar.js; then
+            echo "V167 Capital OS must remain decision-support only"
+            exit 1
+          fi
