@@ -534,6 +534,79 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+async function loadV144SchedulerLoadGovernor() {
+  const scheduler = await readLocal('/api/scheduler-governor', 15000);
+  if (!scheduler?.ok) {
+    set('v144-state', 'SCHEDULER · FAIL CLOSED');
+    set('v144-copy', 'The private scheduler governor is unavailable. V144 cannot certify load reduction and cannot change execution permission.');
+    for (const id of ['v144-score','v144-observation','v144-compliance','v144-peak-concurrency','v144-peak-starts','v144-reduction','v144-failures','v144-active-jobs','v144-running']) set(id, null);
+    set('v144-promotion', 'DISABLED');
+    set('v144-rescheduling', 'MANUAL ONLY');
+    set('v144-orders', 'OFF');
+    set('v144-capital', '0R');
+    return;
+  }
+
+  const plan = scheduler?.plan ?? {};
+  const baseline = scheduler?.baseline ?? {};
+  const since = scheduler?.since_apply ?? {};
+  const rolling15 = scheduler?.rolling?.last_15m ?? {};
+  const runtime = scheduler?.runtime ?? {};
+  const actions = Array.isArray(scheduler?.actions) ? scheduler.actions.map((x: unknown) => String(x)) : [];
+
+  const observation = Number(scheduler?.observation_minutes);
+  const peakNow = Number(since?.peak_concurrent);
+  const peakBase = Number(baseline?.peak_concurrent);
+  const startsNow = Number(since?.peak_starts_per_minute);
+  const startsBase = Number(baseline?.peak_starts_per_minute);
+  const reduction = Number(since?.peak_concurrency_reduction_pct);
+
+  set('v144-state', `SCHEDULER · ${first(scheduler?.state, 'UNKNOWN')}`);
+  set('v144-copy',
+    scheduler?.state === 'LOAD_HEALTHY'
+      ? 'The phased scheduler is holding within the recommended concurrency ceiling while preserving the fast capture and safety lanes.'
+      : scheduler?.state === 'OBSERVING'
+        ? 'V144 has phase-staggered the cron graph. It is accumulating post-change telemetry before calling the load profile stable.'
+        : scheduler?.state === 'SCHEDULE_DRIFT_BLOCKED'
+          ? 'One or more governed jobs has drifted from the approved phase plan. V144 is fail-closed until schedule integrity is restored.'
+          : 'Scheduler pressure is reduced but remains above the target ceiling. V144 keeps observing without weakening any trading gate.'
+  );
+  set('v144-score', scheduler?.score == null ? 'WITHHELD' : `${scheduler.score}/100`);
+  set('v144-observation', Number.isFinite(observation) ? `${observation.toFixed(1)}m` : 'WITHHELD');
+  set('v144-compliance', `${Number(plan?.compliant_jobs || 0)}/${Number(plan?.target_jobs || 0)}`);
+  set('v144-peak-concurrency', Number.isFinite(peakNow)
+    ? `${peakNow} · BASE ${Number.isFinite(peakBase) ? peakBase : '?'}`
+    : 'WITHHELD');
+  set('v144-peak-starts', Number.isFinite(startsNow)
+    ? `${startsNow}/MIN · BASE ${Number.isFinite(startsBase) ? startsBase : '?'}`
+    : 'WITHHELD');
+  set('v144-reduction', Number.isFinite(reduction) ? `${reduction.toFixed(1)}%` : 'WITHHELD');
+  set('v144-failures', `${Number(rolling15?.failures || 0)} · BURST ${Number(rolling15?.failure_burst_max || 0)}`);
+  set('v144-active-jobs', runtime?.active_jobs ?? null);
+  set('v144-running', runtime?.currently_running_jobs ?? null);
+  set('v144-promotion', 'DISABLED');
+  set('v144-rescheduling', 'MANUAL ONLY');
+  set('v144-orders', 'OFF');
+  set('v144-capital', '0R');
+
+  const host = byId('v144-actions');
+  if (host) {
+    host.replaceChildren();
+    const items = actions.length ? actions : ['Continue passive scheduler verification'];
+    for (const item of items.slice(0, 7)) {
+      const chip = document.createElement('span');
+      chip.className = actions.length ? 'integrity-chip integrity-chip-warn' : 'integrity-chip integrity-chip-clear';
+      chip.textContent = item.replaceAll('_', ' ').toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v144-detail',
+    `Plan ${Number(plan?.compliant_jobs || 0)}/${Number(plan?.target_jobs || 0)} compliant · observation ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · peak concurrency ${Number.isFinite(peakNow) ? peakNow : 'n/a'} vs ${Number.isFinite(peakBase) ? peakBase : 'n/a'} baseline · peak starts ${Number.isFinite(startsNow) ? startsNow : 'n/a'} vs ${Number.isFinite(startsBase) ? startsBase : 'n/a'} · 15m failures ${Number(rolling15?.failures || 0)} · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV143StabilityConfirmation() {
   const stability = await readLocal('/api/stability-confirmation', 15000);
   if (!stability?.ok) {
@@ -1859,6 +1932,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV144SchedulerLoadGovernor(),
       loadV143StabilityConfirmation(),
       loadV142RuntimeRecoveryEngine(),
       loadV141RuntimeRecoverySentinel(),
