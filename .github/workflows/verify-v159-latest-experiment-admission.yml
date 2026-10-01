@@ -6,6 +6,7 @@ on:
       - tfa-v159-latest-experiment-admission
       - tfa-v1591-bounded-admission-hotfix
       - tfa-v162-prospective-collision-revalidation
+      - tfa-v165-safe-alternative-admission-handoff
       - the-father-analytics-staging
       - the-father-analytics-deploy
   pull_request:
@@ -29,7 +30,7 @@ jobs:
           test -f supabase/recovery/v159-latest-experiment-admission.sql
           test -f supabase/functions/runtime-v159-latest-experiment-admission/index.ts
           test -f supabase/recovery/v158-member-alert-post-shift-observer.sql
-          grep -q "v159.2-latest-experiment-admission-db-v3-live-revalidated" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "v159.3-latest-experiment-admission-db-v4-safe-alternative-handoff" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "LOCKED_LATEST_SHIFT_OBSERVATION" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "READY_FOR_NEXT_HUMAN_REVIEW" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "minimum_minutes_between_mutations',75" supabase/recovery/v159-latest-experiment-admission.sql
@@ -37,13 +38,21 @@ jobs:
           grep -q "'direct_v147_calls',0" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'direct_v1461_calls',0" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'latest_observer_calls',1" supabase/recovery/v159-latest-experiment-admission.sql
-          grep -q "'v162_calls',1" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'v165_calls',1" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'v162_calls_indirect',v_v165->'runtime_budget'->'v162_calls'" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'v163_calls_indirect',v_v165->'runtime_budget'->'v163_calls'" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'direct_v151_calls',0" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "LOCKED_PROSPECTIVE_COLLISION_REVALIDATION" supabase/recovery/v159-latest-experiment-admission.sql
           grep -q "'prospective_collision_revalidation',v_candidate_revalidation_pass" supabase/recovery/v159-latest-experiment-admission.sql
-          grep -q "get_v162_prospective_collision_revalidation" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "get_v165_safe_alternative_admission_handoff" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'source',v_v165->'selected_candidate'->>'source'" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "'route',v_v165->>'route'" supabase/recovery/v159-latest-experiment-admission.sql
           if grep -q "get_v151_single_candidate_plan_shadow" supabase/recovery/v159-latest-experiment-admission.sql; then
-            echo "V159 must use V162 rather than call V151 directly"
+            echo "V159 must use V165 rather than call V151 directly"
+            exit 1
+          fi
+          if grep -q "get_v162_prospective_collision_revalidation" supabase/recovery/v159-latest-experiment-admission.sql; then
+            echo "V159 must use V165 rather than call V162 directly"
             exit 1
           fi
           if grep -q "get_v147_connection_pressure_shadow" supabase/recovery/v159-latest-experiment-admission.sql; then
