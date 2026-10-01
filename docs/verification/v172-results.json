@@ -1,0 +1,765 @@
+{
+  "version": "V172",
+  "recorded_at": "2026-10-01T19:09:42.087Z",
+  "repository": {
+    "pull_request": "https://github.com/youngshekeh/youngshekeh/pull/110",
+    "feature_sha": "be41cba0696aca2ad1dd8d6b96d32ef07ab16ec7",
+    "production_sha": "69af8bd4d7e7b6f871aa9f0614b3f0ca1292874b",
+    "workflow_runs": [
+      {
+        "id": 36911535360,
+        "name": "Verify V161 Scheduler Experiment Registry",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535360"
+      },
+      {
+        "id": 36911535612,
+        "name": "Verify V151.1 Controlled Anomaly Shift Package",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535612"
+      },
+      {
+        "id": 36911535568,
+        "name": "Verify V153 Scheduler Mutation Admission",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535568"
+      },
+      {
+        "id": 36911535435,
+        "name": "Verify V154 Rollback Rehearsal Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535435"
+      },
+      {
+        "id": 36911535336,
+        "name": "Verify V148 Predictive Collision Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535336"
+      },
+      {
+        "id": 36911535482,
+        "name": "Verify V157 Controlled Member Alert Shift",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535482"
+      },
+      {
+        "id": 36911535739,
+        "name": "Verify V164 Bounded QA Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535739"
+      },
+      {
+        "id": 36911535565,
+        "name": "Verify V166 Production Closure Gate",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535565"
+      },
+      {
+        "id": 36911535481,
+        "name": "Verify V160 Latest Rollback Rehearsal",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535481"
+      },
+      {
+        "id": 36911535469,
+        "name": "Verify V152 Post Shift Observer",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535469"
+      },
+      {
+        "id": 36911535470,
+        "name": "Verify V150 Network SLA Evidence Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535470"
+      },
+      {
+        "id": 36911535747,
+        "name": "Verify V172 Paper Broker Feed",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535747"
+      },
+      {
+        "id": 36911535742,
+        "name": "Verify THE FATHER ANALYTICS",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535742"
+      },
+      {
+        "id": 36911535649,
+        "name": "Verify V151 Single Candidate Plan Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535649"
+      },
+      {
+        "id": 36911535757,
+        "name": "Verify V146.1 Controlled Peak Spreader",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535757"
+      },
+      {
+        "id": 36911535420,
+        "name": "Verify V149 Dependency Isolation Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535420"
+      },
+      {
+        "id": 36911535646,
+        "name": "Verify V162 Prospective Collision Revalidation",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535646"
+      },
+      {
+        "id": 36911535531,
+        "name": "Verify V159 Latest Experiment Admission",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535531"
+      },
+      {
+        "id": 36911535760,
+        "name": "Verify V165 Safe Alternative Admission Handoff",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535760"
+      },
+      {
+        "id": 36911535572,
+        "name": "Verify V155 Guard-Aware V146.1 Status",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535572"
+      },
+      {
+        "id": 36911535716,
+        "name": "Verify V146 Peak Minute Spreader",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535716"
+      },
+      {
+        "id": 36911535576,
+        "name": "Verify V163 Safe Alternative Minute Search",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535576"
+      },
+      {
+        "id": 36911535427,
+        "name": "Verify V156 Quota Guard Recovery Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535427"
+      },
+      {
+        "id": 36911535694,
+        "name": "Verify V147 Connection Pressure Shadow",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535694"
+      },
+      {
+        "id": 36911535350,
+        "name": "Verify V158 Member Alert Post Shift Observer",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535350"
+      },
+      {
+        "id": 36911535728,
+        "name": "Verify V167 Capital OS",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911535728"
+      },
+      {
+        "id": 36911510330,
+        "name": "Verify V172 Paper Broker Feed",
+        "status": "completed",
+        "conclusion": "success",
+        "event": "push",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36911510330"
+      }
+    ]
+  },
+  "deployment": {
+    "id": "dpl_H2iexdHXUrgPRDEtQVAhW7R1TvDR",
+    "url": "https://the-father-analytics-ixknl1lqa-the-father.vercel.app",
+    "state": "READY",
+    "alias": "https://thefatheranalytics.com"
+  },
+  "database": {
+    "status": {
+      "ok": true,
+      "state": "NOT_CONNECTED",
+      "version": "v172-paper-broker-quote-intake-v1",
+      "checked_at": "2026-10-01T19:04:40.773281+00:00",
+      "governance": {
+        "execution_grade": false,
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_submission_enabled": false,
+        "paper_quotes_can_unlock_capital": false
+      },
+      "latest_quote": null,
+      "freshness_limit_seconds": 10,
+      "broker_connection_verified": false
+    },
+    "migration": [
+      {
+        "name": "v172_paper_broker_quote_intake",
+        "version": "20261001185208"
+      }
+    ],
+    "quote_rows": 0
+  },
+  "tests": {
+    "database_validation_cases": 32,
+    "transactional_ingest_cases": 9,
+    "privilege_assertions_passed": true,
+    "persisted_test_quotes": 0,
+    "local_http_and_view_cases": 24,
+    "local_passed": 24
+  },
+  "runtime_qa": {
+    "ok": true,
+    "version": "v172.0-integrated-engine-certification-v49-paper-feed",
+    "checked_at": "2026-10-01T19:06:21.965Z",
+    "state": "PASS",
+    "summary": {
+      "passed": 77,
+      "failed": 0,
+      "total": 77,
+      "max_latency_ms": 5021
+    },
+    "tests": [
+      {
+        "name": "v167_capital_os_surface_contract",
+        "pass": true,
+        "detail": "status=200, journal=present, portfolio=present",
+        "latency_ms": 134
+      },
+      {
+        "name": "v167_official_macro_calendar_contract",
+        "pass": true,
+        "detail": "status=200, state=OFFICIAL_STATIC_FALLBACK_ACTIVE, events=27, trading=false",
+        "latency_ms": 245
+      },
+      {
+        "name": "v167_earnings_truth_contract",
+        "pass": true,
+        "detail": "status=200, state=LIVE_UPSTREAM, rows=16",
+        "latency_ms": 1245
+      },
+      {
+        "name": "v166_production_closure_contract",
+        "pass": true,
+        "detail": "status=200, state=RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED, research=true, paper=true, live=false, capital=0R",
+        "latency_ms": 5021
+      },
+      {
+        "name": "homepage_http",
+        "pass": true,
+        "detail": "status=200",
+        "latency_ms": 106
+      },
+      {
+        "name": "gold_surface_http",
+        "pass": true,
+        "detail": "status=200",
+        "latency_ms": 162
+      },
+      {
+        "name": "v126_owner_review_surface_contract",
+        "pass": true,
+        "detail": "status=200, inbox=present, default_hidden=true",
+        "latency_ms": 79
+      },
+      {
+        "name": "v127_owner_review_intelligence_surface_contract",
+        "pass": true,
+        "detail": "status=200, review_intelligence=present, default_hidden=true",
+        "latency_ms": 79
+      },
+      {
+        "name": "v130_owner_priority_surface_contract",
+        "pass": true,
+        "detail": "status=200, p1_counter=present, inbox_default_hidden=true",
+        "latency_ms": 79
+      },
+      {
+        "name": "v118_broker_xau_bridge_contract",
+        "pass": true,
+        "detail": "status=200, bridge=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v121_live_pulse_contract",
+        "pass": true,
+        "detail": "status=200, pulse=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v122_outcome_lab_contract",
+        "pass": true,
+        "detail": "status=200, outcome_lab=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v123_what_changed_surface_contract",
+        "pass": true,
+        "detail": "status=200, what_changed=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v124_trigger_watch_surface_contract",
+        "pass": true,
+        "detail": "status=200, trigger_watch=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v125_signal_reputation_surface_contract",
+        "pass": true,
+        "detail": "status=200, signal_reputation=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v127_review_intelligence_surface_contract",
+        "pass": true,
+        "detail": "status=200, review_intelligence=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v128_disagreement_surface_contract",
+        "pass": true,
+        "detail": "status=200, disagreement_surface=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v129_context_lab_surface_contract",
+        "pass": true,
+        "detail": "status=200, context_lab=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v130_review_routing_surface_contract",
+        "pass": true,
+        "detail": "status=200, review_routing=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v131_review_freshness_surface_contract",
+        "pass": true,
+        "detail": "status=200, review_freshness=present",
+        "latency_ms": 162
+      },
+      {
+        "name": "v132_shadow_execution_surface_contract",
+        "pass": true,
+        "detail": "status=200, cockpit=present, live_orders_off=true, capital_0r=true",
+        "latency_ms": 162
+      },
+      {
+        "name": "v1331_execution_reality_surface_contract",
+        "pass": true,
+        "detail": "status=200, reality=present, broker_locked=true, capital_0r=true",
+        "latency_ms": 162
+      },
+      {
+        "name": "v134_broker_adapter_lab_surface_contract",
+        "pass": true,
+        "detail": "status=200, lab=present, live_route_absent=true, production_not_tested=true, capital_0r=true",
+        "latency_ms": 162
+      },
+      {
+        "name": "v135_opportunity_governor_surface_contract",
+        "pass": true,
+        "detail": "status=200, governor=present, paper=true, live_locked=true, capital_0r=true",
+        "latency_ms": 162
+      },
+      {
+        "name": "v120_gold_execution_desk",
+        "pass": true,
+        "detail": "state=WAIT_FOR_CONFIRMATION, feed=DELAYED_LIVE, broker_required=true, quote_allowed=false",
+        "latency_ms": 1633
+      },
+      {
+        "name": "v120_multi_session_clock",
+        "pass": true,
+        "detail": "primary=NONE, state=OUTSIDE_PRIMARY_REVIEW_WINDOW, london=20:06, ny=15:06",
+        "latency_ms": 1633
+      },
+      {
+        "name": "v119_prospective_learning_ledger",
+        "pass": true,
+        "detail": "samples=250, health=HEALTHY, latest=WAIT_FOR_CONFIRMATION, performance=WITHHELD_UNTIL_PROSPECTIVE_OUTCOMES_RESOLVE",
+        "latency_ms": 597
+      },
+      {
+        "name": "v122_forward_outcome_learning",
+        "pass": true,
+        "detail": "resolved=500, eligible=0, edge=WITHHELD",
+        "latency_ms": 479
+      },
+      {
+        "name": "v123_transition_intelligence",
+        "pass": true,
+        "detail": "state=STABLE, event=DATA_RECOVERED, blocked=false, capital=0R",
+        "latency_ms": 574
+      },
+      {
+        "name": "v124_trigger_watch",
+        "pass": true,
+        "detail": "state=SHORT_FAILURE_REVIEW, long=BELOW_RETEST_ZONE, short=AT_OR_BELOW_FAILURE_THRESHOLD, capital=0R",
+        "latency_ms": 1486
+      },
+      {
+        "name": "v125_signal_reputation",
+        "pass": true,
+        "detail": "state=EARLY_REPUTATION, classifier=v125.3-event-aware-v2, triggers=100, directional=1, human=0, max_n=12, capital=0R",
+        "latency_ms": 689
+      },
+      {
+        "name": "v126_owner_review_anonymous_denial",
+        "pass": true,
+        "detail": "status=401, error=missing_token",
+        "latency_ms": 100
+      },
+      {
+        "name": "v127_review_intelligence",
+        "pass": true,
+        "detail": "state=WAITING_FOR_HUMAN_REVIEW, reviews=0, anchors=0, outcomes=0, max_n=0, capital=0R",
+        "latency_ms": 438
+      },
+      {
+        "name": "v128_disagreement_intelligence",
+        "pass": true,
+        "detail": "state=WAITING_FOR_HUMAN_REVIEW, reviews=0, outcomes=0, disagreements=0, max_n=0, capital=0R",
+        "latency_ms": 329
+      },
+      {
+        "name": "v129_contextual_disagreement_intelligence",
+        "pass": true,
+        "detail": "state=WAITING_FOR_HUMAN_REVIEW, events=0, scorable=0, cohorts=0, max_n=0, capital=0R",
+        "latency_ms": 242
+      },
+      {
+        "name": "v130_review_priority_intelligence",
+        "pass": true,
+        "detail": "state=ROUTING_ACTIVE, assignments=46, pending=46, p1=22, top=100, capital=0R",
+        "latency_ms": 250
+      },
+      {
+        "name": "v131_review_freshness_intelligence",
+        "pass": true,
+        "detail": "state=P1_OVER_TARGET, pending=46, over=46, p1_over=22, oldest_p1=2021.1, capital=0R",
+        "latency_ms": 495
+      },
+      {
+        "name": "v132_autonomous_shadow_trader",
+        "pass": true,
+        "detail": "state=EARLY_SHADOW_EVIDENCE, intents=10, open=0, resolved=10, live=false, orders=false, capital=0R",
+        "latency_ms": 465
+      },
+      {
+        "name": "v133_shadow_portfolio_brain",
+        "pass": true,
+        "detail": "state=WITHHELD_SAMPLE_TOO_SMALL, decisions=10, allocated=4, skipped=6, open=0, resolved=4, capital=0R",
+        "latency_ms": 444
+      },
+      {
+        "name": "v133_execution_reality_gate",
+        "pass": true,
+        "detail": "state=LOCKED · RESEARCH SAMPLE, sample=10, blockers=8, infra=0/6, live=false, capital=0R",
+        "latency_ms": 250
+      },
+      {
+        "name": "v134_broker_adapter_lab",
+        "pass": true,
+        "detail": "state=PASS_SIMULATION_ONLY, lab=6/6, real_orders=0, production=NOT_TESTED, capital=0R",
+        "latency_ms": 594
+      },
+      {
+        "name": "v135_opportunity_governor",
+        "pass": true,
+        "detail": "state=PAPER_AUTONOMY_READY, mode=PAPER_ONLY, paper=PAPER_WAIT_NEXT_ELIGIBLE_EVENT, live=LOCKED, blockers=12, capital=0R",
+        "latency_ms": 849
+      },
+      {
+        "name": "v116_vercel_workload_identity_transport",
+        "pass": true,
+        "detail": "status=200, auth=VERCEL_OIDC, runtime=PRIVATE_BRAIN",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v115_private_runtime_anonymous_denial",
+        "pass": true,
+        "detail": "status=401, error=unauthorized_private_runtime",
+        "latency_ms": 86
+      },
+      {
+        "name": "v70_firewall",
+        "pass": true,
+        "detail": "action=WAIT, capital=0R",
+        "latency_ms": 12
+      },
+      {
+        "name": "v75_no_zero_ohlc",
+        "pass": true,
+        "detail": "current={\"open\":4190.1,\"high\":4222.8,\"low\":4169.4,\"price\":4207.4,\"vwap\":4198.16,\"range\":53.4}, previous_high=4251.1, previous_low=4178.2",
+        "latency_ms": 575
+      },
+      {
+        "name": "v75_shadow_only",
+        "pass": true,
+        "detail": "canonical=false, action=WAIT, capital=0R",
+        "latency_ms": 575
+      },
+      {
+        "name": "v76_live_gate",
+        "pass": true,
+        "detail": "state=PASS, critical=0",
+        "latency_ms": 632
+      },
+      {
+        "name": "v76_regression_quarantine",
+        "pass": true,
+        "detail": "state=QUARANTINE, passed=true",
+        "latency_ms": 334
+      },
+      {
+        "name": "v77_shadow_only",
+        "pass": true,
+        "detail": "canonical=false, promotion=false",
+        "latency_ms": 720
+      },
+      {
+        "name": "shadow_feed_firewall",
+        "pass": true,
+        "detail": "canonical=false, action=WAIT",
+        "latency_ms": 687
+      },
+      {
+        "name": "quota_probe_truthful",
+        "pass": true,
+        "detail": "restricted=false, upstream=200",
+        "latency_ms": 545
+      },
+      {
+        "name": "v79_state_machine_firewall",
+        "pass": true,
+        "detail": "phase=LOW_LIQUIDITY_RAID_RECLAIM, action=WAIT",
+        "latency_ms": 915
+      },
+      {
+        "name": "v81_mtf_zone_integrity",
+        "pass": true,
+        "detail": "zones=5, composite=MULTI_TF_MIDRANGE",
+        "latency_ms": 575
+      },
+      {
+        "name": "v82_confluence_firewall",
+        "pass": true,
+        "detail": "tension=NEUTRAL_OR_MIXED, capital=0R",
+        "latency_ms": 1041
+      },
+      {
+        "name": "v83_breakout_detector",
+        "pass": true,
+        "detail": "state=FAILED_BREAKOUT_DOWN, quality=14",
+        "latency_ms": 927
+      },
+      {
+        "name": "v83_regression_selftest",
+        "pass": true,
+        "detail": "accepted=ACCEPTED_BREAKOUT_DOWN, failed=FAILED_BREAKOUT_DOWN",
+        "latency_ms": 338
+      },
+      {
+        "name": "v106_snapshot_fingerprints",
+        "pass": true,
+        "detail": "state=ALL_FINGERPRINTED, fingerprinted=6",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v107_receipt_chain",
+        "pass": true,
+        "detail": "state=HASH_CHAIN_VERIFIED, failures=0, mode=POSTGREST_RPC",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v108_server_attestation",
+        "pass": true,
+        "detail": "state=SERVER_ATTESTATION_VERIFIED, failed=0, mode=CHECKPOINT_VERIFIED_SURVIVOR",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v109_key_lifecycle",
+        "pass": true,
+        "detail": "state=KEY_LIFECYCLE_HEALTHY, missing=0, mode=POSTGREST_RPC",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v1131_provenance_survivor_truth",
+        "pass": true,
+        "detail": "modes=POSTGREST_RPC,CHECKPOINT_VERIFIED_SURVIVOR,POSTGREST_RPC, checkpoint=GLOBAL_CHECKPOINT_VERIFIED",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v110_checkpoint_chain",
+        "pass": true,
+        "detail": "state=GLOBAL_CHECKPOINT_VERIFIED, broken=0",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v111_external_root",
+        "pass": true,
+        "detail": "root_state=MATCH, roots_match=true",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v112_anchor_heartbeat",
+        "pass": true,
+        "detail": "heartbeat=FRESH, age=0.4m, checks=4",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v112_capital_firewall",
+        "pass": true,
+        "detail": "quant=0R, mission=0R",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v113_health_orchestrator",
+        "pass": true,
+        "detail": "state=NOMINAL, readiness=100%, critical=0, capital=0R",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v1132_release_integrity",
+        "pass": true,
+        "detail": "state=PRODUCTION_SOURCE_VERIFIED, env=production, branch=the-father-analytics-deploy, sha=69af8bd4d7e7, capital=0R",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v168_engine_registry_completeness",
+        "pass": true,
+        "detail": "registry=44, unique=44",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v168_engine_registry_schema_integrity",
+        "pass": true,
+        "detail": "invalid_rows=0",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v168_engine_registry_no_hard_failure",
+        "pass": true,
+        "detail": "hard_failures=none",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v168_learning_gates_truthful",
+        "pass": true,
+        "detail": "brier=GATED, ev=LEARNING, portfolio=OBSERVATION ONLY",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v169_integrated_registry_modules",
+        "pass": true,
+        "detail": "registry=44, missing=none",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v168_global_capital_invariant",
+        "pass": true,
+        "detail": "mission=WAIT/0R, health=WAIT/0R",
+        "latency_ms": 3384
+      },
+      {
+        "name": "v172_paper_quote_intake_contract",
+        "pass": true,
+        "detail": "state=NOT_CONNECTED, broker_verified=false, capital=0R",
+        "latency_ms": 900
+      },
+      {
+        "name": "v172_paper_quote_anonymous_denial",
+        "pass": true,
+        "detail": "status=401, error=missing_token",
+        "latency_ms": 97
+      },
+      {
+        "name": "v172_paper_quote_surface_contract",
+        "pass": true,
+        "detail": "status=200, paper_feed=present",
+        "latency_ms": 162
+      }
+    ],
+    "invariants": {
+      "canonical_execution_permission": "UNCHANGED",
+      "action_permitted": "WAIT",
+      "capital_permission": "0R",
+      "automatic_promotion": false
+    }
+  },
+  "browser": {
+    "url": "https://thefatheranalytics.com/gold-live#v172-paper-broker-feed",
+    "initial_panel_state": "UNAVAILABLE",
+    "final_panel_state": "NOT CONNECTED",
+    "prices": "WITHHELD",
+    "capital": "0R · LOCKED",
+    "application_console_errors_captured": 0,
+    "initial_unavailable_cause": "NOT_ESTABLISHED",
+    "normal_refresh_recovery": true
+  },
+  "limits": {
+    "real_owner_authenticated_http_submission_tested": false,
+    "broker_source_connected": false,
+    "broker_provenance_verified": false,
+    "mt5_exporter_completed": false,
+    "real_orders_sent": 0
+  }
+}
