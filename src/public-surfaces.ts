@@ -570,6 +570,7 @@ async function loadV145ConnectionAdmissionShadow() {
   set('v145-candidates', summary?.shadow_serialization_candidate_groups ?? 0);
   set('v145-review', summary?.review_required_groups ?? 0);
   set('v145-saved', summary?.projected_connection_slots_saved_per_trigger ?? 0);
+  set('v145-orb', summary?.projected_connection_slots_saved_per_trigger ?? 0);
   set('v145-ceiling', summary?.recommended_concurrent_ceiling ?? 8);
   set('v145-best-budget', best ? `${Number(best?.sequential_p95_budget_ms || 0).toFixed(1)}ms` : 'NONE');
   set('v145-best-saved', best ? `${Number(best?.projected_slots_saved_per_trigger || 0)} SLOTS` : 'NONE');
