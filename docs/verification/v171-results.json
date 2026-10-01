@@ -1,0 +1,210 @@
+{
+  "release": "V171 broker simulation receipt integrity",
+  "migration": {
+    "name": "v171_broker_simulation_receipt_integrity",
+    "version": "20261001181003"
+  },
+  "applied_on": "2026-10-01",
+  "deterministic_cases": {
+    "passed": 41,
+    "failed": 0,
+    "executed": "atomically before migration commit",
+    "purpose": "simulation receipt semantics; not broker readiness"
+  },
+  "broker_lab": {
+    "ok": true,
+    "run_id": 30,
+    "version": "v134-broker-adapter-lab-v2-receipt-integrity",
+    "checked_at": "2026-10-01T18:10:26.400163+00:00",
+    "event_count": 8,
+    "result_state": "PASS_SIMULATION_ONLY",
+    "idempotency_pass": true,
+    "kill_switch_pass": true,
+    "real_orders_sent": 0,
+    "orphan_event_count": 0,
+    "reconciliation_pass": true,
+    "dry_run_lifecycle_pass": true,
+    "live_route_denial_pass": true,
+    "real_capital_permission": "0R",
+    "live_order_route_present": false,
+    "production_broker_readiness": "NOT_TESTED",
+    "unauthorized_submit_blocked": true,
+    "live_order_submission_enabled": false
+  },
+  "integrity": {
+    "ok": true,
+    "state": "PASS_SIMULATION_RECEIPT_INTEGRITY",
+    "version": "v171-broker-lab-receipt-integrity-v1",
+    "violations": [],
+    "violation_count": 0,
+    "real_capital_permission": "0R",
+    "receipt_validation_only": true,
+    "production_broker_readiness": "NOT_TESTED",
+    "live_order_submission_enabled": false
+  },
+  "integrated_regression": {
+    "first": {
+      "status": 200,
+      "state": "DEGRADED",
+      "summary": {
+        "passed": 73,
+        "failed": 1,
+        "total": 74,
+        "max_latency_ms": 8339
+      },
+      "failures": [
+        {
+          "name": "v83_regression_selftest",
+          "pass": false,
+          "detail": "accepted=undefined, failed=undefined",
+          "latency_ms": 5140
+        }
+      ]
+    },
+    "breakout_direct_check": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "version": "v83-breakout-acceptance-detector-v1-private-runtime",
+        "checked_at": "2026-10-01T18:12:21.897Z",
+        "self_test": {
+          "accepted_fixture": true,
+          "failed_fixture": true,
+          "accepted_state": "ACCEPTED_BREAKOUT_DOWN",
+          "failed_state": "FAILED_BREAKOUT_DOWN",
+          "passed": true
+        },
+        "governance": {
+          "action_permitted": "WAIT",
+          "capital_permission": "0R",
+          "production_data_used": false
+        }
+      }
+    },
+    "rerun": {
+      "status": 200,
+      "state": "PASS",
+      "summary": {
+        "passed": 74,
+        "failed": 0,
+        "total": 74,
+        "max_latency_ms": 7462
+      },
+      "failures": []
+    },
+    "note": "Initial breakout self-test had no result. Direct check and full rerun passed. Root cause unconfirmed; intermittent transport failures remain observable."
+  },
+  "live_checks": [
+    {
+      "path": "/api/gold-day-state",
+      "http_status": 200,
+      "ok": true,
+      "version": "v75-gold-day-state-v1-private-runtime",
+      "governance": {
+        "canonical": false,
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "promotion_allowed": false,
+        "note": "Research-only day-state classification; not an execution signal."
+      }
+    },
+    {
+      "path": "/api/gold-mtf-zones",
+      "http_status": 200,
+      "ok": true,
+      "version": "v81-gold-mtf-zone-engine-v1-private-runtime",
+      "governance": {
+        "canonical": false,
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "promotion_allowed": false
+      }
+    },
+    {
+      "path": "/api/production-closure",
+      "http_status": 200,
+      "ok": true,
+      "state": "RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED",
+      "version": "v166-production-closure-gate-v1",
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "order_submission_enabled": false,
+        "automatic_real_capital": false,
+        "automatic_rescheduling": false,
+        "automatic_rollback": false,
+        "automatic_policy_promotion": false,
+        "human_release_required": true,
+        "v166_can_unlock_capital": false
+      }
+    },
+    {
+      "path": "/api/network-sla-evidence-shadow",
+      "http_status": 200,
+      "ok": true,
+      "state": "NETWORK_SLA_CANDIDATES_READY_FOR_CONTROLLED_PLAN_REVIEW",
+      "version": "v150-network-sla-evidence-shadow-private-runtime-v1",
+      "governance": {
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "live_order_routing": false,
+        "automatic_rescheduling": false,
+        "automatic_policy_promotion": false,
+        "automatic_pool_reconfiguration": false,
+        "network_sla_evidence_can_unlock_capital": false
+      }
+    },
+    {
+      "path": "/api/earnings-calendar",
+      "http_status": 200,
+      "ok": true,
+      "state": "LIVE_UPSTREAM",
+      "governance": {
+        "forecast_fields_are_provider_data": true,
+        "no_estimates_fabricated": true,
+        "trading_permission": false
+      }
+    }
+  ],
+  "security": {
+    "levels": {
+      "INFO": 1
+    },
+    "anon_function_execute": false,
+    "authenticated_function_execute": false,
+    "service_role_function_execute": true
+  },
+  "invariants": {
+    "action_permitted": "WAIT",
+    "capital_permission": "0R",
+    "live_orders": false,
+    "simulation_cannot_clear_production_broker_gate": true,
+    "cron_schedule": "17 * * * *",
+    "unsafe_lab_runs": 0,
+    "unsafe_lab_events": 0
+  },
+  "remaining_gates": [
+    "MARKET_FEED_DELAYED",
+    "EXECUTION_GRADE_QUOTE_UNAVAILABLE",
+    "MATURE_SAMPLE_BELOW_30",
+    "BROKER_ADAPTER_NOT_CONNECTED",
+    "BROKER_SPREAD_NOT_MEASURED",
+    "SLIPPAGE_NOT_MEASURED",
+    "ORDER_RECONCILIATION_NOT_TESTED",
+    "KILL_SWITCH_NOT_TESTED",
+    "HIGH_FRICTION_STRESS_EDGE_NOT_PROVEN",
+    "PRODUCTION_BROKER_NOT_VERIFIED",
+    "MEASURED_SPREAD_UNAVAILABLE",
+    "MEASURED_SLIPPAGE_UNAVAILABLE",
+    "HUMAN_RELEASE_REVIEW_REQUIRED",
+    "SCHEDULER_HUMAN_REVIEW_GATE_NOT_CLEAR",
+    "LIVE_EXECUTION_RELEASE_NOT_READY"
+  ],
+  "production_frontend": {
+    "commit_sha": "a6cdf68a09ea232d597e81e21fd98d371be3235e",
+    "state": "READY",
+    "note": "Frontend unchanged; database migration live through existing bridge."
+  }
+}
+
