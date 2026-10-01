@@ -117,6 +117,55 @@
 
 
 
+      <section id="v153-scheduler-mutation-admission" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V153 · SCHEDULER MUTATION ADMISSION</span>
+            <h3 id="v153-state">CHECKING</h3>
+            <p id="v153-copy">Separating “a candidate exists” from “the machine is allowed to review another mutation.” One active scheduler experiment maximum.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v153-gate-score">--</span><small>GATES</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ADMISSION GOVERNOR · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO MUTATION · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>ADMISSION</span><strong id="v153-admitted">CHECKING</strong></article>
+          <article><span>COOLDOWN</span><strong id="v153-cooldown">CHECKING</strong></article>
+          <article><span>QA</span><strong id="v153-qa">CHECKING</strong></article>
+          <article><span>INFRASTRUCTURE</span><strong id="v153-infra">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PREVIOUS SHIFT</span><strong id="v153-previous">CHECKING</strong></article>
+          <article><span>BASELINE</span><strong id="v153-baseline">CHECKING</strong></article>
+          <article><span>NEXT CANDIDATE</span><strong id="v153-next-job">CHECKING</strong></article>
+          <article><span>NEXT MOVE</span><strong id="v153-next-move">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>ACTIVE EXPERIMENTS</span><strong id="v153-experiments">ONE MAX</strong><small>A second mutation cannot overlap an unproven first shift.</small></article>
+          <article><span>HUMAN REVIEW</span><strong id="v153-human">REQUIRED</strong><small>Admission never applies a schedule itself.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v153-orders">OFF</strong><small>Scheduler admission cannot enable trading.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v153-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>MUTATION ADMISSION GATES</span>
+          <small>Requires V152 acceptance, 45-minute cooldown, fresh clean QA, normal infrastructure, V146.1 stability and exact candidate schedule match.</small>
+        </div>
+        <div id="v153-gates" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING ADMISSION GATES</span></div>
+        <p id="v153-detail" class="autonomy-detail">V153 may admit a candidate to human review only. Automatic rescheduling, rollback, policy promotion, live orders and capital promotion remain disabled.</p>
+      </section>
+
       <section id="v152-post-shift-observer" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>

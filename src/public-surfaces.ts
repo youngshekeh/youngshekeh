@@ -536,6 +536,76 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV153SchedulerMutationAdmission() {
+  const gate = await readLocal('/api/scheduler-mutation-admission', 20000);
+  if (!gate?.ok) {
+    set('v153-state', 'ADMISSION · FAIL CLOSED');
+    set('v153-copy', 'The mutation admission governor is unavailable. No further scheduler change is permitted.');
+    for (const id of ['v153-gate-score','v153-admitted','v153-cooldown','v153-qa','v153-infra','v153-previous','v153-baseline','v153-next-job','v153-next-move']) set(id, null);
+    set('v153-experiments', 'ONE MAX');
+    set('v153-human', 'REQUIRED');
+    set('v153-orders', 'OFF');
+    set('v153-capital', '0R');
+    return;
+  }
+
+  const admission = gate?.admission ?? {};
+  const gates = gate?.gates ?? {};
+  const cooldown = gate?.cooldown ?? {};
+  const qa = gate?.qa ?? {};
+  const previous = gate?.previous_shift ?? {};
+  const infrastructure = gate?.infrastructure ?? {};
+  const next = gate?.next_candidate ?? {};
+  const passed = Number(admission?.gates_passed || 0);
+  const total = Number(admission?.gate_count || 0);
+  const admitted = Boolean(admission?.admitted);
+
+  set('v153-state', `ADMISSION · ${first(gate?.state, 'UNKNOWN')}`);
+  set('v153-copy',
+    admitted
+      ? 'All scheduler admission gates pass. The next candidate may enter human-controlled planning, but V153 still cannot apply it.'
+      : 'A next candidate may exist, but at least one mutation admission gate is locked. No second scheduler change is permitted.'
+  );
+
+  set('v153-gate-score', `${passed}/${total}`);
+  set('v153-admitted', admitted ? 'REVIEW ELIGIBLE' : 'LOCKED');
+  set('v153-cooldown', `${Number(cooldown?.minutes_since_last_mutation || 0).toFixed(1)}m / ${Number(cooldown?.minimum_minutes || 45)}m`);
+  set('v153-qa', gates?.qa_fresh_pass ? `PASS · ${Number(qa?.age_minutes || 0).toFixed(1)}m` : 'LOCKED');
+  set('v153-infra', gates?.infrastructure_normal ? 'NORMAL' : 'LOCKED');
+  set('v153-previous', gates?.previous_shift_healthy ? 'HEALTHY' : String(previous?.state || 'LOCKED'));
+  set('v153-baseline', gates?.v1461_still_improved ? 'IMPROVED' : 'LOCKED');
+  set('v153-next-job', next?.jobname ?? 'NONE');
+  set('v153-next-move', next?.jobname ? `${String(next?.current_schedule || '?')} → ${String(next?.recommended_schedule || '?')}` : 'NONE');
+  set('v153-experiments', 'ONE MAX');
+  set('v153-human', 'REQUIRED');
+  set('v153-orders', 'OFF');
+  set('v153-capital', '0R');
+
+  const host = byId('v153-gates');
+  if (host) {
+    host.replaceChildren();
+    const items = [
+      [Boolean(gates?.previous_shift_healthy), 'PREVIOUS SHIFT HEALTHY'],
+      [Boolean(gates?.cooldown_mature), '45M COOLDOWN'],
+      [Boolean(gates?.qa_fresh_pass), 'FRESH QA PASS'],
+      [Boolean(gates?.infrastructure_normal), 'INFRA NORMAL'],
+      [Boolean(gates?.v1461_still_improved), 'V146.1 IMPROVED'],
+      [Boolean(gates?.candidate_exact_schedule_match), 'CANDIDATE EXACT MATCH']
+    ];
+    for (const [pass,label] of items) {
+      const chip = document.createElement('span');
+      chip.className = pass ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = `${String(label)} · ${pass ? 'PASS' : 'LOCKED'}`;
+      host.appendChild(chip);
+    }
+  }
+
+  const reasons = Array.isArray(admission?.block_reasons) ? admission.block_reasons.join(', ').replaceAll('_',' ') : 'none';
+  set('v153-detail',
+    `Admission ${admitted ? 'review eligible' : 'locked'} · gates ${passed}/${total} · cooldown ${Number(cooldown?.minutes_since_last_mutation || 0).toFixed(1)}m · QA ${String(qa?.state || 'n/a')} · infrastructure ${String(infrastructure?.v147_state || 'n/a')} · previous ${String(previous?.state || 'n/a')} · next ${String(next?.jobname || 'none')} · blockers ${reasons} · capital 0R.`
+  );
+}
+
 async function loadV152PostShiftObserver() {
   const obs = await readLocal('/api/post-shift-observer', 20000);
   if (!obs?.ok) {
@@ -2476,6 +2546,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV153SchedulerMutationAdmission(),
       loadV152PostShiftObserver(),
       loadV151SingleCandidatePlanShadow(),
       loadV150NetworkSlaEvidenceShadow(),
