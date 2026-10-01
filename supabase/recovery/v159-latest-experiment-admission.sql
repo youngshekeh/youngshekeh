@@ -1,6 +1,6 @@
--- V159.1 Bounded Latest-Experiment Scheduler Mutation Admission
--- Keeps the seven-gate admission policy while removing duplicate direct V146.1/V147
--- and dual-observer fan-out from the runtime path. Read-only.
+-- V159.2 Live-Revalidated Bounded Latest-Experiment Scheduler Mutation Admission
+-- Extends bounded admission with V162 live-graph collision revalidation while keeping
+-- direct V146.1/V147 and direct V151 fan-out out of the runtime path. Read-only.
 
 create or replace function public.get_v159_latest_experiment_admission()
 returns jsonb
@@ -10,7 +10,7 @@ set search_path to 'public','private','cron','pg_catalog','pg_temp'
 as $function$
 declare
   v_now timestamptz := now();
-  v_v151 jsonb := '{}'::jsonb;
+  v_v162 jsonb := '{}'::jsonb;
   v_v156 jsonb := '{}'::jsonb;
   v_observer jsonb := '{}'::jsonb;
 
@@ -27,6 +27,7 @@ declare
   v_baseline_pass boolean := false;
   v_candidate_present boolean := false;
   v_candidate_match boolean := false;
+  v_candidate_revalidation_pass boolean := false;
 
   v_qa_state text;
   v_qa_failed integer := 0;
@@ -34,7 +35,7 @@ declare
   v_qa_checked_at timestamptz;
   v_qa_age_minutes numeric;
 
-  v_gate_count integer := 7;
+  v_gate_count integer := 8;
   v_gate_passed integer := 0;
   v_state text := 'LOCKED';
   v_reasons jsonb := '[]'::jsonb;
@@ -46,9 +47,9 @@ begin
   end;
 
   begin
-    v_v151 := public.get_v151_single_candidate_plan_shadow();
+    v_v162 := public.get_v162_prospective_collision_revalidation();
   exception when others then
-    v_v151 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
+    v_v162 := jsonb_build_object('ok',false,'state','UNAVAILABLE');
   end;
 
   with mutation_events as (
@@ -144,18 +145,15 @@ begin
     and coalesce((v_v156->'downstream'->>'v1461_guard_paused_jobs')::integer,999)=0
     and coalesce((v_v156->'downstream'->>'v1461_unexpected_drift_jobs')::integer,999)=0;
 
-  v_candidate_present := coalesce(v_v151->'plan'->>'jobname','')<>'';
+  v_candidate_present := coalesce(v_v162->'candidate'->>'jobname','')<>'';
+  v_candidate_match :=
+    v_candidate_present
+    and coalesce((v_v162->'candidate'->>'exact_live_schedule_match')::boolean,false);
 
-  if v_candidate_present then
-    select exists(
-      select 1
-      from cron.job j
-      where j.jobname=v_v151->'plan'->>'jobname'
-        and j.active
-        and j.schedule=v_v151->'plan'->>'current_schedule'
-    )
-    into v_candidate_match;
-  end if;
+  v_candidate_revalidation_pass :=
+    v_candidate_present
+    and coalesce(v_v162->>'state','')='REVALIDATION_CLEAR_FOR_HUMAN_REVIEW'
+    and coalesce((v_v162->'revalidation'->>'clear')::boolean,false);
 
   v_gate_passed :=
     (case when v_latest_experiment_accepted then 1 else 0 end)
@@ -164,6 +162,7 @@ begin
     +(case when v_platform_pass then 1 else 0 end)
     +(case when v_infra_pass then 1 else 0 end)
     +(case when v_baseline_pass then 1 else 0 end)
+    +(case when v_candidate_revalidation_pass then 1 else 0 end)
     +(case when v_candidate_present and v_candidate_match then 1 else 0 end);
 
   if not v_latest_experiment_accepted then
@@ -188,6 +187,9 @@ begin
   if not v_baseline_pass then
     v_reasons := v_reasons || jsonb_build_array('V1461_BASELINE_NOT_ELIGIBLE');
   end if;
+  if v_candidate_present and not v_candidate_revalidation_pass then
+    v_reasons := v_reasons || jsonb_build_array('PROSPECTIVE_COLLISION_REVALIDATION_BLOCKED');
+  end if;
   if not v_candidate_present then
     v_reasons := v_reasons || jsonb_build_array('NO_NEXT_SINGLE_CANDIDATE');
   elsif not v_candidate_match then
@@ -208,6 +210,8 @@ begin
     v_state := 'LOCKED_INFRASTRUCTURE_PRESSURE';
   elsif not v_baseline_pass then
     v_state := 'LOCKED_BASELINE_REGRESSION';
+  elsif v_candidate_present and not v_candidate_revalidation_pass then
+    v_state := 'LOCKED_PROSPECTIVE_COLLISION_REVALIDATION';
   elsif not v_candidate_present then
     v_state := 'LOCKED_NO_NEXT_CANDIDATE';
   else
@@ -216,7 +220,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v159.1-latest-experiment-admission-db-v2-bounded',
+    'version','v159.2-latest-experiment-admission-db-v3-live-revalidated',
     'generated_at',v_now,
     'state',v_state,
     'admission',jsonb_build_object(
@@ -234,6 +238,7 @@ begin
       'platform_clear',v_platform_pass,
       'infrastructure_normal',v_infra_pass,
       'baseline_eligible',v_baseline_pass,
+      'prospective_collision_revalidation',v_candidate_revalidation_pass,
       'candidate_exact_schedule_match',v_candidate_present and v_candidate_match
     ),
     'latest_mutation',jsonb_build_object(
@@ -266,17 +271,27 @@ begin
     ),
     'next_candidate',jsonb_build_object(
       'present',v_candidate_present,
-      'jobname',v_v151->'plan'->>'jobname',
-      'current_schedule',v_v151->'plan'->>'current_schedule',
-      'recommended_schedule',v_v151->'plan'->>'recommended_schedule',
-      'rollback_schedule',v_v151->'plan'->>'rollback_schedule',
-      'estimated_relief_index',v_v151->'plan'->'estimated_relief_index',
+      'jobname',v_v162->'candidate'->>'jobname',
+      'current_schedule',v_v162->'candidate'->>'planner_current_schedule',
+      'recommended_schedule',v_v162->'candidate'->>'recommended_schedule',
+      'rollback_schedule',v_v162->'candidate'->>'planner_current_schedule',
+      'estimated_relief_index',v_v162->'planner_context'->'estimated_relief_index',
       'exact_schedule_match',v_candidate_match,
-      'planner_state',v_v151->>'state'
+      'planner_state',v_v162->'planner_context'->>'v151_state'
+    ),
+    'prospective_revalidation',jsonb_build_object(
+      'state',v_v162->>'state',
+      'clear',v_v162->'revalidation'->'clear',
+      'blockers',v_v162->'revalidation'->'blockers',
+      'current_peer_triggers',v_v162->'live_density'->'current_peer_triggers',
+      'proposed_peer_triggers',v_v162->'live_density'->'proposed_peer_triggers',
+      'peer_trigger_delta',v_v162->'live_density'->'peer_trigger_delta',
+      'controlled_overlap_count',v_v162->'controlled_experiment_reservations'->'overlap_count'
     ),
     'runtime_budget',jsonb_build_object(
       'v156_calls',1,
-      'v151_calls',1,
+      'v162_calls',1,
+      'direct_v151_calls',0,
       'latest_observer_calls',1,
       'direct_v147_calls',0,
       'direct_v1461_calls',0,
@@ -293,7 +308,7 @@ begin
       'human_review_required',true,
       'latest_experiment_admission_can_unlock_capital',false
     ),
-    'truth_label','BOUNDED_LATEST_EXPERIMENT_SCHEDULER_ADMISSION_NOT_TRADING_PERMISSION'
+    'truth_label','LIVE_REVALIDATED_BOUNDED_LATEST_EXPERIMENT_ADMISSION_NOT_TRADING_PERMISSION'
   );
 end;
 $function$;
