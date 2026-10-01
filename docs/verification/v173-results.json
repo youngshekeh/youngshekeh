@@ -1,0 +1,388 @@
+{
+  "version": "V173",
+  "recorded_at": "2026-10-01T19:32:31.174Z",
+  "repository": {
+    "pull_request": "https://github.com/youngshekeh/youngshekeh/pull/111",
+    "feature_sha": "657487e868332429bd4f74797e3bf17bf7255d52",
+    "production_sha": "6f9953667975528ae13ca8c7d05f8a7f167ad325",
+    "workflow_runs": [
+      {
+        "id": 36913791498,
+        "name": "Verify V157 Controlled Member Alert Shift",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791498"
+      },
+      {
+        "id": 36913791438,
+        "name": "Verify V164 Bounded QA Runtime",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791438"
+      },
+      {
+        "id": 36913791843,
+        "name": "Verify V150 Network SLA Evidence Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791843"
+      },
+      {
+        "id": 36913791646,
+        "name": "Verify V154 Rollback Rehearsal Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791646"
+      },
+      {
+        "id": 36913791812,
+        "name": "Verify V152 Post Shift Observer",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791812"
+      },
+      {
+        "id": 36913791657,
+        "name": "Verify V151.1 Controlled Anomaly Shift Package",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791657"
+      },
+      {
+        "id": 36913791659,
+        "name": "Verify V151 Single Candidate Plan Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791659"
+      },
+      {
+        "id": 36913791623,
+        "name": "Verify V155 Guard-Aware V146.1 Status",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791623"
+      },
+      {
+        "id": 36913791635,
+        "name": "Verify V153 Scheduler Mutation Admission",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791635"
+      },
+      {
+        "id": 36913791712,
+        "name": "Verify V161 Scheduler Experiment Registry",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791712"
+      },
+      {
+        "id": 36913791618,
+        "name": "Verify V162 Prospective Collision Revalidation",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791618"
+      },
+      {
+        "id": 36913791433,
+        "name": "Verify V160 Latest Rollback Rehearsal",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791433"
+      },
+      {
+        "id": 36913791429,
+        "name": "Verify V173 Owner Paper Quote",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791429"
+      },
+      {
+        "id": 36913791423,
+        "name": "Verify V158 Member Alert Post Shift Observer",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791423"
+      },
+      {
+        "id": 36913791533,
+        "name": "Verify V146 Peak Minute Spreader",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791533"
+      },
+      {
+        "id": 36913791590,
+        "name": "Verify V156 Quota Guard Recovery Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791590"
+      },
+      {
+        "id": 36913791784,
+        "name": "Verify V149 Dependency Isolation Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791784"
+      },
+      {
+        "id": 36913791665,
+        "name": "Verify V146.1 Controlled Peak Spreader",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791665"
+      },
+      {
+        "id": 36913791482,
+        "name": "Verify V172 Paper Broker Feed",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791482"
+      },
+      {
+        "id": 36913791769,
+        "name": "Verify V163 Safe Alternative Minute Search",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791769"
+      },
+      {
+        "id": 36913791925,
+        "name": "Verify V166 Production Closure Gate",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791925"
+      },
+      {
+        "id": 36913791609,
+        "name": "Verify V148 Predictive Collision Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791609"
+      },
+      {
+        "id": 36913791774,
+        "name": "Verify V167 Capital OS",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791774"
+      },
+      {
+        "id": 36913791448,
+        "name": "Verify V159 Latest Experiment Admission",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791448"
+      },
+      {
+        "id": 36913791605,
+        "name": "Verify V147 Connection Pressure Shadow",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791605"
+      },
+      {
+        "id": 36913791705,
+        "name": "Verify V165 Safe Alternative Admission Handoff",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791705"
+      },
+      {
+        "id": 36913791436,
+        "name": "Verify THE FATHER ANALYTICS",
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913791436"
+      },
+      {
+        "id": 36913774079,
+        "name": "Verify V173 Owner Paper Quote",
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/youngshekeh/youngshekeh/actions/runs/36913774079"
+      }
+    ]
+  },
+  "deployment": {
+    "id": "dpl_LYWM7DGHN3gsT5VMH5n5SRpESrt2",
+    "url": "the-father-analytics-qs41t1a3s-the-father.vercel.app",
+    "state": "READY",
+    "alias": "https://thefatheranalytics.com"
+  },
+  "tests": {
+    "local_total": 81,
+    "passed": 81,
+    "owner_script_fixture_cases": 11,
+    "owner_quote_module_cases": 46,
+    "v172_cases": 24,
+    "fixtures_use_controlled_http": true,
+    "real_owner_sign_in_tested": false,
+    "genuine_broker_source_tested": false
+  },
+  "live_owner": {
+    "http": 200,
+    "url": "https://thefatheranalytics.com/owner",
+    "quote_form_visible": false,
+    "quote_submit_enabled": false,
+    "draft": "",
+    "receipt": "No receipt confirmed.",
+    "application_console_errors_captured": 0
+  },
+  "qa": {
+    "state": "BLOCKED",
+    "expected_checks": 78,
+    "matrix_returned": false,
+    "edge_version": 44,
+    "first_attempt": {
+      "status": 503,
+      "body": {
+        "ok": false,
+        "error": "private_runtime_unavailable"
+      },
+      "date": "Thu, 01 Oct 2026 19:24:27 GMT"
+    },
+    "follow_up": {
+      "status": 503,
+      "body": {
+        "ok": false,
+        "error": "private_runtime_unavailable"
+      },
+      "date": "Thu, 01 Oct 2026 19:25:40 GMT"
+    }
+  },
+  "production_closure": {
+    "ok": false,
+    "version": "v166-production-closure-gate-v1",
+    "generated_at": "2026-10-01T19:26:26.209Z",
+    "state": "RESEARCH_PRODUCTION_READY_PAPER_OR_EXECUTION_BLOCKED",
+    "closure": {
+      "platform_research_ready": true,
+      "autonomous_paper_ready": false,
+      "scheduler_review_ready": false,
+      "live_execution_ready": false,
+      "real_money_launch_complete": false,
+      "note": "The research/paper product can operate while real-money execution remains fail-closed."
+    },
+    "live_market": {
+      "symbol": "GC=F / XAUUSD execution requires broker quote",
+      "price": 4208.1,
+      "market_time": "2026-10-01T19:15:48.000Z",
+      "market_status": "DELAYED_LIVE",
+      "engine_state": "MIXED",
+      "delayed_feed": true,
+      "hard_stale": false,
+      "quote_age_minutes": 10.2,
+      "execution_quote_allowed": false,
+      "desk_state": "WAIT_FOR_CONFIRMATION",
+      "daily_bias": "NEUTRAL",
+      "daily_structure": "LOWER_LIQUIDITY_SWEEP",
+      "state_phase": "LIQUIDITY_SWEEP_DOWN",
+      "path_state": "NEUTRAL_PATH_WATCH",
+      "system_action": "WAIT",
+      "system_capital_permission": "0R"
+    },
+    "research_evidence": {
+      "resolved_shadow_sample": 0,
+      "mature_sample_required": 30,
+      "sample_state": "UNKNOWN",
+      "execution_evidence_state": "UNKNOWN",
+      "public_statistics": null,
+      "broker_adapter_state": "NOT_CONNECTED",
+      "infrastructure_passed": 0,
+      "infrastructure_total": 0,
+      "broker_lab_state": "UNAVAILABLE",
+      "production_broker_readiness": "NOT_TESTED"
+    },
+    "scheduler": {
+      "state": "FAIL_CLOSED",
+      "gates_passed": 0,
+      "gate_count": 0,
+      "handoff_state": "FAIL_CLOSED",
+      "route": "NONE",
+      "candidate": null,
+      "automatic_rescheduling": false,
+      "automatic_rollback": false
+    },
+    "execution_release": {
+      "production_prerequisites": {},
+      "blockers": [
+        "DEPENDENCY_HEALTH_INCOMPLETE",
+        "MARKET_FEED_DELAYED",
+        "EXECUTION_GRADE_QUOTE_UNAVAILABLE",
+        "MATURE_SAMPLE_BELOW_30",
+        "SCHEDULER_HUMAN_REVIEW_GATE_NOT_CLEAR",
+        "LIVE_EXECUTION_RELEASE_NOT_READY"
+      ],
+      "blocker_count": 6,
+      "live_execution_ready": false,
+      "live_order_submission_enabled": false,
+      "real_order_sent": false,
+      "human_release_required": true
+    },
+    "dependencies": {
+      "gold_execution_desk": true,
+      "opportunity_governor": false,
+      "execution_reality": false,
+      "broker_adapter_lab": false,
+      "scheduler_admission": false,
+      "safe_alternative_handoff": false
+    },
+    "governance": {
+      "action_permitted": "WAIT",
+      "capital_permission": "0R",
+      "live_order_routing": false,
+      "order_submission_enabled": false,
+      "automatic_real_capital": false,
+      "automatic_rescheduling": false,
+      "automatic_rollback": false,
+      "automatic_policy_promotion": false,
+      "human_release_required": true,
+      "v166_can_unlock_capital": false
+    },
+    "truth_label": "PRODUCTION_CLOSURE_GATE_NOT_TRADING_PERMISSION"
+  },
+  "diagnostics": {
+    "cron_failed_runs_in_observed_10m": 77,
+    "cron_failure_reason": "job startup timeout",
+    "max_connections_observed": 60,
+    "database_diagnostic_error": "Connection terminated due to connection timeout",
+    "specific_root_cause": "UNVERIFIED",
+    "worker_or_scheduler_changes": false
+  },
+  "boundaries": {
+    "capital_permission": "0R",
+    "action": "WAIT",
+    "live_orders": false,
+    "broker_connected": false,
+    "persisted_test_quotes": 0
+  }
+}
