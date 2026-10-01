@@ -1653,7 +1653,13 @@ async function legacyHandler(req:any,res:any){
     ['Global Trends Evidence Pulse','ACTIVE','Structural adoption + research activity + market attention + digital-asset breadth'],
     ['Real Yield & Breakeven','ACTIVE',commonDate?`10Y real ${commonReal}% · breakeven ${commonBreakeven}% · ${commonDate}`:'WITHHELD'],
     ['Treasury Auction / Funding','ACTIVE',treasuryFunding?.latest?`${treasuryFunding.latest.term} BTC ${treasuryFunding.latest.bid_to_cover} · ${treasuryFunding.summary.state.replaceAll('_',' ')}`:'WITHHELD'],
-    ['Options / Volatility Intelligence','ACTIVE',gvz?.ok?`GVZ ${gvz.value} · ${gvz.regime} · ${compositeVolState.replaceAll('_',' ')}`:'WITHHELD']
+    ['Options / Volatility Intelligence','ACTIVE',gvz?.ok?`GVZ ${gvz.value} · ${gvz.regime} · ${compositeVolState.replaceAll('_',' ')}`:'WITHHELD'],
+    ['Professional Capital OS','ACTIVE SURFACE','Governed trading & investment journal · portfolio manager · user-defined asset allocator'],
+    ['Official Macro Calendar','ACTIVE SURFACE','BLS + Federal Reserve + BEA schedules · official fallback permitted · event proximity never grants trading permission'],
+    ['Earnings Intelligence','ACTIVE SURFACE','Provider-sourced earnings calendar · estimates are upstream fields · no estimates fabricated'],
+    ['Production Closure Gate','ACTIVE SURFACE','Separates research readiness · autonomous paper readiness · scheduler review · live-execution release'],
+    ['Full-Engine Certification','SEPARATE QA CHANNEL','V168.1 staged certification matrix · 73 contracts · result intentionally not embedded in Mission Brief'],
+    ['Scheduler Evidence Cache','ACTIVE','V168.5 out-of-band V150 evidence refresh · hot-path 24h history rescans removed']
   ].map(([name,state,detail])=>({name,state,detail}));
 
   const checkpointProofRequested=new URL(req.url,BASE).searchParams.get('proof')==='checkpoint';
@@ -1705,7 +1711,7 @@ async function legacyHandler(req:any,res:any){
   res.setHeader('Cache-Control','no-store');
   return res.status(200).json({
     ok:true,
-    version:'v123.1-unified-intelligence-experience-v4',
+    version:'v169.0-integrated-capital-certification-registry-v5',
     generated_at:new Date().toISOString(),
     truth_label:'PUBLIC_SAFE_MISSION_BRIEF',
     what_changed:{
