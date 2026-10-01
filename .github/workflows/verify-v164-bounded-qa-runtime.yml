@@ -1,0 +1,41 @@
+name: Verify V164 Bounded QA Runtime
+
+on:
+  push:
+    branches:
+      - tfa-v164-bounded-qa-runtime
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v164-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bounded QA runtime
+        run: |
+          test -f supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "v164-bounded-autonomous-regression-matrix-v45" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "async function tfaBoundedAll" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "await tfaBoundedAll" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "],8);" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          if grep -q "]=await Promise.all(\[" supabase/functions/runtime-v115-autonomous-qa/index.ts; then
+            echo "Unbounded primary QA fan-out still present"
+            exit 1
+          fi
+      - name: Preserve QA safety contracts
+        run: |
+          grep -q "v112_capital_firewall" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "v1132_release_integrity" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "v115_private_runtime_anonymous_denial" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "v116_vercel_workload_identity_transport" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "capital_permission==='0R'" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "LIVE ORDERS · OFF" supabase/functions/runtime-v115-autonomous-qa/index.ts || true
