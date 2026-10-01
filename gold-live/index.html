@@ -120,7 +120,7 @@
       <section id="v145-connection-admission-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
-            <span class="kicker">V145.1 · CONNECTION ADMISSION SHADOW</span>
+            <span class="kicker">V145.2 · CONNECTION ADMISSION SHADOW</span>
             <h3 id="v145-state">CHECKING</h3>
             <p id="v145-copy">Evaluating same-cadence cron groups for safe future serialization without changing any live schedule.</p>
           </div>
@@ -160,7 +160,7 @@
 
         <div class="execution-gate-head">
           <span>SHADOW SERIALIZATION CANDIDATES</span>
-          <small>Only SQL-only, failure-screened cadence groups appear here. Every candidate still requires dependency and failure-isolation review.</small>
+          <small>Only groups that clear command, nested-call, network-I/O and failure screens can appear here. Every candidate still requires transaction and failure-isolation review.</small>
         </div>
         <div id="v145-candidate-list" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">ANALYZING COLLISION GROUPS</span></div>
         <p id="v145-detail" class="autonomy-detail">V145 is a connection-admission research layer only. It cannot bundle jobs, change schedules, place orders, or increase capital permission.</p>
