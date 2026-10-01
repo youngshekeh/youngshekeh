@@ -1,0 +1,19 @@
+name: Verify V176 Closure Pressure Control
+on:
+  push:
+    branches: [tfa-v176-closure-pressure, the-father-analytics-staging, the-father-analytics-deploy]
+  pull_request:
+    branches: [the-father-analytics-staging, the-father-analytics-deploy]
+permissions:
+  contents: read
+jobs:
+  closure-pressure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check api/production-closure.js
+      - run: node --test tests/v176-production-closure-pressure.test.mjs
