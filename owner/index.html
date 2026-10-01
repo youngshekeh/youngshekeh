@@ -48,6 +48,27 @@
           Verify MFA
         </button>
       </section>
+      <section id="paperQuoteIntake" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V173 · OWNER PAPER QUOTE INTAKE</div>
+        <h2>Record a demo source quote.</h2>
+        <p class="muted">Paste the latest XAUUSD quote JSON from your demo source. Quotes expire after 10 seconds. Keep the source timestamp and sequence intact; obtain a new event when a quote is stale.</p>
+        <p class="muted">Required fields: mode PAPER_DEMO, asset XAUUSD, provenance BROKER_DEMO_USER_SUPPLIED, source_code, provider_symbol, sequence, observed_at, bid and ask. Never paste passwords, API keys or broker credentials.</p>
+        <form id="paperQuoteForm">
+          <label for="paperQuoteJson">Demo quote JSON</label>
+          <textarea id="paperQuoteJson" rows="8" maxlength="16384" spellcheck="false" autocomplete="off" placeholder="Paste the source quote JSON" style="width: 100%; margin-top: 8px"></textarea>
+          <button id="paperQuoteSubmit" type="submit" disabled style="margin-top: 12px">Record paper quote</button>
+        </form>
+        <div id="paperQuoteResult" class="muted" role="status" aria-live="polite" style="margin-top: 12px">Owner verification and MFA are required.</div>
+        <div id="paperQuoteReceipt" class="muted" style="margin-top: 8px">No receipt confirmed.</div>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card"><div class="label">FEED STATUS</div><div id="paperQuoteFeedState" class="value wait">CHECKING</div></div>
+          <div class="card"><div class="label">REAL CAPITAL</div><div class="value">0R · LOCKED</div></div>
+        </div>
+        <button id="paperQuoteRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh paper status</button>
+        <p id="paperQuoteFeedDetail" class="muted">No demo source has been confirmed.</p>
+        <p class="muted">A paper receipt confirms intake only. Broker provenance remains unverified, live orders remain OFF, and a manually supplied quote does not connect an autonomous feed.</p>
+        <a class="secondary" href="../gold-live/#v172-paper-broker-feed">View the public paper feed</a>
+      </section>
       <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V127 · REVIEW INTELLIGENCE</div>
         <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>

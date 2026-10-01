@@ -1,11 +1,108 @@
+      import { createPaperQuoteSubmitter, paperQuoteMessage } from './owner-paper-quote.mjs';
+      import { paperQuoteView } from './paper-quote-view.mjs';
+
       const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const FUNCTIONS = `${SUPABASE}/functions/v1`;
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
       const $ = id => document.getElementById(id);
       let accessToken = null;
       let factorId = null;
+      let ownerVerified = false;
+      let ownerMfaReady = false;
+      let paperQuoteBusy = false;
+      let paperStatusBusy = false;
+      let paperStatus = null;
+      let paperReceipt = null;
 
-      async function functionPost(path, body) {
+      function lockOwnerPaperQuote() {
+        ownerMfaReady = false;
+        paperStatus = null;
+        paperReceipt = null;
+        $('paperQuoteIntake').classList.add('hidden');
+        $('paperQuoteSubmit').disabled = true;
+        $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
+        $('paperQuoteFeedState').textContent = 'CHECKING';
+        $('paperQuoteResult').textContent = 'Owner verification and MFA are required.';
+      }
+
+      function renderPaperQuoteStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        const view = paperQuoteView(paperStatus);
+        $('paperQuoteFeedState').textContent = view.state.replaceAll('_', ' ');
+        $('paperQuoteFeedDetail').textContent = view.state === 'PAPER_QUOTE_FRESH_UNVERIFIED'
+          ? `Demo bid ${view.bid} · ask ${view.ask} · observed spread ${view.spread.toFixed(4)}. Broker provenance remains unverified.`
+          : view.state === 'NOT_CONNECTED'
+            ? 'No demo source quote is recorded. Live orders remain OFF.'
+            : view.state === 'UNAVAILABLE'
+              ? 'Status is unavailable. Quote values are withheld.'
+              : 'The demo quote is stale or invalid. Quote values are withheld until a fresh source event arrives.';
+        if (paperReceipt) {
+          const expired = Date.now() >= Date.parse(paperReceipt.expires_at);
+          $('paperQuoteReceipt').textContent = `Receipt #${paperReceipt.receipt_id} · ${paperReceipt.inserted ? 'recorded' : 'already recorded'} · ${expired ? 'quote expired' : 'quote expires at ' + paperReceipt.expires_at} · intake only, capital 0R.`;
+        }
+      }
+
+      async function loadPaperQuoteStatus() {
+        if (paperStatusBusy || !ownerVerified || !ownerMfaReady) return;
+        paperStatusBusy = true;
+        const tokenAtStart = accessToken;
+        try {
+          const response = await fetch(`${FUNCTIONS}/paper-broker-quote-intake`, {
+            headers: { apikey: KEY, Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(8000),
+          });
+          const data = await response.json().catch(() => null);
+          if (accessToken === tokenAtStart && ownerVerified && ownerMfaReady) paperStatus = response.ok ? data : null;
+        } catch {
+          if (accessToken === tokenAtStart) paperStatus = null;
+        } finally {
+          paperStatusBusy = false;
+          renderPaperQuoteStatus();
+        }
+      }
+
+      function enableOwnerPaperQuote() {
+        if (!ownerVerified || !accessToken) return;
+        ownerMfaReady = true;
+        $('paperQuoteIntake').classList.remove('hidden');
+        $('paperQuoteSubmit').disabled = paperQuoteBusy;
+        $('paperQuoteResult').textContent = 'Owner and MFA verified. Submit a fresh demo source event; no automatic submission occurs.';
+        void loadPaperQuoteStatus();
+      }
+
+      const paperSubmitter = createPaperQuoteSubmitter({
+        getSession: () => ({token: accessToken, owner: ownerVerified, mfa: ownerMfaReady}),
+        send: quote => functionPost('paper-broker-quote-intake', quote, 10000),
+      });
+
+      async function submitPaperQuote(event) {
+        event.preventDefault();
+        if (paperQuoteBusy || !ownerVerified || !ownerMfaReady) return;
+        paperQuoteBusy = true;
+        $('paperQuoteSubmit').disabled = true;
+        $('paperQuoteResult').textContent = 'Submitting one paper source event…';
+        try {
+          const result = await paperSubmitter.submit($('paperQuoteJson').value);
+          if (result.error === 'session_changed') return;
+          if (['invalid_session','aal2_required','owner_only'].includes(result.error)) {
+            lockOwnerPaperQuote();
+            $('result').textContent = paperQuoteMessage(result.error);
+            return;
+          }
+          if (result.ok) {
+            paperReceipt = result;
+            $('paperQuoteResult').textContent = 'Paper intake receipt confirmed. Broker provenance remains unverified; live orders remain OFF.';
+          } else {
+            $('paperQuoteResult').textContent = result.message;
+          }
+          renderPaperQuoteStatus();
+          await loadPaperQuoteStatus();
+        } finally {
+          paperQuoteBusy = false;
+          $('paperQuoteSubmit').disabled = !ownerVerified || !ownerMfaReady;
+        }
+      }
+
+      async function functionPost(path, body, timeout = 15000) {
         const response = await fetch(`${FUNCTIONS}/${path}`, {
           method: 'POST',
           headers: {
@@ -15,6 +112,7 @@
           },
           body: JSON.stringify(body),
           cache: 'no-store',
+          signal: AbortSignal.timeout(timeout),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok)
@@ -39,6 +137,7 @@
           throw new Error(data?.error || 'owner_session_failed');
         if (data?.is_owner !== true)
           throw new Error('Authenticated account is not authorized as owner');
+        ownerVerified = true;
       }
 
       const REVIEW_LABELS = {
@@ -211,6 +310,7 @@
       }
 
       async function loadMfa() {
+        lockOwnerPaperQuote();
         const status = await functionPost('owner-mfa-actions', {
           action: 'status',
         });
@@ -222,11 +322,12 @@
             'No verified owner MFA factor is enrolled. Use the existing protected Owner Portal to enroll an authenticator.';
           return;
         }
-        if (status.aal2) {
+        if (status.aal2 === true) {
           $('mfaState').textContent = 'AAL2 READY';
           $('mfaState').className = 'value good';
           $('mfaDetail').textContent =
             'Owner verification and MFA are active for this session.';
+          enableOwnerPaperQuote();
           await loadReviewInbox();
           return;
         }
@@ -240,6 +341,17 @@
       }
 
       async function signIn() {
+        lockOwnerPaperQuote();
+        ownerVerified = false;
+        accessToken = null;
+        factorId = null;
+        $('reviewInbox').classList.add('hidden');
+        $('reviewIntelligence').classList.add('hidden');
+        $('reviewQueue').replaceChildren();
+        $('reviewIntelHorizons').replaceChildren();
+        $('mfa').classList.add('hidden');
+        $('code').classList.add('hidden');
+        $('verify').classList.add('hidden');
         const email = $('email').value.trim();
         const password = $('password').value;
         if (!email || !password) {
@@ -289,13 +401,9 @@
           if (result?.session?.access_token)
             accessToken = result.session.access_token;
           if (result?.access_token) accessToken = result.access_token;
-          $('mfaState').textContent = 'AAL2 READY';
-          $('mfaState').className = 'value good';
-          $('mfaDetail').textContent =
-            'Owner MFA verified. Protected owner command is unlocked.';
           $('code').classList.add('hidden');
           $('verify').classList.add('hidden');
-          await loadReviewInbox();
+          await loadMfa();
         } catch (error) {
           $('mfaDetail').textContent =
             error?.message || 'MFA verification failed.';
@@ -305,3 +413,6 @@
       $('signin').onclick = signIn;
       $('verify').onclick = verifyMfa;
       $('reviewRefresh').onclick = () => loadReviewInbox();
+      $('paperQuoteForm').addEventListener('submit', submitPaperQuote);
+      $('paperQuoteRefresh').onclick = () => void loadPaperQuoteStatus();
+      window.setInterval(() => { if (!document.hidden) renderPaperQuoteStatus(); }, 1000);

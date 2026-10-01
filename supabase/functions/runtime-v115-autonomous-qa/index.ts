@@ -24,7 +24,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v172.0-integrated-engine-certification-v49-paper-feed';
+const VERSION='v173.0-integrated-engine-certification-v50-owner-paper-quote';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -859,6 +859,12 @@ async function legacyHandler(req:any,res:any){
     gold.status===200&&typeof gold.body==='string'&&gold.body.includes('id="v172-paper-broker-feed"')
       &&gold.body.includes('id="v172-bid"')&&gold.body.includes('id="v172-feed-state"'),
     `status=${gold.status}, paper_feed=${typeof gold.body==='string'&&gold.body.includes('id="v172-paper-broker-feed"')?'present':'missing'}`,gold.latency_ms));
+  tests.push(result('v173_owner_paper_quote_surface_contract',
+    ownerSurface.status===200&&typeof ownerSurface.body==='string'
+      &&ownerSurface.body.includes('id="paperQuoteIntake" class="card status-box hidden"')
+      &&ownerSurface.body.includes('id="paperQuoteSubmit" type="submit" disabled')
+      &&ownerSurface.body.includes('id="paperQuoteJson"')&&ownerSurface.body.includes('id="paperQuoteReceipt"'),
+    `status=${ownerSurface.status}, paper_intake=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('id="paperQuoteIntake"')?'present':'missing'}, default_locked=true`,ownerSurface.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
