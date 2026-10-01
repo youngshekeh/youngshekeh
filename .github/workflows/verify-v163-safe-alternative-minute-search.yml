@@ -1,0 +1,39 @@
+name: Verify V163 Safe Alternative Minute Search
+on:
+  push:
+    branches:
+      - tfa-v163-safe-alternative-minute-search
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+permissions:
+  contents: read
+jobs:
+  v163-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/safe-alternative-minute-search.js
+      - name: Verify search assets
+        run: |
+          test -f supabase/recovery/v163-safe-alternative-minute-search.sql
+          test -f supabase/functions/runtime-v163-safe-alternative-minute-search/index.ts
+          grep -q "v163-safe-alternative-minute-search-db-v1" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "SAFE_ALTERNATIVE_FOUND" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "PEER_TRIGGERS_ASC_THEN_ABS_SHIFT_ASC_THEN_24H_STARTS_ASC" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "controlled_experiment_minutes_reserved',true" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "requires_strict_peer_improvement',true" supabase/recovery/v163-safe-alternative-minute-search.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v163-safe-alternative-minute-search.sql; then
+            echo "V163 must remain read-only"
+            exit 1
+          fi
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v163-safe-alternative-minute-search.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v163-safe-alternative-minute-search.sql
