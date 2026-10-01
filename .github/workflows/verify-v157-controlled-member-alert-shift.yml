@@ -1,0 +1,49 @@
+name: Verify V157 Controlled Member Alert Shift
+
+on:
+  push:
+    branches:
+      - tfa-v157-controlled-member-alert-shift
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v157-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact one-job package
+        run: |
+          test -f supabase/recovery/v157-controlled-member-alert-shift.sql
+          test -f supabase/recovery/v157-controlled-member-alert-shift-rollback.sql
+          grep -q "READY_FOR_NEXT_HUMAN_REVIEW" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "RECOVERY_CONFIRMED_RESTORED" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "ROLLBACK_REHEARSAL_READY" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "tfa-member-alert-sync" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "'50 \* \* \* \*'" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "'49 \* \* \* \*'" supabase/recovery/v157-controlled-member-alert-shift.sql
+          test "$(grep -c "cron.alter_job" supabase/recovery/v157-controlled-member-alert-shift.sql)" -eq 1
+          test "$(grep -c "cron.alter_job" supabase/recovery/v157-controlled-member-alert-shift-rollback.sql)" -eq 1
+      - name: Verify fail-closed prerequisites
+        run: |
+          grep -q "v157_admission_gate_not_ready" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "v157_quota_recovery_integrity_not_clean" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "v157_network_receipt_gate_failed" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "v157_exact_schedule_precondition_failed" supabase/recovery/v157-controlled-member-alert-shift.sql
+          grep -q "v157_rollback_refuses_unknown_drift" supabase/recovery/v157-controlled-member-alert-shift-rollback.sql
+      - name: Reject protected scopes
+        run: |
+          for protected in             tfa-flutterwave-reconciliation             tfa-v119-gold-desk-capture             tfa-v86-capital-permission-firewall             tfa-v136-gold-execution-firewall             tfa-v1371-paper-risk-consensus; do
+            if grep -q "$protected" supabase/recovery/v157-controlled-member-alert-shift.sql; then
+              echo "Protected workflow unexpectedly included: $protected"
+              exit 1
+            fi
+          done
