@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - tfa-v161-scheduler-experiment-registry
+      - tfa-v1611-registry-performance-hotfix
       - the-father-analytics-staging
       - the-father-analytics-deploy
   pull_request:
@@ -26,10 +27,20 @@ jobs:
         run: |
           test -f supabase/recovery/v161-scheduler-experiment-registry.sql
           test -f supabase/functions/runtime-v161-scheduler-experiment-registry/index.ts
-          grep -q "v161-scheduler-experiment-registry-db-v1" supabase/recovery/v161-scheduler-experiment-registry.sql
+          grep -q "v161.1-scheduler-experiment-registry-db-v2-bounded" supabase/recovery/v161-scheduler-experiment-registry.sql
           grep -q "CHAIN_HEALTHY_LATEST_OBSERVING" supabase/recovery/v161-scheduler-experiment-registry.sql
           grep -q "previous_experiment_must_be_accepted_before_next_apply',true" supabase/recovery/v161-scheduler-experiment-registry.sql
           grep -q "one_unaccepted_experiment_max',true" supabase/recovery/v161-scheduler-experiment-registry.sql
+          grep -q "'recursive_v159_calls',0" supabase/recovery/v161-scheduler-experiment-registry.sql
+          grep -q "'recursive_v160_calls',0" supabase/recovery/v161-scheduler-experiment-registry.sql
+          if grep -q "get_v159_latest_experiment_admission" supabase/recovery/v161-scheduler-experiment-registry.sql; then
+            echo "V161 registry must not recursively call V159"
+            exit 1
+          fi
+          if grep -q "get_v160_latest_rollback_rehearsal" supabase/recovery/v161-scheduler-experiment-registry.sql; then
+            echo "V161 registry must not recursively call V160"
+            exit 1
+          fi
       - name: Reject mutation paths
         run: |
           if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v161-scheduler-experiment-registry.sql; then
