@@ -536,6 +536,79 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV148PredictiveCollisionShadow() {
+  const model = await readLocal('/api/predictive-collision-shadow', 20000);
+  if (!model?.ok) {
+    set('v148-state', 'COLLISION MODEL · FAIL CLOSED');
+    set('v148-copy', 'The predictive collision model is unavailable. No scheduler recommendation or mutation is permitted.');
+    for (const id of ['v148-candidates','v148-ranked','v148-low','v148-review','v148-protected','v148-relief','v148-v1461-age','v148-v147-pressure']) set(id, null);
+    set('v148-reserved', 'RESERVED');
+    set('v148-rescheduling', 'OFF');
+    set('v148-orders', 'OFF');
+    set('v148-capital', '0R');
+    return;
+  }
+
+  const summary = model?.summary ?? {};
+  const deps = model?.dependencies ?? {};
+  const candidates = Array.isArray(model?.candidates) ? model.candidates : [];
+  const ranked = Number(summary?.ranked_candidates || 0);
+  const low = Number(summary?.low_complexity_candidates || 0);
+  const review = Number(summary?.review_required_candidates || 0);
+  const relief = Number(summary?.best_estimated_relief_index);
+  const observation = Number(deps?.v1461_observation_minutes);
+  const pressure = Number(deps?.v147_pressure_score);
+
+  set('v148-state', `COLLISION · ${first(model?.state, 'UNKNOWN')}`);
+  set('v148-copy',
+    low > 0
+      ? 'V148 found lower-complexity phase candidates, but all recommendations remain shadow-only until the V146.1 evidence window matures and a rollback-controlled plan is approved.'
+      : ranked > 0
+        ? 'V148 found potential collision relief, but every current candidate requires nested-call or network-I/O review. No automatic schedule move is allowed.'
+        : 'No candidate currently clears the protected-lane, reliability, cadence and load-relief screens.'
+  );
+
+  set('v148-candidates', ranked);
+  set('v148-ranked', ranked);
+  set('v148-low', low);
+  set('v148-review', review);
+  set('v148-protected', summary?.protected_jobs ?? null);
+  set('v148-relief', Number.isFinite(relief) ? relief.toFixed(2) : 'WITHHELD');
+  set('v148-v1461-age', Number.isFinite(observation) ? `${observation.toFixed(1)}m / 60m` : 'WITHHELD');
+  set('v148-v147-pressure', Number.isFinite(pressure) ? `${pressure}/100` : 'WITHHELD');
+  set('v148-ceiling', summary?.recommended_concurrent_ceiling ?? 8);
+  set('v148-reserved', model?.promotion_gate?.v1461_controlled_minutes_reserved ? 'RESERVED' : 'WITHHELD');
+  set('v148-rescheduling', 'OFF');
+  set('v148-orders', 'OFF');
+  set('v148-capital', '0R');
+
+  const host = byId('v148-candidate-list');
+  if (host) {
+    host.replaceChildren();
+    if (!candidates.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO REVIEW-WORTHY SHIFT FOUND';
+      host.appendChild(chip);
+    } else {
+      for (const item of candidates.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = item?.review_class === 'LOW_COMPLEXITY_REVIEW_CANDIDATE'
+          ? 'integrity-chip integrity-chip-clear'
+          : 'integrity-chip integrity-chip-warn';
+        const currentMinutes = Array.isArray(item?.current_trigger_minutes) ? item.current_trigger_minutes.join(',') : '?';
+        const targetMinutes = Array.isArray(item?.recommended_trigger_minutes) ? item.recommended_trigger_minutes.join(',') : '?';
+        chip.textContent = `${String(item?.jobname || 'job')} · ${currentMinutes} → ${targetMinutes} · relief ${Number(item?.estimated_relief_index || 0).toFixed(2)} · ${String(item?.review_class || 'REVIEW')}`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v148-detail',
+    `Hybrid model ${String(model?.forecast?.model_revision || 'n/a')} · candidates ${ranked} · low complexity ${low} · review required ${review} · protected ${Number(summary?.protected_jobs || 0)} · best relief index ${Number.isFinite(relief) ? relief.toFixed(2) : 'n/a'} · V146.1 ${Number.isFinite(observation) ? observation.toFixed(1) : 'n/a'}m · V147 pressure ${Number.isFinite(pressure) ? pressure : 'n/a'}/100 · auto apply OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV147ConnectionPressureShadow() {
   const pressure = await readLocal('/api/connection-pressure-shadow', 18000);
   if (!pressure?.ok) {
@@ -2133,6 +2206,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV148PredictiveCollisionShadow(),
       loadV147ConnectionPressureShadow(),
       loadV1461ControlledPeakSpreader(),
       loadV145ConnectionAdmissionShadow(),

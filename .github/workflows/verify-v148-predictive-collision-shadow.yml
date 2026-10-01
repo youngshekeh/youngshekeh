@@ -1,0 +1,47 @@
+name: Verify V148 Predictive Collision Shadow
+
+on:
+  push:
+    branches:
+      - tfa-v148-predictive-collision-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v148-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/predictive-collision-shadow.js
+      - name: Verify predictive model assets
+        run: |
+          test -f supabase/recovery/v148-predictive-collision-shadow.sql
+          test -f supabase/functions/runtime-v148-predictive-collision-shadow/index.ts
+          grep -q "v148-predictive-collision-shadow-db-v1" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "HISTORICAL_COLLISION_FORECAST_SHADOW_NOT_TRADING_PERMISSION" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "24H_MINUTE_OF_HOUR_REPEAT_PATTERN" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "protected_lanes_excluded',true" supabase/recovery/v148-predictive-collision-shadow.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v148-predictive-collision-shadow.sql; then
+            echo "V148 must not mutate cron"
+            exit 1
+          fi
+          grep -q "'automatic_apply',false" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v148-predictive-collision-shadow.sql
+          grep -q "capital_permission:'0R'" api/predictive-collision-shadow.js
+          grep -q "live_order_routing:false" api/predictive-collision-shadow.js
+      - name: Verify protected lane classifier
+        run: |
+          grep -q "gold|capital|permission|firewall|execution|risk|state|transition|provenance|quota" supabase/recovery/v148-predictive-collision-shadow.sql

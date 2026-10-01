@@ -117,6 +117,55 @@
 
 
 
+      <section id="v148-predictive-collision-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V148 · PREDICTIVE COLLISION OPTIMIZER SHADOW</span>
+            <h3 id="v148-state">CHECKING</h3>
+            <p id="v148-copy">Forecasting recurring minute-of-hour pressure from 24-hour evidence plus the current schedule graph, without changing cron.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v148-candidates">--</span><small>CANDIDATES</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">FORECAST MODEL · SHADOW</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO APPLY · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>RANKED CANDIDATES</span><strong id="v148-ranked">CHECKING</strong></article>
+          <article><span>LOW COMPLEXITY</span><strong id="v148-low">CHECKING</strong></article>
+          <article><span>REVIEW REQUIRED</span><strong id="v148-review">CHECKING</strong></article>
+          <article><span>PROTECTED JOBS</span><strong id="v148-protected">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>BEST RELIEF INDEX</span><strong id="v148-relief">CHECKING</strong></article>
+          <article><span>V146.1 OBSERVATION</span><strong id="v148-v1461-age">CHECKING</strong></article>
+          <article><span>V147 PRESSURE</span><strong id="v148-v147-pressure">CHECKING</strong></article>
+          <article><span>CONCURRENCY TARGET</span><strong id="v148-ceiling">8</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>V146.1 MINUTES</span><strong id="v148-reserved">RESERVED</strong><small>Controlled experiment minutes cannot be recommended as targets.</small></article>
+          <article><span>AUTO RESCHEDULING</span><strong id="v148-rescheduling">OFF</strong><small>V148 ranks only. It never edits cron.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v148-orders">OFF</strong><small>Collision forecasts cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v148-capital">0R</strong><small>The canonical capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>PREDICTIVE REVIEW QUEUE</span>
+          <small>Nested-call and network-I/O candidates remain review-only. Protected GOLD, capital, firewall, execution and risk lanes are excluded.</small>
+        </div>
+        <div id="v148-candidate-list" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">MODELING NEXT COLLISION WALLS</span></div>
+        <p id="v148-detail" class="autonomy-detail">V148 is a historical-repeat and current-density load model. It is not an exact next-run predictor and cannot unlock capital.</p>
+      </section>
+
       <section id="v147-connection-pressure-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
