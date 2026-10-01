@@ -1,0 +1,43 @@
+name: Verify V165 Safe Alternative Admission Handoff
+
+on:
+  push:
+    branches:
+      - tfa-v165-safe-alternative-admission-handoff
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v165-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridges and assets
+        run: |
+          node --check api/safe-alternative-admission-handoff.js
+          test -f supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          test -f supabase/functions/runtime-v165-safe-alternative-admission-handoff/index.ts
+          grep -q "v165-safe-alternative-admission-handoff-db-v1" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "SAFE_ALTERNATIVE_V163" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "HANDOFF_CLEAR_FOR_HUMAN_REVIEW" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "get_v165_safe_alternative_admission_handoff" supabase/recovery/v159-latest-experiment-admission.sql
+          grep -q "v159.3-latest-experiment-admission-db-v4-safe-alternative-handoff" supabase/recovery/v159-latest-experiment-admission.sql
+      - name: Reject mutation and capital paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v165-safe-alternative-admission-handoff.sql; then
+            echo "V165 must remain read-only"
+            exit 1
+          fi
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "'automatic_rollback',false" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v165-safe-alternative-admission-handoff.sql
+          grep -q "'human_review_required',true" supabase/recovery/v165-safe-alternative-admission-handoff.sql
