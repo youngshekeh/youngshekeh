@@ -1,0 +1,40 @@
+name: Verify V151.1 Controlled Anomaly Shift Package
+on:
+  push:
+    branches:
+      - tfa-v1511-controlled-anomaly-shift-package
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+permissions:
+  contents: read
+jobs:
+  v1511-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exact one-job package
+        run: |
+          test -f supabase/recovery/v1511-controlled-anomaly-shift.sql
+          test -f supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          grep -q "READY_FOR_HUMAN_CONTROLLED_APPLY" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "PEAK_SPREAD_IMPROVED" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "tfa-owner-anomaly-watch" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "'12,42 \* \* \* \*'" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "'13,43 \* \* \* \*'" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          test "$(grep -c "cron.alter_job" supabase/recovery/v1511-controlled-anomaly-shift.sql)" -eq 1
+          test "$(grep -c "cron.alter_job" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql)" -eq 1
+      - name: Verify fail-closed prerequisites
+        run: |
+          grep -q "v1511_exact_schedule_precondition_failed" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "v1511_network_receipt_gate_failed" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "v1511_target_failures_24h" supabase/recovery/v1511-controlled-anomaly-shift.sql
+          grep -q "v1511_rollback_refuses_unknown_drift" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          if grep -Eq "tfa-v119|capital-permission|execution-firewall|paper-risk|flutterwave-reconciliation" supabase/recovery/v1511-controlled-anomaly-shift.sql; then
+            echo "Protected or payment workflow unexpectedly included"
+            exit 1
+          fi
