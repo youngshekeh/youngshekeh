@@ -117,6 +117,55 @@
 
 
 
+      <section id="v145-connection-admission-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V145.1 · CONNECTION ADMISSION SHADOW</span>
+            <h3 id="v145-state">CHECKING</h3>
+            <p id="v145-copy">Evaluating same-cadence cron groups for safe future serialization without changing any live schedule.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v145-saved">--</span><small>SLOTS</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ADMISSION MODEL · SHADOW</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO BUNDLING · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>ACTIVE JOBS</span><strong id="v145-active">CHECKING</strong></article>
+          <article><span>COLLISION GROUPS</span><strong id="v145-groups">CHECKING</strong></article>
+          <article><span>SHADOW CANDIDATES</span><strong id="v145-candidates">CHECKING</strong></article>
+          <article><span>REVIEW REQUIRED</span><strong id="v145-review">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PROJECTED SLOT REDUCTION</span><strong id="v145-saved">CHECKING</strong></article>
+          <article><span>CONCURRENCY TARGET</span><strong id="v145-ceiling">8</strong></article>
+          <article><span>BEST SERIAL P95 BUDGET</span><strong id="v145-best-budget">CHECKING</strong></article>
+          <article><span>BEST GROUP SAVES</span><strong id="v145-best-saved">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>BUNDLING</span><strong id="v145-bundling">SHADOW ONLY</strong><small>No candidate is active until call-graph and transaction review passes.</small></article>
+          <article><span>RESCHEDULING</span><strong id="v145-rescheduling">OFF</strong><small>V145 observes and models only.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v145-orders">OFF</strong><small>Admission planning cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v145-capital">0R</strong><small>The canonical firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>SHADOW SERIALIZATION CANDIDATES</span>
+          <small>Only SQL-only, failure-screened cadence groups appear here. Every candidate still requires dependency and failure-isolation review.</small>
+        </div>
+        <div id="v145-candidate-list" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">ANALYZING COLLISION GROUPS</span></div>
+        <p id="v145-detail" class="autonomy-detail">V145 is a connection-admission research layer only. It cannot bundle jobs, change schedules, place orders, or increase capital permission.</p>
+      </section>
+
       <section id="v144-scheduler-load-governor" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
