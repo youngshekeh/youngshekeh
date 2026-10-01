@@ -1,3 +1,5 @@
+import {createQaTransport} from './transport.mjs';
+
 const TFA_PRIVATE_AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 
 function tfaConstantTimeEqual(a:string,b:string){
@@ -24,87 +26,33 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v173.0-integrated-engine-certification-v50-owner-paper-quote';
+const VERSION='v174.0-integrated-engine-certification-v51-deadline-reporting';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
-async function fetchAny(path,timeout=10000){
-  const started=Date.now();
-  try{
-    const r=await fetch(BASE+path,{headers:{Accept:'application/json,text/html','User-Agent':'THE-FATHER-ANALYTICS/113.0'},cache:'no-store',signal:AbortSignal.timeout(timeout)});
-    const ct=r.headers.get('content-type')||'';
-    const body=ct.includes('application/json')?await r.json().catch(()=>null):await r.text().catch(()=>null);
-    return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body,headers:{tfa_auth:r.headers.get('x-tfa-auth'),tfa_runtime:r.headers.get('x-tfa-runtime')}};
-  }catch(error){return {ok:false,status:0,latency_ms:Date.now()-started,body:null,error:String(error).slice(0,160)}}
-}
-async function fetchAbsolute(url:string,timeout=10000){
-  const started=Date.now();
-  try{
-    const r=await fetch(url,{
-      headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/115.2-QA'},
-      cache:'no-store',
-      signal:AbortSignal.timeout(timeout)
-    });
-    const body=await r.json().catch(()=>null);
-    return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body};
-  }catch(error){
-    return {ok:false,status:0,latency_ms:Date.now()-started,body:null,error:String(error).slice(0,160)};
-  }
-}
-async function fetchAbsolutePost(url:string,body:any,timeout=10000){
-  const started=Date.now();
-  try{
-    const r=await fetch(url,{
-      method:'POST',
-      headers:{Accept:'application/json','Content-Type':'application/json','User-Agent':'THE-FATHER-ANALYTICS/126.0-QA'},
-      body:JSON.stringify(body??{}),
-      cache:'no-store',
-      signal:AbortSignal.timeout(timeout)
-    });
-    const data=await r.json().catch(()=>null);
-    return {ok:r.ok,status:r.status,latency_ms:Date.now()-started,body:data};
-  }catch(error){
-    return {ok:false,status:0,latency_ms:Date.now()-started,body:null,error:String(error).slice(0,160)};
-  }
-}
-
-
-async function tfaRetry(task:()=>Promise<any>,delay=250){
-  const first=await task();
-  if(first?.status>0&&first.status<500)return first;
-  await new Promise(resolve=>setTimeout(resolve,delay));
-  const second=await task();
-  return second;
-}
-
-async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=8){
-  const results=new Array(tasks.length);
-  let cursor=0;
-  const worker=async()=>{
-    while(true){
-      const index=cursor++;
-      if(index>=tasks.length)return;
-      try{
-        results[index]=await tasks[index]();
-      }catch(error){
-        results[index]={ok:false,status:0,latency_ms:0,body:null,error:String(error).slice(0,160)};
-      }
-    }
-  };
-  const workerCount=Math.max(1,Math.min(concurrency,tasks.length));
-  await Promise.all(Array.from({length:workerCount},()=>worker()));
-  return results;
-}
 function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,latency_ms}}
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
-async function legacyHandler(req:any,res:any){
+async function legacyHandler(req:any,res:any,transport:any){
+  const fetchAny=(path:string,timeout=10000)=>transport.any(BASE+path,timeout);
+  const fetchAbsolute=(url:string,timeout=10000)=>transport.json(url,timeout);
+  const fetchAbsolutePost=(url:string,body:any,timeout=10000)=>transport.post(url,body,timeout);
+  const tfaRetry=(task:()=>Promise<any>,delay=250)=>transport.retry(task,delay);
+  async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=3){return transport.all(tasks,concurrency);}
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission,paperFeed,paperFeedAnon]=await tfaBoundedAll([
+  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self]=await tfaBoundedAll([
     ()=>fetchAny('/'),
     ()=>fetchAny('/capital-os/'),
+    ()=>fetchAny('/gold-live/'),
+    ()=>fetchAny('/owner/'),
+    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/owner-gold-review-actions',{action:'queue'},8000),
+    ()=>tfaRetry(()=>fetchAbsolute(PRIVATE_LOCK_PROBE)),
+    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',{},8000),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',8000)),
+    ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000),
+    ()=>tfaRetry(()=>fetchAny('/api/production-closure',30000),350),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-opportunity-governor',10000)),
     ()=>fetchAny('/api/capital-calendar',12000),
     ()=>fetchAny('/api/earnings-calendar',12000),
-    ()=>fetchAny('/gold-live/'),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-desk',12000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-learning-state',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-outcome-learning',8000)),
@@ -120,9 +68,6 @@ async function legacyHandler(req:any,res:any){
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-shadow-portfolio-brain',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-execution-reality',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-broker-adapter-lab',8000)),
-    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-opportunity-governor',10000)),
-    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/owner-gold-review-actions',{action:'queue'},8000),
-    ()=>tfaRetry(()=>fetchAbsolute(PRIVATE_LOCK_PROBE)),
     ()=>fetchAny('/api/autonomous-state'),
     ()=>fetchAny('/api/gold-day-state'),
     ()=>fetchAny('/api/data-quality-sentinel'),
@@ -134,13 +79,8 @@ async function legacyHandler(req:any,res:any){
     ()=>fetchAny('/api/gold-mtf-zones'),
     ()=>fetchAny('/api/gold-mtf-confluence'),
     ()=>fetchAny('/api/gold-breakout-acceptance'),
-    ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1'),
-    ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000),
-    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',8000)),
-    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',{},8000)
+    ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1')
   ],3);
-  const productionClosure=await tfaRetry(()=>fetchAny('/api/production-closure',30000),350);
-  const ownerSurface=await fetchAny('/owner/');
   const tests=[];
 
   tests.push(result('v167_capital_os_surface_contract',
@@ -868,16 +808,19 @@ async function legacyHandler(req:any,res:any){
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
-  const state=failed===0?'PASS':failed<=2?'DEGRADED':'FAIL';
+  const transportStatus=transport.summary([home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission,paperFeed,paperFeedAnon,productionClosure,ownerSurface]);
+  transportStatus.probes=[['home',home],['capitalSurface',capitalSurface],['gold',gold],['ownerSurface',ownerSurface],['ownerReviewAnon',ownerReviewAnon],['privateAnon',privateAnon],['paperFeedAnon',paperFeedAnon],['paperFeed',paperFeed],['mission',mission],['productionClosure',productionClosure],['opportunityGovernor',opportunityGovernor],['capitalCalendar',capitalCalendar],['earningsCalendar',earningsCalendar],['desk',desk],['learning',learning],['outcome',outcome],['transition',transition],['trigger',trigger],['reputation',reputation],['reviewIntel',reviewIntel],['disagreementIntel',disagreementIntel],['contextIntel',contextIntel],['priorityIntel',priorityIntel],['freshnessIntel',freshnessIntel],['shadowTrader',shadowTrader],['shadowPortfolio',shadowPortfolio],['executionReality',executionReality],['brokerLab',brokerLab],['auto',auto],['day',day],['quality',quality],['selftest',selftest],['tournament',tournament],['shadow',shadow],['quota',quota],['v79',v79],['v81',v81],['v82',v82],['v83',v83],['v83self',v83self]].map(([name,probe]:any)=>({name,status:probe.status,started:probe.started,latency_ms:probe.latency_ms,error:probe.error,deadline_exceeded:probe.deadline_exceeded===true}));
+  const state=transportStatus.incomplete?'INCOMPLETE':failed===0?'PASS':failed<=2?'DEGRADED':'FAIL';
   const maxLatency=Math.max(...tests.map(x=>Number(x.latency_ms)||0));
   res.setHeader('Cache-Control','no-store');
   return res.status(200).json({
-    ok:failed===0,
+    ok:failed===0&&!transportStatus.incomplete,
     version:VERSION,
     checked_at:new Date().toISOString(),
     state,
     summary:{passed,failed,total:tests.length,max_latency_ms:maxLatency},
     tests,
+    transport:transportStatus,
     invariants:{
       canonical_execution_permission:'UNCHANGED',
       action_permitted:'WAIT',
@@ -887,6 +830,7 @@ async function legacyHandler(req:any,res:any){
   });
 }
 Deno.serve(async(req:Request)=>{
+  const startedAt=performance.now();
   if(!(await tfaPrivateAuthorized(req))){
     return Response.json(
       {ok:false,error:'unauthorized_private_runtime'},
@@ -900,5 +844,6 @@ Deno.serve(async(req:Request)=>{
     status(code:number){status=code;return res;},
     json(body:any){headers.set('Content-Type','application/json');return new Response(JSON.stringify(body),{status,headers});}
   };
-  return await legacyHandler(req,res);
+  const transport=createQaTransport({startedAt,requestSignal:req.signal});
+  try{return await legacyHandler(req,res,transport);}finally{transport.close();}
 });
