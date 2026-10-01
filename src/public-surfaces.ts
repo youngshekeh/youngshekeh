@@ -535,6 +535,73 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+
+async function loadV145ConnectionAdmissionShadow() {
+  const admission = await readLocal('/api/admission-shadow', 18000);
+  if (!admission?.ok) {
+    set('v145-state', 'ADMISSION · FAIL CLOSED');
+    set('v145-copy', 'The private connection-admission planner is unavailable. No bundling or scheduler mutation is permitted.');
+    for (const id of ['v145-active','v145-groups','v145-candidates','v145-review','v145-saved','v145-ceiling','v145-best-budget','v145-best-saved']) set(id, null);
+    set('v145-bundling', 'OFF');
+    set('v145-rescheduling', 'OFF');
+    set('v145-orders', 'OFF');
+    set('v145-capital', '0R');
+    return;
+  }
+
+  const summary = admission?.summary ?? {};
+  const groups = Array.isArray(admission?.cadence_groups) ? admission.cadence_groups : [];
+  const candidates = groups.filter((x: AnyJson) => x?.admission_class === 'SHADOW_SERIALIZATION_CANDIDATE');
+  const best = candidates
+    .slice()
+    .sort((a: AnyJson,b: AnyJson) =>
+      Number(b?.projected_slots_saved_per_trigger || 0) - Number(a?.projected_slots_saved_per_trigger || 0)
+      || Number(a?.sequential_p95_budget_ms || 0) - Number(b?.sequential_p95_budget_ms || 0)
+    )[0] ?? null;
+
+  set('v145-state', `ADMISSION · ${first(admission?.state, 'UNKNOWN')}`);
+  set('v145-copy',
+    candidates.length
+      ? 'V145 has identified same-cadence SQL groups that could reduce connection pressure if they are later bundled sequentially. Every candidate remains shadow-only until call-graph, transaction and failure-isolation review passes.'
+      : 'No low-complexity bundle is cleared even for shadow candidacy. V145 will not force serialization across unresolved dependencies or external I/O.'
+  );
+  set('v145-active', summary?.active_jobs ?? null);
+  set('v145-groups', summary?.collision_groups ?? null);
+  set('v145-candidates', summary?.shadow_serialization_candidate_groups ?? 0);
+  set('v145-review', summary?.review_required_groups ?? 0);
+  set('v145-saved', summary?.projected_connection_slots_saved_per_trigger ?? 0);
+  set('v145-ceiling', summary?.recommended_concurrent_ceiling ?? 8);
+  set('v145-best-budget', best ? `${Number(best?.sequential_p95_budget_ms || 0).toFixed(1)}ms` : 'NONE');
+  set('v145-best-saved', best ? `${Number(best?.projected_slots_saved_per_trigger || 0)} SLOTS` : 'NONE');
+  set('v145-bundling', 'SHADOW ONLY');
+  set('v145-rescheduling', 'OFF');
+  set('v145-orders', 'OFF');
+  set('v145-capital', '0R');
+
+  const host = byId('v145-candidate-list');
+  if (host) {
+    host.replaceChildren();
+    const items = candidates.length ? candidates : [];
+    if (!items.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-warn';
+      chip.textContent = 'NO LOW-COMPLEXITY BUNDLE CLEARED';
+      host.appendChild(chip);
+    } else {
+      for (const item of items.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-clear';
+        chip.textContent = `${String(item?.schedule || 'schedule')} · ${Number(item?.job_count || 0)} jobs → save ${Number(item?.projected_slots_saved_per_trigger || 0)} slots · p95 budget ${Number(item?.sequential_p95_budget_ms || 0).toFixed(0)}ms`;
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v145-detail',
+    `Collision groups ${Number(summary?.collision_groups || 0)} · candidates ${Number(summary?.shadow_serialization_candidate_groups || 0)} · review required ${Number(summary?.review_required_groups || 0)} · projected safe-shadow slot reduction ${Number(summary?.projected_connection_slots_saved_per_trigger || 0)} · automatic bundling OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV144SchedulerLoadGovernor() {
   const scheduler = await readLocal('/api/scheduler-governor', 15000);
   if (!scheduler?.ok) {
@@ -1932,6 +1999,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV145ConnectionAdmissionShadow(),
       loadV144SchedulerLoadGovernor(),
       loadV143StabilityConfirmation(),
       loadV142RuntimeRecoveryEngine(),
