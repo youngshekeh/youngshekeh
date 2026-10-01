@@ -1,4 +1,5 @@
 import './styles.css';
+import { paperQuoteView } from './paper-quote-view.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -7,6 +8,9 @@ const FUNCTIONS = `${SUPABASE}/functions/v1`;
 type AnyJson = Record<string, any>;
 
 let latestGoldDesk: AnyJson = {};
+let latestPaperQuoteFeed: AnyJson | null = null;
+let paperFeedBusy = false;
+let paperFeedTimer: number | undefined;
 let brokerTranslationAt: number | null = null;
 let brokerTranslationFuturesPrice: number | null = null;
 let brokerTranslationExpired = false;
@@ -70,6 +74,7 @@ function invalidateBrokerTranslation(message: string) {
 
 function renderGoldPulseClock() {
   const now = Date.now();
+  if (latestPaperQuoteFeed) renderV172PaperQuoteFeed();
 
   if (goldLastRefreshAt) {
     const age = Math.max(0, Math.floor((now - goldLastRefreshAt) / 1000));
@@ -3215,6 +3220,37 @@ async function loadGoldLearning() {
   set('v119-performance', first(learning?.methodology?.performance_claims, 'WITHHELD'));
 }
 
+function renderV172PaperQuoteFeed() {
+  const view = paperQuoteView(latestPaperQuoteFeed);
+  set('v172-feed-state', view.state.replaceAll('_', ' '));
+  set('v172-bid', view.bid == null ? null : view.bid.toFixed(2));
+  set('v172-ask', view.ask == null ? null : view.ask.toFixed(2));
+  set('v172-spread', view.spread == null ? null : `${view.spread.toFixed(3)} points`);
+  set('v172-feed-detail', view.state === 'PAPER_QUOTE_FRESH_UNVERIFIED'
+    ? 'Owner-supplied demo quote. This observed spread is separate from simulated cost stress; broker provenance and real execution remain unverified.'
+    : view.state === 'NOT_CONNECTED'
+      ? 'No demo quote source is connected. Owner authentication and MFA are required to submit quotes. Live orders remain OFF.'
+      : view.state === 'UNAVAILABLE'
+        ? 'Paper feed status is unavailable. Quote values are withheld; live orders remain OFF.'
+        : 'The paper quote has expired or failed validation. Values are withheld until fresh demo data arrives.');
+}
+
+async function loadV172PaperQuoteFeed() {
+  if (paperFeedBusy || document.hidden) return;
+  if (paperFeedTimer) window.clearTimeout(paperFeedTimer);
+  paperFeedBusy = true;
+  try {
+    latestPaperQuoteFeed = await read('paper-broker-quote-intake', 7000);
+    renderV172PaperQuoteFeed();
+    const observed = Date.parse(latestPaperQuoteFeed?.latest_quote?.observed_at || '');
+    if (Number.isFinite(observed) && Date.now() - observed < 60_000) {
+      paperFeedTimer = window.setTimeout(() => void loadV172PaperQuoteFeed(), 5000);
+    }
+  } finally {
+    paperFeedBusy = false;
+  }
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   if (goldRefreshBusy) return;
   goldRefreshBusy = true;
@@ -3258,6 +3294,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
       loadGoldExecutionFirewall(),
       loadGoldOpportunityGovernor(),
       loadGoldBrokerAdapterLab(),
+      loadV172PaperQuoteFeed(),
       loadGoldExecutionReality(),
       loadGoldAutonomousShadowTrader(),
       loadGoldReviewFreshness(),

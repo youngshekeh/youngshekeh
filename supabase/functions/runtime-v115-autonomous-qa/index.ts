@@ -24,7 +24,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v169.0-integrated-engine-certification-v48';
+const VERSION='v172.0-integrated-engine-certification-v49-paper-feed';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -99,7 +99,7 @@ function result(name,pass,detail,latency_ms){return {name,pass:!!pass,detail,lat
 function positive(v){const n=Number(v);return Number.isFinite(n)&&n>0}
 async function legacyHandler(req:any,res:any){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission]=await tfaBoundedAll([
+  const [home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission,paperFeed,paperFeedAnon]=await tfaBoundedAll([
     ()=>fetchAny('/'),
     ()=>fetchAny('/capital-os/'),
     ()=>fetchAny('/api/capital-calendar',12000),
@@ -135,7 +135,9 @@ async function legacyHandler(req:any,res:any){
     ()=>fetchAny('/api/gold-mtf-confluence'),
     ()=>fetchAny('/api/gold-breakout-acceptance'),
     ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1'),
-    ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000)
+    ()=>fetchAny(`/api/mission-brief?qa_fresh=${Date.now()}`,15000),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',8000)),
+    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',{},8000)
   ],3);
   const productionClosure=await tfaRetry(()=>fetchAny('/api/production-closure',30000),350);
   const ownerSurface=await fetchAny('/owner/');
@@ -841,6 +843,22 @@ async function legacyHandler(req:any,res:any){
       &&mission.body?.autonomous_health?.governance?.capital_permission==='0R',
     `mission=${mission.body?.governance?.action_permitted}/${mission.body?.governance?.capital_permission}, health=${mission.body?.autonomous_health?.governance?.action_permitted}/${mission.body?.autonomous_health?.governance?.capital_permission}`,
     mission.latency_ms));
+
+  tests.push(result('v172_paper_quote_intake_contract',
+    paperFeed.status===200&&paperFeed.body?.ok===true
+      &&['NOT_CONNECTED','PAPER_QUOTE_FRESH_UNVERIFIED','PAPER_QUOTE_STALE'].includes(String(paperFeed.body?.state))
+      &&paperFeed.body?.governance?.capital_permission==='0R'
+      &&paperFeed.body?.governance?.live_order_submission_enabled===false
+      &&paperFeed.body?.broker_connection_verified===false,
+    `state=${paperFeed.body?.state}, broker_verified=${paperFeed.body?.broker_connection_verified}, capital=${paperFeed.body?.governance?.capital_permission}`,
+    paperFeed.latency_ms));
+  tests.push(result('v172_paper_quote_anonymous_denial',
+    paperFeedAnon.status===401&&paperFeedAnon.body?.error==='missing_token',
+    `status=${paperFeedAnon.status}, error=${paperFeedAnon.body?.error}`,paperFeedAnon.latency_ms));
+  tests.push(result('v172_paper_quote_surface_contract',
+    gold.status===200&&typeof gold.body==='string'&&gold.body.includes('id="v172-paper-broker-feed"')
+      &&gold.body.includes('id="v172-bid"')&&gold.body.includes('id="v172-feed-state"'),
+    `status=${gold.status}, paper_feed=${typeof gold.body==='string'&&gold.body.includes('id="v172-paper-broker-feed"')?'present':'missing'}`,gold.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;

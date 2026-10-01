@@ -1,0 +1,14 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {paperQuoteView} from '../src/paper-quote-view.mjs';
+const now=Date.parse('2026-10-01T18:00:05Z');
+const data={ok:true,state:'PAPER_QUOTE_FRESH_UNVERIFIED',broker_connection_verified:false,governance:{capital_permission:'0R',live_order_submission_enabled:false},latest_quote:{observed_at:'2026-10-01T18:00:00Z',received_at:'2026-10-01T18:00:00Z',expires_at:'2026-10-01T18:00:10Z',mode:'PAPER_DEMO',provenance:'BROKER_DEMO_USER_SUPPLIED',bid:4200,ask:4200.5}};
+test('fresh demo quote displays observed bid ask',()=>assert.equal(paperQuoteView(data,now).bid,4200));
+test('price expires even without a network refresh',()=>assert.equal(paperQuoteView(data,now+5000).bid,null));
+test('stale response never displays prices',()=>assert.equal(paperQuoteView({...data,state:'PAPER_QUOTE_STALE'},now).bid,null));
+test('invented longer expiry cannot retain a quote',()=>assert.equal(paperQuoteView({...data,latest_quote:{...data.latest_quote,expires_at:'2026-10-01T18:01:00Z'}},now).bid,null));
+test('future quote withheld',()=>assert.equal(paperQuoteView({...data,latest_quote:{...data.latest_quote,observed_at:'2026-10-01T18:00:06Z'}},now).bid,null));
+test('order permission cannot enter paper display',()=>assert.equal(paperQuoteView({...data,governance:{...data.governance,live_order_submission_enabled:true}},now).bid,null));
+test('string bid rejected',()=>assert.equal(paperQuoteView({...data,latest_quote:{...data.latest_quote,bid:'4200'}},now).bid,null));
+test('crossed quote rejected',()=>assert.equal(paperQuoteView({...data,latest_quote:{...data.latest_quote,ask:4199}},now).bid,null));
+test('empty feed states remain truthful',()=>assert.equal(paperQuoteView({ok:true,state:'NOT_CONNECTED'},now).state,'NOT_CONNECTED'));
