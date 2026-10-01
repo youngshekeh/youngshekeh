@@ -37,5 +37,5 @@ jobs:
           grep -q "v1132_release_integrity" supabase/functions/runtime-v115-autonomous-qa/index.ts
           grep -q "v115_private_runtime_anonymous_denial" supabase/functions/runtime-v115-autonomous-qa/index.ts
           grep -q "v116_vercel_workload_identity_transport" supabase/functions/runtime-v115-autonomous-qa/index.ts
-          grep -q "capital=0R" supabase/functions/runtime-v115-autonomous-qa/index.ts
+          grep -q "capital_permission==='0R'" supabase/functions/runtime-v115-autonomous-qa/index.ts
           grep -q "LIVE ORDERS · OFF" supabase/functions/runtime-v115-autonomous-qa/index.ts || true
