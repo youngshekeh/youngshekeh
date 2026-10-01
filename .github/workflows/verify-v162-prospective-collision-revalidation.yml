@@ -1,0 +1,42 @@
+name: Verify V162 Prospective Collision Revalidation
+
+on:
+  push:
+    branches:
+      - tfa-v162-prospective-collision-revalidation
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v162-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/prospective-collision-revalidation.js
+      - name: Verify revalidation assets
+        run: |
+          test -f supabase/recovery/v162-prospective-collision-revalidation.sql
+          test -f supabase/functions/runtime-v162-prospective-collision-revalidation/index.ts
+          grep -q "v162-prospective-collision-revalidation-db-v1" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "REJECTED_CONTROLLED_EXPERIMENT_MINUTE_COLLISION" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "NO_LIVE_PEER_DENSITY_IMPROVEMENT" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "controlled_experiment_minutes_reserved',true" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "requires_strict_live_density_improvement',true" supabase/recovery/v162-prospective-collision-revalidation.sql
+      - name: Reject mutation paths
+        run: |
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule" supabase/recovery/v162-prospective-collision-revalidation.sql; then
+            echo "V162 must remain read-only"
+            exit 1
+          fi
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v162-prospective-collision-revalidation.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v162-prospective-collision-revalidation.sql
