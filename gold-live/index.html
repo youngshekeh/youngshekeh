@@ -215,6 +215,56 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v163-safe-alternative-minute-search" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V163 · SAFE ALTERNATIVE MINUTE SEARCH</span>
+            <h3 id="v163-state">CHECKING</h3>
+            <p id="v163-copy">Searching the candidate’s allowed minute window for a live-graph alternative that avoids controlled reservations and strictly lowers peer density.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v163-best">--</span><small>BEST MIN</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">LIVE SEARCH · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO APPLY · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CANDIDATE</span><strong id="v163-job">CHECKING</strong></article>
+          <article><span>CURRENT</span><strong id="v163-current">CHECKING</strong></article>
+          <article><span>BEST MOVE</span><strong id="v163-move">CHECKING</strong></article>
+          <article><span>ELIGIBLE OPTIONS</span><strong id="v163-count">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PEERS NOW</span><strong id="v163-peers-now">CHECKING</strong></article>
+          <article><span>PEERS BEST</span><strong id="v163-peers-best">CHECKING</strong></article>
+          <article><span>PEER IMPROVEMENT</span><strong id="v163-improvement">CHECKING</strong></article>
+          <article><span>24H STARTS BEST</span><strong id="v163-history">CHECKING</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>SAFE ALTERNATIVE RANKING</span>
+          <small>Ranked by fewer live peer triggers, then smallest absolute shift, then lower 24-hour background starts.</small>
+        </div>
+        <div id="v163-alternatives" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">SEARCHING ALTERNATIVES</span></div>
+
+        <div class="integrity-governance-grid">
+          <article><span>CONTROLLED MINUTES</span><strong id="v163-reservations">RESERVED</strong><small>Active experiment minutes are excluded from search.</small></article>
+          <article><span>HUMAN REVIEW</span><strong id="v163-human">REQUIRED</strong><small>Search results are plans, never automatic changes.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v163-orders">OFF</strong><small>Scheduler search cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v163-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <p id="v163-detail" class="autonomy-detail">V163 provides a current-graph alternative shadow and does not overwrite V151 or mutate cron.</p>
+      </section>
+
       <section id="v162-prospective-collision-revalidation" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
