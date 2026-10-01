@@ -141,6 +141,27 @@ begin
     from generate_series(0,59) g
     left join minute_load m on m.minute_of_hour=g
   ),
+  current_density as (
+    select
+      g as minute_of_hour,
+      count(*) filter(
+        where j.active
+          and split_part(j.schedule,' ',2)='*'
+          and split_part(j.schedule,' ',3)='*'
+          and split_part(j.schedule,' ',4)='*'
+          and split_part(j.schedule,' ',5)='*'
+          and private.v148_minute_matches(split_part(j.schedule,' ',1),g)
+      )::numeric as scheduled_jobs
+    from generate_series(0,59) g
+    cross join cron.job j
+    group by g
+  ),
+  v1461_reserved as (
+    select distinct g as minute_of_hour
+    from private.v1461_peak_spreader_plan p
+    cross join generate_series(0,59) g
+    where private.v148_minute_matches(split_part(p.governed_schedule,' ',1),g)
+  ),
   job_stats as (
     select
       j.jobid,j.jobname,j.schedule,j.command,j.active,
@@ -188,9 +209,10 @@ begin
     select r.*,
       cardinality(trigger_minutes) as triggers_per_hour,
       coalesce((
-        select sum(mg.avg_starts)
+        select sum(mg.avg_starts + coalesce(cd.scheduled_jobs,0))
         from unnest(trigger_minutes) t(m)
         join minute_grid mg on mg.minute_of_hour=t.m
+        left join current_density cd on cd.minute_of_hour=t.m
       ),0)::numeric as current_load_index
     from recurring_simple r
     where not protected_lane
@@ -213,11 +235,17 @@ begin
   scored as (
     select d.*,
       coalesce((
-        select sum(mg.avg_starts)
+        select sum(mg.avg_starts + coalesce(cd.scheduled_jobs,0))
         from unnest(d.shifted_minutes) t(m)
         join minute_grid mg on mg.minute_of_hour=t.m
+        left join current_density cd on cd.minute_of_hour=t.m
       ),0)::numeric as shifted_load_index
     from deltas d
+    where not exists (
+      select 1
+      from unnest(d.shifted_minutes) t(m)
+      join v1461_reserved r on r.minute_of_hour=t.m
+    )
   ),
   ranked_delta as (
     select *,
@@ -292,11 +320,12 @@ begin
     'generated_at',v_now,
     'state',v_state,
     'forecast',jsonb_build_object(
-      'basis','24H_MINUTE_OF_HOUR_REPEAT_PATTERN',
+      'basis','24H_MINUTE_OF_HOUR_REPEAT_PATTERN_PLUS_CURRENT_SCHEDULE_DENSITY',
+      'model_revision','HYBRID_CURRENT_SCHEDULE_V2',
       'horizon_minutes',60,
       'exact_next_run_prediction',false,
       'hot_minutes',v_hot_minutes,
-      'note','Forecast ranks recurring minute-of-hour pressure from the previous 24 hours. It is a historical-repeat load index, not a guarantee of future concurrency.'
+      'note','Forecast combines the previous 24-hour minute-of-hour load with current recurring schedule density. V146.1 controlled minutes are reserved and cannot be recommended as shift targets while the experiment matures. This remains a load index, not a guarantee of future concurrency.'
     ),
     'summary',jsonb_build_object(
       'active_jobs',(select count(*) from cron.job where active),
@@ -323,7 +352,8 @@ begin
       'minimum_v1461_observation_minutes',60,
       'requires_rollback_plan',true,
       'requires_post_change_observation',true,
-      'protected_lanes_excluded',true
+      'protected_lanes_excluded',true,
+      'v1461_controlled_minutes_reserved',true
     ),
     'governance',jsonb_build_object(
       'action_permitted','WAIT',
