@@ -567,7 +567,7 @@ async function loadV144SchedulerLoadGovernor() {
     scheduler?.state === 'LOAD_HEALTHY'
       ? 'The phased scheduler is holding within the recommended concurrency ceiling while preserving the fast capture and safety lanes.'
       : scheduler?.state === 'OBSERVING'
-        ? 'V144 has phase-staggered the cron graph. It is accumulating post-change telemetry before calling the load profile stable.'
+        ? 'V144.1 has phase-staggered the research and legacy autonomy cron graph. It is accumulating telemetry from the latest plan change before calling the load profile stable.'
         : scheduler?.state === 'SCHEDULE_DRIFT_BLOCKED'
           ? 'One or more governed jobs has drifted from the approved phase plan. V144 is fail-closed until schedule integrity is restored.'
           : 'Scheduler pressure is reduced but remains above the target ceiling. V144 keeps observing without weakening any trading gate.'
