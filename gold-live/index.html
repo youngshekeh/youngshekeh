@@ -117,6 +117,55 @@
 
 
 
+      <section id="v151-single-candidate-plan-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V151 · SINGLE-CANDIDATE CONTROLLED PLAN</span>
+            <h3 id="v151-state">CHECKING</h3>
+            <p id="v151-copy">Selecting at most one rollback-ready future schedule move from dependency, SLA and collision evidence.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v151-shift">--</span><small>MIN SHIFT</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ONE-JOB PLAN · SHADOW</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO APPLY · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CANDIDATE</span><strong id="v151-job">CHECKING</strong></article>
+          <article><span>CURRENT</span><strong id="v151-current">CHECKING</strong></article>
+          <article><span>PROPOSED</span><strong id="v151-proposed">CHECKING</strong></article>
+          <article><span>ROLLBACK</span><strong id="v151-rollback">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>RELIEF INDEX</span><strong id="v151-relief">CHECKING</strong></article>
+          <article><span>RECEIPT COVERAGE</span><strong id="v151-coverage">CHECKING</strong></article>
+          <article><span>BUSINESS SUCCESS</span><strong id="v151-success">CHECKING</strong></article>
+          <article><span>V146.1 OBSERVATION</span><strong id="v151-v1461-age">CHECKING</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>SCOPE</span><strong id="v151-scope">ONE JOB MAX</strong><small>The planner cannot bundle multiple changes.</small></article>
+          <article><span>AUTO RESCHEDULING</span><strong id="v151-rescheduling">OFF</strong><small>A plan is not permission to execute it.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v151-orders">OFF</strong><small>Infrastructure planning cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v151-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>CONTROLLED PLAN GATE</span>
+          <small>Requires V146.1 ≥60 minutes, PEAK_SPREAD_IMPROVED, zero failures, zero drift, exact current schedule match and an explicit rollback snapshot.</small>
+        </div>
+        <div id="v151-gates" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING MATURITY GATES</span></div>
+        <p id="v151-detail" class="autonomy-detail">V151 may prepare one controlled move, but automatic application remains disabled.</p>
+      </section>
+
       <section id="v150-network-sla-evidence-shadow" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
