@@ -1,0 +1,44 @@
+name: Verify V147 Connection Pressure Shadow
+
+on:
+  push:
+    branches:
+      - tfa-v147-connection-pressure-shadow
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v147-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/connection-pressure-shadow.js
+      - name: Verify read-only pressure model
+        run: |
+          test -f supabase/recovery/v147-connection-pressure-shadow.sql
+          test -f supabase/functions/runtime-v147-connection-pressure-shadow/index.ts
+          grep -q "v147-connection-pressure-shadow-db-v1" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "DATABASE_BACKEND_PRESSURE_PROXY" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "recommended_concurrent_ceiling',8" supabase/recovery/v147-connection-pressure-shadow.sql
+          if grep -Eq "cron\.alter_job|cron\.schedule|cron\.unschedule|insert into|update .* set|delete from" supabase/recovery/v147-connection-pressure-shadow.sql; then
+            echo "V147 must remain read-only"
+            exit 1
+          fi
+      - name: Verify fail-closed governance
+        run: |
+          grep -q "'capital_permission','0R'" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "'automatic_connection_throttling',false" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "'automatic_pool_reconfiguration',false" supabase/recovery/v147-connection-pressure-shadow.sql
+          grep -q "capital_permission:'0R'" api/connection-pressure-shadow.js
+          grep -q "live_order_routing:false" api/connection-pressure-shadow.js
+          grep -q "automatic_rescheduling:false" api/connection-pressure-shadow.js

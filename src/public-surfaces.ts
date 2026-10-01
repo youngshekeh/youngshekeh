@@ -536,6 +536,66 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV147ConnectionPressureShadow() {
+  const pressure = await readLocal('/api/connection-pressure-shadow', 18000);
+  if (!pressure?.ok) {
+    set('v147-state', 'PRESSURE · FAIL CLOSED');
+    set('v147-copy', 'The private connection-pressure model is unavailable. No pool, scheduler, or execution change is permitted.');
+    for (const id of ['v147-score','v147-clients','v147-util','v147-headroom','v147-active','v147-locks','v147-long-tx','v147-cron15','v147-cronfail']) set(id, null);
+    set('v147-throttle', 'OFF');
+    set('v147-pool', 'OFF');
+    set('v147-orders', 'OFF');
+    set('v147-capital', '0R');
+    return;
+  }
+
+  const connections = pressure?.connections ?? {};
+  const cron = pressure?.cron_pressure ?? {};
+  const actions = Array.isArray(pressure?.actions) ? pressure.actions.map((x: unknown) => String(x)) : [];
+  const score = Number(pressure?.pressure_score);
+  const util = Number(connections?.utilization_pct);
+
+  set('v147-state', `PRESSURE · ${first(pressure?.state, 'UNKNOWN')}`);
+  set('v147-copy',
+    pressure?.state === 'NORMAL'
+      ? 'Database backend pressure is currently contained. V147 still watches cron concurrency because the recommended eight-job ceiling remains the stricter infrastructure target.'
+      : pressure?.state === 'ELEVATED'
+        ? 'Backend pressure is elevated but not critical. The engine is isolating cron, locks, long transactions and client-slot usage before recommending any further infrastructure work.'
+        : pressure?.state === 'HIGH' || pressure?.state === 'CRITICAL'
+          ? 'Connection pressure is materially elevated. V147 keeps all automatic tuning disabled and surfaces diagnostics for governed intervention.'
+          : 'Connection pressure is being measured from database backend telemetry with client-idle waits separated from true pressure waits.'
+  );
+  set('v147-score', Number.isFinite(score) ? `${score}/100` : 'WITHHELD');
+  set('v147-clients', `${Number(connections?.client_backends || 0)}/${Number(connections?.effective_client_capacity || 0)}`);
+  set('v147-util', Number.isFinite(util) ? `${util.toFixed(1)}%` : 'WITHHELD');
+  set('v147-headroom', connections?.headroom ?? null);
+  set('v147-active', connections?.active_client_backends ?? null);
+  set('v147-locks', connections?.lock_waits ?? null);
+  set('v147-long-tx', connections?.long_transactions_over_30s ?? null);
+  set('v147-cron15', cron?.peak_concurrent_15m ?? null);
+  set('v147-cronfail', cron?.failures_15m ?? null);
+  set('v147-throttle', 'OFF');
+  set('v147-pool', 'OFF');
+  set('v147-orders', 'OFF');
+  set('v147-capital', '0R');
+
+  const host = byId('v147-actions');
+  if (host) {
+    host.replaceChildren();
+    const items = actions.length ? actions : ['Maintain current governed load and observe'];
+    for (const item of items.slice(0, 6)) {
+      const chip = document.createElement('span');
+      chip.className = pressure?.state === 'NORMAL' ? 'integrity-chip integrity-chip-clear' : 'integrity-chip integrity-chip-warn';
+      chip.textContent = item.replaceAll('_', ' ').toUpperCase();
+      host.appendChild(chip);
+    }
+  }
+
+  set('v147-detail',
+    `Client backends ${Number(connections?.client_backends || 0)}/${Number(connections?.effective_client_capacity || 0)} · utilization ${Number.isFinite(util) ? util.toFixed(1) : 'n/a'}% · active ${Number(connections?.active_client_backends || 0)} · lock waits ${Number(connections?.lock_waits || 0)} · long tx ${Number(connections?.long_transactions_over_30s || 0)} · cron peak 15m ${Number(cron?.peak_concurrent_15m || 0)} · failures 15m ${Number(cron?.failures_15m || 0)} · pool tuning OFF · orders OFF · capital 0R.`
+  );
+}
+
 async function loadV1461ControlledPeakSpreader() {
   const spreader = await readLocal('/api/peak-minute-spreader-status', 18000);
   if (!spreader?.ok) {
@@ -2073,6 +2133,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV147ConnectionPressureShadow(),
       loadV1461ControlledPeakSpreader(),
       loadV145ConnectionAdmissionShadow(),
       loadV144SchedulerLoadGovernor(),
