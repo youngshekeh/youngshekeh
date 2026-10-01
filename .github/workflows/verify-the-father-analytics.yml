@@ -90,3 +90,19 @@ jobs:
           grep -q "set('v144-promotion', 'DISABLED')" src/public-surfaces.ts
           grep -q '11,26,41,56' supabase/recovery/v144-scheduler-load-governor.sql
           grep -q 'V144.1 · SCHEDULER LOAD GOVERNOR' dist/gold-live/index.html
+      - name: Verify V145 admission shadow invariants
+        run: |
+          test -f api/admission-shadow.js
+          test -f supabase/recovery/v145-connection-admission-shadow.sql
+          test -f supabase/functions/runtime-v145-admission-shadow/index.ts
+          grep -q 'v145.1-connection-admission-shadow-db-v2' supabase/recovery/v145-connection-admission-shadow.sql
+          grep -q 'v145.1-connection-admission-shadow-private-runtime-v1' supabase/functions/runtime-v145-admission-shadow/index.ts
+          grep -q 'v145.1-connection-admission-shadow-bridge-v1' api/admission-shadow.js
+          grep -q "capital_permission:'0R'" api/admission-shadow.js
+          grep -q "live_order_routing:false" api/admission-shadow.js
+          grep -q "automatic_rescheduling:false" api/admission-shadow.js
+          grep -q 'V145.1 · CONNECTION ADMISSION SHADOW' gold-live/index.html
+          grep -q "loadV145ConnectionAdmissionShadow()" src/public-surfaces.ts
+          grep -q "set('v145-orders', 'OFF')" src/public-surfaces.ts
+          grep -q "set('v145-rescheduling', 'OFF')" src/public-surfaces.ts
+          grep -q 'V145.1 · CONNECTION ADMISSION SHADOW' dist/gold-live/index.html
