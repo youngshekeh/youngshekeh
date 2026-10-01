@@ -1,0 +1,47 @@
+name: Verify V154 Rollback Rehearsal Shadow
+on:
+  push:
+    branches:
+      - tfa-v1541-rollback-rehearsal-integration
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+permissions:
+  contents: read
+jobs:
+  v154-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bridge syntax
+        run: node --check api/rollback-rehearsal-shadow.js
+      - name: Verify rehearsal assets
+        run: |
+          test -f supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          test -f supabase/functions/runtime-v154-rollback-rehearsal-shadow/index.ts
+          test -f supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          grep -q "v154-rollback-rehearsal-shadow-db-v1" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "ROLLBACK_REHEARSAL_READY" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "ROLLBACK_RECOMMENDED_AND_REHEARSED" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "unknown_drift_refused',true" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "v1511-controlled-anomaly-shift-rollback.sql" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+      - name: Verify exact rollback package
+        run: |
+          grep -q "tfa-owner-anomaly-watch" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          grep -q "'12,42 \* \* \* \*'" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          grep -q "'13,43 \* \* \* \*'" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql
+          test "$(grep -c "cron.alter_job" supabase/recovery/v1511-controlled-anomaly-shift-rollback.sql)" -eq 1
+      - name: Reject rehearsal mutation
+        run: |
+          if grep -Eq "(perform|select)[[:space:]]+cron\.alter_job" supabase/recovery/v154-rollback-rehearsal-shadow.sql; then
+            echo "V154 rehearsal must not execute rollback"
+            exit 1
+          fi
+          grep -q "'automatic_rollback',false" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v154-rollback-rehearsal-shadow.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v154-rollback-rehearsal-shadow.sql
