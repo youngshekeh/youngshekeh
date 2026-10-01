@@ -1,6 +1,6 @@
 -- V151 Single-Candidate Controlled Plan Shadow
 -- Selects at most one future scheduler move from V148/V149/V150 evidence.
--- Produces a rollback-aware plan only. It never mutates cron.
+-- Produces a rollback-aware plan only. It never mutates cron.\n-- V151.2 evaluates V148 once, then passes immutable evidence snapshots through V149/V150 helpers.
 
 create or replace function public.get_v151_single_candidate_plan_shadow()
 returns jsonb
@@ -25,9 +25,9 @@ begin
   exception when others then v_v1461 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
   begin v_v148 := public.get_v148_predictive_collision_shadow();
   exception when others then v_v148 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-  begin v_v149 := public.get_v149_dependency_isolation_shadow();
+  begin v_v149 := private.get_v149_dependency_isolation_from_v148(v_v148,v_v1461);
   exception when others then v_v149 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
-  begin v_v150 := public.get_v150_network_sla_evidence_shadow();
+  begin v_v150 := private.get_v150_network_sla_evidence_from_v149(v_v149,v_v1461);
   exception when others then v_v150 := jsonb_build_object('ok',false,'state','UNAVAILABLE'); end;
 
   v_obs := coalesce((v_v1461->>'observation_minutes')::numeric,0);
@@ -148,7 +148,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v151-single-candidate-plan-shadow-db-v1',
+    'version','v151.2-single-candidate-plan-shadow-db-v2-bounded-evidence',
     'generated_at',v_now,
     'state',v_state,
     'plan',v_plan,
