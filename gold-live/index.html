@@ -117,6 +117,55 @@
 
 
 
+      <section id="v154-rollback-rehearsal-shadow" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V154 · ROLLBACK REHEARSAL SHADOW</span>
+            <h3 id="v154-state">CHECKING</h3>
+            <p id="v154-copy">Continuously proving that the active scheduler experiment can be reversed exactly from its immutable ledger without executing the rollback.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v154-ready">--</span><small>ROLLBACK</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">ROLLBACK REHEARSAL · ACTIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO ROLLBACK · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>LIVE SCHEDULE</span><strong id="v154-live">CHECKING</strong></article>
+          <article><span>SIMULATED FROM</span><strong id="v154-from">CHECKING</strong></article>
+          <article><span>SIMULATED TO</span><strong id="v154-to">CHECKING</strong></article>
+          <article><span>RECOMMENDED</span><strong id="v154-recommended">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>IDENTITY</span><strong id="v154-identity">CHECKING</strong></article>
+          <article><span>LEDGER STATE</span><strong id="v154-consistency">CHECKING</strong></article>
+          <article><span>ALTER PRIMITIVE</span><strong id="v154-primitive">CHECKING</strong></article>
+          <article><span>UNKNOWN DRIFT</span><strong id="v154-drift-rule">REFUSED</strong></article>
+        </section>
+
+        <div class="integrity-governance-grid">
+          <article><span>ROLLBACK FILE</span><strong id="v154-rollback-file">CHECKING</strong><small>Exact V151.1 rollback path remains source-controlled.</small></article>
+          <article><span>AUTO ROLLBACK</span><strong id="v154-auto-rollback">OFF</strong><small>Rehearsal never mutates cron.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v154-orders">OFF</strong><small>Rollback readiness cannot enable trading.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v154-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <div class="execution-gate-head">
+          <span>ROLLBACK REHEARSAL BLOCKERS</span>
+          <small>Target identity, ledger consistency, active state, distinct schedules and the cron alter primitive must all remain valid.</small>
+        </div>
+        <div id="v154-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING ROLLBACK PATH</span></div>
+        <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
+      </section>
+
       <section id="v153-scheduler-mutation-admission" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
