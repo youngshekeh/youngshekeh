@@ -1,5 +1,6 @@
--- V145.1 Connection-Aware Admission Shadow
--- Read-only planning layer. It does not alter cron jobs, schedules, order routing, or capital permission.
+-- V145.2 Connection-Aware Admission Shadow
+-- Deep call-graph screening detects nested public calls and network I/O inside SQL wrappers.
+-- Read-only planning only. It never alters cron jobs, schedules, order routing, or capital permission.
 
 CREATE OR REPLACE FUNCTION public.get_v145_connection_admission_shadow()
  RETURNS jsonb
@@ -7,6 +8,7 @@ CREATE OR REPLACE FUNCTION public.get_v145_connection_admission_shadow()
  SECURITY DEFINER
  SET search_path TO 'public', 'private', 'cron', 'pg_temp'
 AS $function$
+
 
 declare
   v_now timestamptz := now();
@@ -21,24 +23,58 @@ declare
 begin
   select count(*)::int into v_active_jobs from cron.job where active=true;
 
-  with job_stats as (
+  with job_base as (
     select
       j.jobid,
       j.jobname,
       j.schedule,
       j.command,
-      (j.command ~* '^[[:space:]]*select[[:space:]]+public[.][a-zA-Z0-9_]+[(][^;]*[)];?[[:space:]]*$') as simple_sql_call,
-      (j.command ~* 'net[.]http_|http_post|http_get') as network_call,
+      substring(j.command from 'public[.]([a-zA-Z0-9_]+)') as function_name,
+      (j.command ~* '^[[:space:]]*select[[:space:]]+public[.][a-zA-Z0-9_]+[(][^;]*[)];?[[:space:]]*$') as simple_sql_call
+    from cron.job j
+    where j.active=true
+  ),
+  job_enriched as (
+    select
+      b.*,
+      coalesce(fn.prosrc,'') as function_source,
+      (
+        b.command ~* 'net[.]http_|http_post|http_get'
+        or coalesce(fn.prosrc,'') ~* 'net[.]http_|http_post|http_get'
+      ) as network_call,
+      (
+        coalesce(fn.prosrc,'') ~* '(perform|select)[[:space:]]+public[.]'
+      ) as nested_public_call
+    from job_base b
+    left join lateral (
+      select p.prosrc
+      from pg_proc p
+      join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public'
+        and p.proname=b.function_name
+      order by p.oid
+      limit 1
+    ) fn on true
+  ),
+  job_stats as (
+    select
+      b.jobid,
+      b.jobname,
+      b.schedule,
+      b.command,
+      b.function_name,
+      b.simple_sql_call,
+      b.network_call,
+      b.nested_public_call,
       count(d.*) filter(where d.start_time>=v_now-interval '24 hours')::int as runs_24h,
       count(d.*) filter(where d.start_time>=v_now-interval '24 hours' and d.status not in ('succeeded','running'))::int as failures_24h,
       round(avg(extract(epoch from (d.end_time-d.start_time))*1000)
         filter(where d.start_time>=v_now-interval '24 hours' and d.end_time is not null)::numeric,1) as avg_ms_24h,
       round(percentile_cont(0.95) within group(order by extract(epoch from (d.end_time-d.start_time))*1000)
         filter(where d.start_time>=v_now-interval '24 hours' and d.end_time is not null)::numeric,1) as p95_ms_24h
-    from cron.job j
-    left join cron.job_run_details d on d.jobid=j.jobid
-    where j.active=true
-    group by j.jobid,j.jobname,j.schedule,j.command
+    from job_enriched b
+    left join cron.job_run_details d on d.jobid=b.jobid
+    group by b.jobid,b.jobname,b.schedule,b.command,b.function_name,b.simple_sql_call,b.network_call,b.nested_public_call
   ),
   cadence_groups as (
     select
@@ -46,12 +82,14 @@ begin
       count(*)::int as job_count,
       count(*) filter(where simple_sql_call)::int as simple_sql_jobs,
       count(*) filter(where network_call)::int as network_jobs,
+      count(*) filter(where nested_public_call)::int as nested_public_jobs,
       sum(failures_24h)::int as failures_24h,
       round(sum(coalesce(p95_ms_24h,0))::numeric,1) as sequential_p95_budget_ms,
       round(max(coalesce(p95_ms_24h,0))::numeric,1) as max_job_p95_ms,
       greatest(count(*)-1,0)::int as projected_slots_saved_per_trigger,
       case
         when count(*) filter(where network_call)>0 then 'REVIEW_NETWORK_OR_EXTERNAL_IO'
+        when count(*) filter(where nested_public_call)>0 then 'REVIEW_NESTED_CALL_GRAPH'
         when count(*) filter(where not simple_sql_call)>0 then 'REVIEW_COMPLEX_COMMAND'
         when sum(failures_24h)>0 then 'REVIEW_RECENT_FAILURES'
         when sum(coalesce(p95_ms_24h,0))>20000 then 'REVIEW_SERIAL_RUNTIME_BUDGET'
@@ -64,6 +102,7 @@ begin
           'jobname',jobname,
           'simple_sql_call',simple_sql_call,
           'network_call',network_call,
+          'nested_public_call',nested_public_call,
           'runs_24h',runs_24h,
           'failures_24h',failures_24h,
           'avg_ms_24h',avg_ms_24h,
@@ -88,6 +127,7 @@ begin
         'job_count',job_count,
         'simple_sql_jobs',simple_sql_jobs,
         'network_jobs',network_jobs,
+        'nested_public_jobs',nested_public_jobs,
         'failures_24h',failures_24h,
         'sequential_p95_budget_ms',sequential_p95_budget_ms,
         'max_job_p95_ms',max_job_p95_ms,
@@ -154,7 +194,7 @@ begin
 
   return jsonb_build_object(
     'ok',true,
-    'version','v145.1-connection-admission-shadow-db-v2',
+    'version','v145.2-connection-admission-shadow-db-v3',
     'generated_at',v_now,
     'state',v_state,
     'summary',jsonb_build_object(
@@ -188,6 +228,7 @@ begin
     'truth_label','SHADOW_CONNECTION_ADMISSION_ANALYSIS_NOT_EXECUTION_PERMISSION'
   );
 end;
+
 
 $function$
 
