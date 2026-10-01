@@ -39,12 +39,12 @@ Deno.serve(async(req:Request)=>{
   if(!(await authorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401,headers:{'Cache-Control':'no-store'}});
   try{
     const state=await dbState();
-    return Response.json({...state,engine_version:state?.version??null,version:'v145.1-connection-admission-shadow-private-runtime-v1',
+    return Response.json({...state,engine_version:state?.version??null,version:'v145.2-connection-admission-shadow-private-runtime-v2',
       runtime_bridge:{private:true,auth:'VERCEL_OIDC_OR_SUPABASE_SERVICE_ROLE',source:'get_v145_connection_admission_shadow'}},
       {headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN'}});
   }catch(error){
     return Response.json({
-      ok:false,version:'v145.1-connection-admission-shadow-private-runtime-v1',state:'FAIL_CLOSED',
+      ok:false,version:'v145.2-connection-admission-shadow-private-runtime-v2',state:'FAIL_CLOSED',
       error:'admission_shadow_runtime_unavailable',detail:String(error).slice(0,160),
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,automatic_policy_promotion:false,automatic_rescheduling:false}
     },{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN'}});
