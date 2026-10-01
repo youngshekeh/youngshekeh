@@ -49,7 +49,7 @@ async function fetchJson(url,headers={},timeout=DEPENDENCY_TIMEOUT_MS){
 function failClosed(res,status,error,detail){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Engine','V166');
-  res.setHeader('X-TFA-Pressure-Control','V176');
+  res.setHeader('X-TFA-Pressure-Control','V176.1');
   return res.status(status).json({
     ok:false,
     version:'v166-production-closure-gate-v1',
