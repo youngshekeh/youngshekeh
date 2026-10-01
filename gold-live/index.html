@@ -215,6 +215,56 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v162-prospective-collision-revalidation" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V162 · PROSPECTIVE COLLISION REVALIDATION</span>
+            <h3 id="v162-state">CHECKING</h3>
+            <p id="v162-copy">Revalidating the next scheduler candidate against the current live cron graph and reserved controlled-experiment minutes.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v162-clear">--</span><small>LIVE GATE</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">LIVE GRAPH · AUTHORITATIVE</span>
+          <span class="autonomy-chip autonomy-chip-lock">AUTO APPLY · OFF</span>
+          <span class="autonomy-chip autonomy-chip-off">LIVE ORDERS · OFF</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>CANDIDATE</span><strong id="v162-job">CHECKING</strong></article>
+          <article><span>MOVE</span><strong id="v162-move">CHECKING</strong></article>
+          <article><span>CURRENT PEERS</span><strong id="v162-current-peers">CHECKING</strong></article>
+          <article><span>PROPOSED PEERS</span><strong id="v162-proposed-peers">CHECKING</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PEER DELTA</span><strong id="v162-peer-delta">CHECKING</strong></article>
+          <article><span>CONTROLLED OVERLAPS</span><strong id="v162-overlaps">CHECKING</strong></article>
+          <article><span>LIVE MATCH</span><strong id="v162-live-match">CHECKING</strong></article>
+          <article><span>PLANNER RELIEF</span><strong id="v162-relief">CHECKING</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>LIVE REVALIDATION BLOCKERS</span>
+          <small>Proposed minutes must avoid active controlled-experiment reservations and strictly reduce current live peer density.</small>
+        </div>
+        <div id="v162-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">CHECKING LIVE COLLISION GRAPH</span></div>
+
+        <div class="integrity-governance-grid">
+          <article><span>CONTROLLED MINUTES</span><strong id="v162-reservations">RESERVED</strong><small>Active experiment minutes cannot be reused by a new shift.</small></article>
+          <article><span>AUTO RESCHEDULING</span><strong id="v162-rescheduling">OFF</strong><small>Revalidation is read-only.</small></article>
+          <article><span>ORDER ROUTING</span><strong id="v162-orders">OFF</strong><small>Infrastructure planning cannot enable execution.</small></article>
+          <article><span>REAL CAPITAL</span><strong id="v162-capital">0R</strong><small>The capital firewall remains authoritative.</small></article>
+        </div>
+
+        <p id="v162-detail" class="autonomy-detail">V162 can veto a planner recommendation using the current cron graph. Historical load remains diagnostic only.</p>
+      </section>
+
       <section id="v161-scheduler-experiment-registry" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
