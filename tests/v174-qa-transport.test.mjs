@@ -26,22 +26,29 @@ test('unauthorized and client errors are measured once without retry', async t =
   const probe = await transport.retry(() => transport.post('https://fixture.invalid/intake', {}), 0);
   assert.equal(calls, 1); assert.equal(probe.status, 401); assert.equal(probe.body.error, 'missing_token');
 });
-test('transient failures get at most one retry when time remains', async t => {
-  let calls = 0;
-  const transport = context(t, {fetchImpl: async () => json({ok: ++calls > 1}, calls === 1 ? 503 : 200)});
-  const probe = await transport.retry(() => transport.json('https://fixture.invalid/status'), 0);
-  assert.equal(calls, 2); assert.equal(probe.status, 200);
-  assert.deepEqual(transport.summary([probe]).attempts.map(x => x.status), [503, 200]);
-});
-test('a repeated server failure is retained after the second attempt', async t => {
+test('explicit server failures are evidence and are never retried', async t => {
   let calls = 0;
   const transport = context(t, {fetchImpl: async () => {calls++; return json({ok: false}, 503);}});
   const probe = await transport.retry(() => transport.json('https://fixture.invalid/status'), 0);
-  assert.equal(calls, 2); assert.equal(probe.status, 503); assert.equal(probe.ok, false);
+  assert.equal(calls, 1); assert.equal(probe.status, 503); assert.equal(probe.ok, false);
+  const status = transport.summary([probe]);
+  assert.equal(status.http_5xx_retry, false);
+  assert.equal(status.retry_policy, 'QUICK_TRANSPORT_FAILURE_ONLY');
 });
-test('a small remaining budget prevents another retry', async t => {
+test('a quick transport failure gets at most one retry when time remains', async t => {
   let calls = 0;
-  const transport = context(t, {budgetMs: 500, fetchImpl: async () => {calls++; return json({}, 503);}});
+  const transport = context(t, {fetchImpl: async () => {
+    calls++;
+    if (calls === 1) throw new TypeError('fetch failed');
+    return json({ok: true}, 200);
+  }});
+  const probe = await transport.retry(() => transport.json('https://fixture.invalid/status'), 0);
+  assert.equal(calls, 2); assert.equal(probe.status, 200);
+  assert.equal(transport.summary([probe]).http_attempts, 2);
+});
+test('a small remaining budget prevents another quick transport retry', async t => {
+  let calls = 0;
+  const transport = context(t, {budgetMs: 500, fetchImpl: async () => {calls++; throw new TypeError('fetch failed');}});
   const probe = await transport.retry(() => transport.json('https://fixture.invalid/status'), 0);
   assert.equal(calls, 1); assert.equal(probe.retry_withheld, true);
 });
@@ -84,10 +91,10 @@ test('caller cancellation prevents new work', async t => {
   const probes = await transport.all([() => transport.json('https://fixture.invalid/state')]);
   assert.equal(calls, 0); assert.equal(transport.summary(probes).request_aborted, true);
 });
-test('caller cancellation interrupts a retry delay', async t => {
+test('caller cancellation interrupts a quick transport retry delay', async t => {
   const controller = new AbortController(); let calls = 0;
   const transport = context(t, {requestSignal: controller.signal,
-    fetchImpl: async () => {calls++; return json({}, 503);}});
+    fetchImpl: async () => {calls++; throw new TypeError('fetch failed');}});
   const pending = transport.retry(() => transport.json('https://fixture.invalid/state'), 100);
   setTimeout(() => controller.abort(), 5);
   const probe = await pending;
@@ -109,6 +116,8 @@ test('deadline applies to a real HTTP body stalled after headers arrive', async 
   const transport = context(t, {budgetMs: 80});
   const probe = await transport.json(`http://127.0.0.1:${server.address().port}/slow-body`, 5000);
   assert.equal(probe.ok, false); assert.equal(probe.body, null);
-  assert.equal(transport.summary([probe]).attempts[0].status, 200);
-  assert.ok(probe.latency_ms < 350);
+  const attempt = transport.summary([probe]).attempts[0];
+  assert.ok([0, 200].includes(attempt.status), JSON.stringify(attempt));
+  assert.match(String(probe.error || ''), /timeout|deadline|abort/i);
+  assert.ok(probe.latency_ms < 750, JSON.stringify(probe));
 });

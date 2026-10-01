@@ -56,8 +56,18 @@ export function createQaTransport({
 
   async function retry(task, delay = 250) {
     const first = await task();
-    if (first?.status > 0 && first.status < 500) return first;
-    if (stopped() || remaining() <= delay + 1000) return {...first, retry_withheld: true};
+    // An explicit HTTP response is evidence, including fail-closed 5xx responses.
+    // Retrying known 5xx states amplifies pressure on an already unhealthy dependency.
+    if (first?.status > 0) return first;
+    const latency = Number(first?.latency_ms || 0);
+    const errorText = String(first?.error || '');
+    const quickTransportFailure = first?.status === 0
+      && first?.deadline_exceeded !== true
+      && latency < 1000
+      && !/timeout|deadline|aborted/i.test(errorText);
+    if (!quickTransportFailure || stopped() || remaining() <= delay + 1000) {
+      return {...first, retry_withheld: true};
+    }
     await new Promise(resolve => {
       const finish = () => {clearTimeout(wait); controller.signal.removeEventListener('abort', finish);
         requestSignal?.removeEventListener('abort', finish); resolve();};
@@ -104,6 +114,7 @@ export function createQaTransport({
         not_started_probes: notStarted, deadline_aborted_probes: deadlineAborted,
         deadline_exceeded: remaining() === 0 || controller.signal.aborted, request_aborted: requestAborted,
         incomplete: notStarted > 0 || deadlineAborted > 0 || requestAborted,
+        retry_policy: 'QUICK_TRANSPORT_FAILURE_ONLY', http_5xx_retry: false,
         http_attempts: attempts.length, attempts: attempts.map(row => ({...row}))};
     },
     close: () => clearTimeout(timer),
