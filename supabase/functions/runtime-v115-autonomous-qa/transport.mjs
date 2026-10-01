@@ -1,3 +1,4 @@
+// V179 pressure circuit stops new QA probes after repeated slow backend failures.
 // One request budget covers authentication, fetches, body reads, retries, and queues.
 // Aborting HTTP work does not claim that a database query was cancelled server-side.
 export function createQaTransport({
