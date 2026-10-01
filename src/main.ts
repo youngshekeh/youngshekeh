@@ -717,14 +717,9 @@ function renderEngines(engines: MissionEngine[]) {
 
 async function loadQaMatrix() {
   try {
-    let response = await fetch(`/api/autonomous-qa-matrix?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-    let qa = response.ok ? await response.json() : null;
-    if (!qa || qa?.state !== 'PASS') {
-      await new Promise((resolve) => window.setTimeout(resolve, 350));
-      response = await fetch(`/api/autonomous-qa-matrix?ui_retry=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      const retry = response.ok ? await response.json() : null;
-      if (retry && (!qa || retry?.state === 'PASS' || Number(retry?.summary?.passed ?? 0) > Number(qa?.summary?.passed ?? 0))) qa = retry;
-    }
+    const response = await fetch(`/api/autonomous-qa-matrix?ui=${Date.now()}`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error('QA channel unavailable');
+    const qa = await response.json();
     const passed = Number(qa?.summary?.passed ?? 0);
     const total = Number(qa?.summary?.total ?? 0);
     const state = String(qa?.state ?? 'WITHHELD');
@@ -738,7 +733,9 @@ async function loadQaMatrix() {
       quantStatus.dataset.state = state === 'PASS' ? 'QA PASS' : state;
     }
     const quantDetail = document.querySelector<HTMLElement>('[data-desk-id="quant"] p');
-    if (quantDetail) quantDetail.textContent = `${passed}/${total || '?'} autonomous invariants · forecast ledger · Brier · MFE/MAE`;
+    if (quantDetail) quantDetail.textContent = qa?.transport?.incomplete === true
+      ? `${passed}/${total || '?'} invariants confirmed · ${Number(qa.transport.not_started_probes || 0)} probes not reached · refresh to check again`
+      : `${passed}/${total || '?'} autonomous invariants · forecast ledger · Brier · MFE/MAE`;
   } catch {
     missionText('briefQA', 'QA CHANNEL UNAVAILABLE');
     missionText('calibrationQA', 'UNAVAILABLE');
@@ -877,9 +874,16 @@ async function loadMissionBrief() {
   }
 }
 
+let missionRefreshInFlight = false;
 async function refreshMissionExperience() {
-  await loadMissionBrief();
-  await loadQaMatrix();
+  if (missionRefreshInFlight) return;
+  missionRefreshInFlight = true;
+  try {
+    await loadMissionBrief();
+    await loadQaMatrix();
+  } finally {
+    missionRefreshInFlight = false;
+  }
 }
 void refreshMissionExperience();
 window.setInterval(() => void refreshMissionExperience(), 60_000);
