@@ -536,6 +536,78 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV156QuotaGuardRecoveryShadow() {
+  const recovery = await readLocal('/api/quota-guard-recovery-shadow', 20000);
+  if (!recovery?.ok) {
+    set('v156-state', 'QUOTA RECOVERY · FAIL CLOSED');
+    set('v156-copy', 'The quota guard recovery engine is unavailable. Guard restoration and further scheduler mutation cannot be certified.');
+    for (const id of ['v156-restored','v156-quota','v156-shed','v156-paused','v156-mismatch','v156-enforcer','v156-signal-age','v156-v1461','v156-pressure']) set(id, null);
+    set('v156-handoff', 'LOCKED');
+    set('v156-auto-release', 'OFF');
+    set('v156-orders', 'OFF');
+    set('v156-capital', '0R');
+    return;
+  }
+
+  const quota = recovery?.quota ?? {};
+  const shed = recovery?.load_shedding ?? {};
+  const guard = recovery?.guard ?? {};
+  const enforcer = recovery?.enforcer ?? {};
+  const downstream = recovery?.downstream ?? {};
+  const rec = recovery?.recovery ?? {};
+  const blockers = Array.isArray(rec?.blockers) ? rec.blockers.map((x: unknown) => String(x)) : [];
+  const restored = Number(guard?.restored_active_rows || 0);
+  const expected = Number(guard?.expected_restore_targets || 0);
+  const pressure = Number(downstream?.v147_pressure_score);
+
+  set('v156-state', `QUOTA RECOVERY · ${first(recovery?.state, 'UNKNOWN')}`);
+  set('v156-copy',
+    recovery?.state === 'RECOVERY_CONFIRMED_RESTORED'
+      ? 'The quota signal cleared, V72 ran successfully, all previously active guard targets were restored, and the live cron graph matches the guard ledger.'
+      : recovery?.state === 'RECOVERY_PENDING_GUARD_RELEASE'
+        ? 'The quota signal has cleared but V72 is still inside the recovery grace window. Guard restoration is pending and no manual override is warranted.'
+        : recovery?.state === 'QUOTA_RESTRICTED_LOAD_SHEDDING_CONSISTENT'
+          ? 'The platform is quota-restricted and V72 load shedding is internally consistent. Guarded jobs remain intentionally paused.'
+          : 'Quota recovery integrity has a blocker. No manual guard release or scheduler admission is permitted from this surface.'
+  );
+
+  set('v156-restored', `${restored}/${expected}`);
+  set('v156-quota', quota?.restricted ? 'RESTRICTED' : String(quota?.state || 'UNKNOWN').toUpperCase());
+  set('v156-shed', String(shed?.state || 'UNKNOWN').toUpperCase());
+  set('v156-paused', guard?.paused_rows ?? null);
+  set('v156-mismatch', guard?.mismatch_rows ?? null);
+  set('v156-enforcer', enforcer?.healthy ? 'HEALTHY' : 'LOCKED');
+  set('v156-signal-age', quota?.age_minutes == null ? 'WITHHELD' : `${Number(quota.age_minutes).toFixed(1)}m`);
+  set('v156-v1461', downstream?.v1461_state ?? 'WITHHELD');
+  set('v156-pressure', Number.isFinite(pressure) ? `${pressure}/100` : 'WITHHELD');
+  set('v156-handoff', recovery?.state === 'RECOVERY_CONFIRMED_RESTORED' ? 'CONFIRMED' : recovery?.state === 'QUOTA_RESTRICTED_LOAD_SHEDDING_CONSISTENT' ? 'PROTECTED' : 'LOCKED');
+  set('v156-auto-release', 'OFF');
+  set('v156-orders', 'OFF');
+  set('v156-capital', '0R');
+
+  const host = byId('v156-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO RECOVERY INTEGRITY BLOCKERS';
+      host.appendChild(chip);
+    } else {
+      for (const item of blockers.slice(0, 6)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = item.replaceAll('_', ' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  set('v156-detail',
+    `State ${String(recovery?.state || 'unknown')} · quota ${String(quota?.state || 'n/a')} · restored ${restored}/${expected} · paused ${Number(guard?.paused_rows || 0)} · mismatches ${Number(guard?.mismatch_rows || 0)} · enforcer ${enforcer?.healthy ? 'healthy' : 'locked'} · V146.1 ${String(downstream?.v1461_state || 'n/a')} · V147 pressure ${Number.isFinite(pressure) ? pressure : 'n/a'}/100 · auto release OFF · capital 0R.`
+  );
+}
+
 async function loadV154RollbackRehearsalShadow() {
   const rollback = await readLocal('/api/rollback-rehearsal-shadow', 20000);
   if (!rollback?.ok) {
@@ -2615,6 +2687,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV156QuotaGuardRecoveryShadow(),
       loadV154RollbackRehearsalShadow(),
       loadV153SchedulerMutationAdmission(),
       loadV152PostShiftObserver(),
