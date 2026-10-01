@@ -536,6 +536,79 @@ function renderV132ShadowStudies(shadow: AnyJson) {
 
 
 
+async function loadV166ProductionClosureGate() {
+  const closure = await readLocal('/api/production-closure', 35000);
+  if (!closure?.ok) {
+    set('v166-state', 'CLOSURE · FAIL CLOSED');
+    set('v166-copy', 'One or more production dependencies are unavailable. Research may continue only through healthy upstream surfaces; real execution remains locked.');
+    set('v166-research', 'CHECK');
+    set('v166-paper', 'CHECK');
+    set('v166-scheduler', 'CHECK');
+    set('v166-live', 'LOCKED');
+    set('v166-feed', 'UNAVAILABLE');
+    set('v166-sample', 'WITHHELD');
+    set('v166-infra', 'WITHHELD');
+    set('v166-broker', 'NOT VERIFIED');
+    set('v166-capital', '0R');
+    return;
+  }
+
+  const gate = closure?.closure ?? {};
+  const market = closure?.live_market ?? {};
+  const evidence = closure?.research_evidence ?? {};
+  const scheduler = closure?.scheduler ?? {};
+  const execution = closure?.execution_release ?? {};
+
+  set('v166-state', first(closure?.state, 'UNKNOWN'));
+  set('v166-copy',
+    gate?.live_execution_ready === true
+      ? 'All measured prerequisites are present for a separate human-controlled live-release review. V166 itself cannot enable execution.'
+      : gate?.platform_research_ready === true && gate?.autonomous_paper_ready === true
+        ? 'Production research and autonomous paper operation are available while real execution remains deliberately fail-closed.'
+        : 'The machine is still closing production dependencies. Real execution remains fail-closed.'
+  );
+  set('v166-research', gate?.platform_research_ready === true ? 'READY' : 'BLOCKED');
+  set('v166-paper', gate?.autonomous_paper_ready === true ? 'READY' : 'BLOCKED');
+  set('v166-scheduler', gate?.scheduler_review_ready === true ? 'HUMAN REVIEW READY' : 'BLOCKED');
+  set('v166-live', gate?.live_execution_ready === true ? 'HUMAN RELEASE REVIEW' : 'LOCKED');
+  set('v166-feed',
+    market?.execution_quote_allowed === true
+      ? 'EXECUTION GRADE'
+      : market?.delayed_feed === true
+        ? 'DELAYED · RESEARCH'
+        : first(market?.market_status, 'UNKNOWN')
+  );
+  set('v166-sample', `${String(evidence?.resolved_shadow_sample ?? 0)} / ${String(evidence?.mature_sample_required ?? 30)}`);
+  set('v166-infra', `${String(evidence?.infrastructure_passed ?? 0)} / ${String(evidence?.infrastructure_total ?? 0)}`);
+  set('v166-broker', first(evidence?.production_broker_readiness, 'NOT VERIFIED'));
+  set('v166-capital', '0R');
+
+  const blockers = Array.isArray(execution?.blockers) ? execution.blockers.map((x: unknown) => String(x)) : [];
+  const host = byId('v166-blockers');
+  if (host) {
+    host.replaceChildren();
+    if (!blockers.length) {
+      const chip = document.createElement('span');
+      chip.className = 'integrity-chip integrity-chip-clear';
+      chip.textContent = 'NO UNRESOLVED RELEASE BLOCKERS · HUMAN RELEASE STILL REQUIRED';
+      host.appendChild(chip);
+    } else {
+      for (const blocker of blockers.slice(0, 12)) {
+        const chip = document.createElement('span');
+        chip.className = 'integrity-chip integrity-chip-warn';
+        chip.textContent = blocker.replaceAll('_', ' ');
+        host.appendChild(chip);
+      }
+    }
+  }
+
+  const candidate = scheduler?.candidate ?? {};
+  set('v166-detail',
+    `Gold ${String(market?.price ?? 'withheld')} · ${String(market?.desk_state ?? 'unknown')} · sample ${String(evidence?.resolved_shadow_sample ?? 0)}/${String(evidence?.mature_sample_required ?? 30)} · scheduler ${String(candidate?.current_schedule ?? 'n/a')} → ${String(candidate?.recommended_schedule ?? 'n/a')} human-review only · live orders OFF · capital 0R.`
+  );
+}
+
+
 async function loadV165SafeAlternativeAdmissionHandoff() {
   const handoff = await readLocal('/api/safe-alternative-admission-handoff', 30000);
   if (!handoff?.ok) {
@@ -3157,6 +3230,7 @@ async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visi
     set('v121-pulse-state', 'LIVE · 60s');
     set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
     void Promise.allSettled([
+      loadV166ProductionClosureGate(),
       loadV165SafeAlternativeAdmissionHandoff(),
       loadV163SafeAlternativeMinuteSearch(),
       loadV162ProspectiveCollisionRevalidation(),
