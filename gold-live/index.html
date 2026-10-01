@@ -215,6 +215,49 @@
         <p id="v154-detail" class="autonomy-detail">V154 proves rollback readiness only. Human review is required before rollback, and no trading permission can be derived from this engine.</p>
       </section>
 
+      <section id="v166-production-closure-gate" class="command-card autonomy-cockpit integrity-cockpit">
+        <div class="integrity-head">
+          <div>
+            <span class="kicker">V166 · PRODUCTION CLOSURE GATE</span>
+            <h3 id="v166-state">CHECKING</h3>
+            <p id="v166-copy">Separating production research readiness, autonomous paper readiness and real-execution readiness so launch status cannot overstate what the machine has proved.</p>
+          </div>
+          <div class="integrity-orb" aria-hidden="true">
+            <div class="integrity-ring integrity-ring-a"></div>
+            <div class="integrity-ring integrity-ring-b"></div>
+            <div class="integrity-core"><span id="v166-capital">0R</span><small>CAPITAL</small></div>
+          </div>
+        </div>
+
+        <div class="autonomy-status-rail">
+          <span class="autonomy-chip autonomy-chip-on">RESEARCH · LIVE</span>
+          <span class="autonomy-chip autonomy-chip-on">PAPER · AUTONOMOUS</span>
+          <span class="autonomy-chip autonomy-chip-lock">REAL EXECUTION · GATED</span>
+        </div>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>PLATFORM / RESEARCH</span><strong id="v166-research">CHECKING</strong></article>
+          <article><span>AUTONOMOUS PAPER</span><strong id="v166-paper">CHECKING</strong></article>
+          <article><span>SCHEDULER REVIEW</span><strong id="v166-scheduler">CHECKING</strong></article>
+          <article><span>LIVE EXECUTION</span><strong id="v166-live">LOCKED</strong></article>
+        </section>
+
+        <section class="command-strip autonomy-metrics">
+          <article><span>MARKET FEED</span><strong id="v166-feed">CHECKING</strong></article>
+          <article><span>RESEARCH SAMPLE</span><strong id="v166-sample">CHECKING</strong></article>
+          <article><span>EXECUTION INFRA</span><strong id="v166-infra">CHECKING</strong></article>
+          <article><span>BROKER READINESS</span><strong id="v166-broker">CHECKING</strong></article>
+        </section>
+
+        <div class="execution-gate-head">
+          <span>CLOSURE BLOCKERS</span>
+          <small>These blockers may restrict real execution without preventing the research and paper system from operating safely.</small>
+        </div>
+        <div id="v166-blockers" class="integrity-blockers"><span class="integrity-chip integrity-chip-warn">COMPILING CLOSURE STATE</span></div>
+
+        <p id="v166-detail" class="autonomy-detail">V166 is read-only. It cannot send orders, increase capital, reschedule cron or promote policy.</p>
+      </section>
+
       <section id="v165-safe-alternative-admission-handoff" class="command-card autonomy-cockpit integrity-cockpit">
         <div class="integrity-head">
           <div>
