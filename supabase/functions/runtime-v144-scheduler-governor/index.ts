@@ -39,10 +39,10 @@ Deno.serve(async(req:Request)=>{
   if(!(await tfaPrivateAuthorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401,headers:{'Cache-Control':'no-store'}});
   try{
     const state=await dbState();
-    return Response.json({...state,version:'v144-scheduler-load-governor-private-runtime-v1',runtime_bridge:{private:true,auth:'VERCEL_OIDC_OR_SUPABASE_SERVICE_ROLE',source:'get_v144_scheduler_load_governor'}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN'}});
+    return Response.json({...state,engine_version:state?.version??null,version:'v144.1-scheduler-load-governor-private-runtime-v2',runtime_bridge:{private:true,auth:'VERCEL_OIDC_OR_SUPABASE_SERVICE_ROLE',source:'get_v144_scheduler_load_governor'}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN'}});
   }catch(error){
     return Response.json({
-      ok:false,version:'v144-scheduler-load-governor-private-runtime-v1',state:'FAIL_CLOSED',
+      ok:false,version:'v144.1-scheduler-load-governor-private-runtime-v2',state:'FAIL_CLOSED',
       error:'scheduler_governor_runtime_unavailable',detail:String(error).slice(0,160),
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,automatic_policy_promotion:false,automatic_rescheduling:false}
     },{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN'}});

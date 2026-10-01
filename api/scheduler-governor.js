@@ -17,7 +17,7 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({
       ok:false,
-      version:'v144-scheduler-load-governor-bridge-v1',
+      version:'v144.1-scheduler-load-governor-bridge-v2',
       state:'FAIL_CLOSED',
       error:'vercel_workload_identity_unavailable',
       governance:{
@@ -35,7 +35,7 @@ export default async function handler(req,res){
       headers:{
         Authorization:`Bearer ${oidcToken}`,
         Accept:'application/json',
-        'User-Agent':'THE-FATHER-ANALYTICS-V144-SCHEDULER/1.0'
+        'User-Agent':'THE-FATHER-ANALYTICS-V144.1-SCHEDULER/2.0'
       },
       cache:'no-store',
       signal:AbortSignal.timeout(12000)
@@ -44,10 +44,10 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
-    res.setHeader('X-TFA-Scheduler','V144');
+    res.setHeader('X-TFA-Scheduler','V144.1');
     return res.status(upstream.ok?200:upstream.status).json(body??{
       ok:false,
-      version:'v144-scheduler-load-governor-bridge-v1',
+      version:'v144.1-scheduler-load-governor-bridge-v2',
       state:'FAIL_CLOSED',
       error:'private_scheduler_runtime_unavailable',
       governance:{
@@ -62,7 +62,7 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({
       ok:false,
-      version:'v144-scheduler-load-governor-bridge-v1',
+      version:'v144.1-scheduler-load-governor-bridge-v2',
       state:'FAIL_CLOSED',
       error:'private_scheduler_runtime_unavailable',
       detail:String(error).slice(0,160),

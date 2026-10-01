@@ -79,7 +79,8 @@ jobs:
           test -f supabase/recovery/v1441-core-cluster-phasing.sql
           grep -q 'v144.1-scheduler-load-governor-db-v2' supabase/recovery/v1441-core-cluster-phasing.sql
           test -f supabase/functions/runtime-v144-scheduler-governor/index.ts
-          grep -q 'v144-scheduler-load-governor-bridge-v1' api/scheduler-governor.js
+          grep -q 'v144.1-scheduler-load-governor-private-runtime-v2' supabase/functions/runtime-v144-scheduler-governor/index.ts
+          grep -q 'v144.1-scheduler-load-governor-bridge-v2' api/scheduler-governor.js
           grep -q "capital_permission:'0R'" api/scheduler-governor.js
           grep -q "live_order_routing:false" api/scheduler-governor.js
           grep -q "automatic_rescheduling:false" api/scheduler-governor.js
