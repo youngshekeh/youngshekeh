@@ -1,0 +1,1291 @@
+{
+  "version": "V174",
+  "observed_at": "2026-10-01T19:58:40.959Z",
+  "state": "DEPLOYED_MITIGATION_VERIFIED_DATABASE_RECOVERY_INCOMPLETE",
+  "local_validation": {
+    "v172_v173_tests_passed": 81,
+    "new_tests_passed": 19,
+    "live_qa_predicates_preserved": 78,
+    "concurrency": 3,
+    "request_budget_ms": 24000,
+    "bridge_timeout_ms": 30000,
+    "private_auth_identical_to_live": true,
+    "total_tests_passed": 100
+  },
+  "database": {
+    "history_query_execution_ms": 44414.573,
+    "history_rows_scanned": 98490,
+    "history_bytes": 32415744,
+    "indices": [
+      "job_run_details_pkey"
+    ],
+    "owner": "supabase_admin",
+    "caller": "postgres",
+    "caller_superuser": false,
+    "caller_owner_member": false,
+    "index_ddl_attempted": false,
+    "root_recovery_verified": false,
+    "background_workers": false,
+    "max_connections": 60,
+    "cron_max_running_jobs": 32
+  },
+  "live": {
+    "deployment_verified": true,
+    "qa_passed": false,
+    "http_status": 200,
+    "qa": {
+      "ok": false,
+      "version": "v174.0-integrated-engine-certification-v51-deadline-reporting",
+      "checked_at": "2026-10-01T19:56:51.583Z",
+      "state": "INCOMPLETE",
+      "summary": {
+        "passed": 53,
+        "failed": 25,
+        "total": 78,
+        "max_latency_ms": 10849.198342000002
+      },
+      "tests": [
+        {
+          "name": "v167_capital_os_surface_contract",
+          "pass": true,
+          "detail": "status=200, journal=present, portfolio=present",
+          "latency_ms": 77.30962400000001
+        },
+        {
+          "name": "v167_official_macro_calendar_contract",
+          "pass": true,
+          "detail": "status=200, state=OFFICIAL_STATIC_FALLBACK_ACTIVE, events=27, trading=false",
+          "latency_ms": 207.69366300000002
+        },
+        {
+          "name": "v167_earnings_truth_contract",
+          "pass": true,
+          "detail": "status=200, state=LIVE_UPSTREAM, rows=16",
+          "latency_ms": 2183.618905000001
+        },
+        {
+          "name": "v166_production_closure_contract",
+          "pass": true,
+          "detail": "status=200, state=RESEARCH_AND_PAPER_PRODUCTION_READY_LIVE_EXECUTION_LOCKED, research=true, paper=true, live=false, capital=0R",
+          "latency_ms": 8621.934087999998
+        },
+        {
+          "name": "homepage_http",
+          "pass": true,
+          "detail": "status=200",
+          "latency_ms": 72.05446699999996
+        },
+        {
+          "name": "gold_surface_http",
+          "pass": true,
+          "detail": "status=200",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v126_owner_review_surface_contract",
+          "pass": true,
+          "detail": "status=200, inbox=present, default_hidden=true",
+          "latency_ms": 64.53025300000002
+        },
+        {
+          "name": "v127_owner_review_intelligence_surface_contract",
+          "pass": true,
+          "detail": "status=200, review_intelligence=present, default_hidden=true",
+          "latency_ms": 64.53025300000002
+        },
+        {
+          "name": "v130_owner_priority_surface_contract",
+          "pass": true,
+          "detail": "status=200, p1_counter=present, inbox_default_hidden=true",
+          "latency_ms": 64.53025300000002
+        },
+        {
+          "name": "v118_broker_xau_bridge_contract",
+          "pass": true,
+          "detail": "status=200, bridge=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v121_live_pulse_contract",
+          "pass": true,
+          "detail": "status=200, pulse=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v122_outcome_lab_contract",
+          "pass": true,
+          "detail": "status=200, outcome_lab=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v123_what_changed_surface_contract",
+          "pass": true,
+          "detail": "status=200, what_changed=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v124_trigger_watch_surface_contract",
+          "pass": true,
+          "detail": "status=200, trigger_watch=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v125_signal_reputation_surface_contract",
+          "pass": true,
+          "detail": "status=200, signal_reputation=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v127_review_intelligence_surface_contract",
+          "pass": true,
+          "detail": "status=200, review_intelligence=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v128_disagreement_surface_contract",
+          "pass": true,
+          "detail": "status=200, disagreement_surface=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v129_context_lab_surface_contract",
+          "pass": true,
+          "detail": "status=200, context_lab=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v130_review_routing_surface_contract",
+          "pass": true,
+          "detail": "status=200, review_routing=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v131_review_freshness_surface_contract",
+          "pass": true,
+          "detail": "status=200, review_freshness=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v132_shadow_execution_surface_contract",
+          "pass": true,
+          "detail": "status=200, cockpit=present, live_orders_off=true, capital_0r=true",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v1331_execution_reality_surface_contract",
+          "pass": true,
+          "detail": "status=200, reality=present, broker_locked=true, capital_0r=true",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v134_broker_adapter_lab_surface_contract",
+          "pass": true,
+          "detail": "status=200, lab=present, live_route_absent=true, production_not_tested=true, capital_0r=true",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v135_opportunity_governor_surface_contract",
+          "pass": true,
+          "detail": "status=200, governor=present, paper=true, live_locked=true, capital_0r=true",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v120_gold_execution_desk",
+          "pass": true,
+          "detail": "state=WAIT_FOR_CONFIRMATION, feed=DELAYED_LIVE, broker_required=true, quote_allowed=false",
+          "latency_ms": 1410.324222000001
+        },
+        {
+          "name": "v120_multi_session_clock",
+          "pass": true,
+          "detail": "primary=NONE, state=OUTSIDE_PRIMARY_REVIEW_WINDOW, london=20:56, ny=15:56",
+          "latency_ms": 1410.324222000001
+        },
+        {
+          "name": "v119_prospective_learning_ledger",
+          "pass": true,
+          "detail": "samples=250, health=LATE, latest=WAIT_FOR_CONFIRMATION, performance=WITHHELD_UNTIL_PROSPECTIVE_OUTCOMES_RESOLVE",
+          "latency_ms": 846.2219349999996
+        },
+        {
+          "name": "v122_forward_outcome_learning",
+          "pass": true,
+          "detail": "resolved=500, eligible=0, edge=WITHHELD",
+          "latency_ms": 920.6362130000016
+        },
+        {
+          "name": "v123_transition_intelligence",
+          "pass": true,
+          "detail": "state=STABLE, event=DATA_RECOVERED, blocked=false, capital=0R",
+          "latency_ms": 358.5268820000001
+        },
+        {
+          "name": "v124_trigger_watch",
+          "pass": false,
+          "detail": "state=undefined, long=undefined, short=undefined, capital=undefined",
+          "latency_ms": 1018.7205109999995
+        },
+        {
+          "name": "v125_signal_reputation",
+          "pass": true,
+          "detail": "state=EARLY_REPUTATION, classifier=v125.3-event-aware-v2, triggers=100, directional=1, human=0, max_n=12, capital=0R",
+          "latency_ms": 449.0998870000003
+        },
+        {
+          "name": "v126_owner_review_anonymous_denial",
+          "pass": true,
+          "detail": "status=401, error=missing_token",
+          "latency_ms": 88.52722
+        },
+        {
+          "name": "v127_review_intelligence",
+          "pass": true,
+          "detail": "state=WAITING_FOR_HUMAN_REVIEW, reviews=0, anchors=0, outcomes=0, max_n=0, capital=0R",
+          "latency_ms": 310.98459
+        },
+        {
+          "name": "v128_disagreement_intelligence",
+          "pass": true,
+          "detail": "state=WAITING_FOR_HUMAN_REVIEW, reviews=0, outcomes=0, disagreements=0, max_n=0, capital=0R",
+          "latency_ms": 304.5411960000001
+        },
+        {
+          "name": "v129_contextual_disagreement_intelligence",
+          "pass": true,
+          "detail": "state=WAITING_FOR_HUMAN_REVIEW, events=0, scorable=0, cohorts=0, max_n=0, capital=0R",
+          "latency_ms": 310.6443390000004
+        },
+        {
+          "name": "v130_review_priority_intelligence",
+          "pass": true,
+          "detail": "state=ROUTING_ACTIVE, assignments=46, pending=46, p1=22, top=100, capital=0R",
+          "latency_ms": 332.78840599999785
+        },
+        {
+          "name": "v131_review_freshness_intelligence",
+          "pass": true,
+          "detail": "state=P1_OVER_TARGET, pending=46, over=46, p1_over=22, oldest_p1=2071.6, capital=0R",
+          "latency_ms": 393.577113000003
+        },
+        {
+          "name": "v132_autonomous_shadow_trader",
+          "pass": true,
+          "detail": "state=EARLY_SHADOW_EVIDENCE, intents=10, open=0, resolved=10, live=false, orders=false, capital=0R",
+          "latency_ms": 3577.320157000002
+        },
+        {
+          "name": "v133_shadow_portfolio_brain",
+          "pass": false,
+          "detail": "state=undefined, decisions=undefined, allocated=undefined, skipped=undefined, open=undefined, resolved=undefined, capital=undefined",
+          "latency_ms": 4959.617989000002
+        },
+        {
+          "name": "v133_execution_reality_gate",
+          "pass": false,
+          "detail": "state=undefined, sample=undefined, blockers=undefined, infra=undefined/undefined, live=undefined, capital=undefined",
+          "latency_ms": 3512.3557269999983
+        },
+        {
+          "name": "v134_broker_adapter_lab",
+          "pass": false,
+          "detail": "state=undefined, lab=undefined/undefined, real_orders=undefined, production=undefined, capital=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v135_opportunity_governor",
+          "pass": true,
+          "detail": "state=PAPER_AUTONOMY_READY, mode=PAPER_ONLY, paper=PAPER_WAIT_NEXT_ELIGIBLE_EVENT, live=LOCKED, blockers=12, capital=0R",
+          "latency_ms": 2129.2428070000005
+        },
+        {
+          "name": "v116_vercel_workload_identity_transport",
+          "pass": true,
+          "detail": "status=200, auth=VERCEL_OIDC, runtime=PRIVATE_BRAIN",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v115_private_runtime_anonymous_denial",
+          "pass": true,
+          "detail": "status=401, error=unauthorized_private_runtime",
+          "latency_ms": 102.19472200000001
+        },
+        {
+          "name": "v70_firewall",
+          "pass": false,
+          "detail": "action=undefined, capital=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v75_no_zero_ohlc",
+          "pass": false,
+          "detail": "current=null, previous_high=undefined, previous_low=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v75_shadow_only",
+          "pass": false,
+          "detail": "canonical=undefined, action=undefined, capital=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v76_live_gate",
+          "pass": false,
+          "detail": "state=undefined, critical=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v76_regression_quarantine",
+          "pass": false,
+          "detail": "state=undefined, passed=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v77_shadow_only",
+          "pass": false,
+          "detail": "canonical=undefined, promotion=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "shadow_feed_firewall",
+          "pass": false,
+          "detail": "canonical=undefined, action=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "quota_probe_truthful",
+          "pass": false,
+          "detail": "restricted=undefined, upstream=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v79_state_machine_firewall",
+          "pass": false,
+          "detail": "phase=undefined, action=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v81_mtf_zone_integrity",
+          "pass": false,
+          "detail": "zones=undefined, composite=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v82_confluence_firewall",
+          "pass": false,
+          "detail": "tension=undefined, capital=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v83_breakout_detector",
+          "pass": false,
+          "detail": "state=undefined, quality=n/a",
+          "latency_ms": 0
+        },
+        {
+          "name": "v83_regression_selftest",
+          "pass": false,
+          "detail": "accepted=undefined, failed=undefined",
+          "latency_ms": 0
+        },
+        {
+          "name": "v106_snapshot_fingerprints",
+          "pass": true,
+          "detail": "state=ALL_FINGERPRINTED, fingerprinted=6",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v107_receipt_chain",
+          "pass": false,
+          "detail": "state=UNAVAILABLE, failures=n/a, mode=EVIDENCE_GATED",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v108_server_attestation",
+          "pass": false,
+          "detail": "state=UNAVAILABLE, failed=n/a, mode=EVIDENCE_GATED",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v109_key_lifecycle",
+          "pass": false,
+          "detail": "state=UNAVAILABLE, missing=n/a, mode=EVIDENCE_GATED",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v1131_provenance_survivor_truth",
+          "pass": false,
+          "detail": "modes=EVIDENCE_GATED,EVIDENCE_GATED,EVIDENCE_GATED, checkpoint=UNAVAILABLE",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v110_checkpoint_chain",
+          "pass": false,
+          "detail": "state=UNAVAILABLE, broken=n/a",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v111_external_root",
+          "pass": false,
+          "detail": "root_state=ROOT_MISMATCH, roots_match=false",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v112_anchor_heartbeat",
+          "pass": true,
+          "detail": "heartbeat=FRESH, age=50.7m, checks=4",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v112_capital_firewall",
+          "pass": true,
+          "detail": "quant=0R, mission=0R",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v113_health_orchestrator",
+          "pass": false,
+          "detail": "state=FAIL_CLOSED, readiness=71%, critical=2, capital=0R",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v1132_release_integrity",
+          "pass": true,
+          "detail": "state=PRODUCTION_SOURCE_VERIFIED, env=production, branch=the-father-analytics-deploy, sha=b6c959ccdc95, capital=0R",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v168_engine_registry_completeness",
+          "pass": true,
+          "detail": "registry=44, unique=44",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v168_engine_registry_schema_integrity",
+          "pass": true,
+          "detail": "invalid_rows=0",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v168_engine_registry_no_hard_failure",
+          "pass": true,
+          "detail": "hard_failures=none",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v168_learning_gates_truthful",
+          "pass": false,
+          "detail": "brier=GATED, ev=EVIDENCE-GATED, portfolio=EVIDENCE-GATED",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v169_integrated_registry_modules",
+          "pass": true,
+          "detail": "registry=44, missing=none",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v168_global_capital_invariant",
+          "pass": true,
+          "detail": "mission=WAIT/0R, health=WAIT/0R",
+          "latency_ms": 10849.198342000002
+        },
+        {
+          "name": "v172_paper_quote_intake_contract",
+          "pass": true,
+          "detail": "state=NOT_CONNECTED, broker_verified=false, capital=0R",
+          "latency_ms": 1665.2239520000003
+        },
+        {
+          "name": "v172_paper_quote_anonymous_denial",
+          "pass": true,
+          "detail": "status=401, error=missing_token",
+          "latency_ms": 72.79245900000001
+        },
+        {
+          "name": "v172_paper_quote_surface_contract",
+          "pass": true,
+          "detail": "status=200, paper_feed=present",
+          "latency_ms": 76.98304499999998
+        },
+        {
+          "name": "v173_owner_paper_quote_surface_contract",
+          "pass": true,
+          "detail": "status=200, paper_intake=present, default_locked=true",
+          "latency_ms": 64.53025300000002
+        }
+      ],
+      "transport": {
+        "budget_ms": 24000,
+        "elapsed_ms": 24007,
+        "concurrency_limit": 3,
+        "planned_probes": 40,
+        "started_probes": 27,
+        "not_started_probes": 13,
+        "deadline_aborted_probes": 3,
+        "deadline_exceeded": true,
+        "request_aborted": false,
+        "incomplete": true,
+        "http_attempts": 30,
+        "attempts": [
+          {
+            "path": "/",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 72.07953799999999
+          },
+          {
+            "path": "/capital-os/",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 77.31844800000002
+          },
+          {
+            "path": "/gold-live/",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 76.99894699999996
+          },
+          {
+            "path": "/owner/",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 64.54580299999998
+          },
+          {
+            "path": "/functions/v1/owner-gold-review-actions",
+            "method": "POST",
+            "status": 401,
+            "latency_ms": 88.545997
+          },
+          {
+            "path": "/functions/v1/runtime-v75-day-state",
+            "method": "GET",
+            "status": 401,
+            "latency_ms": 102.21027299999997
+          },
+          {
+            "path": "/functions/v1/paper-broker-quote-intake",
+            "method": "POST",
+            "status": 401,
+            "latency_ms": 72.809774
+          },
+          {
+            "path": "/functions/v1/paper-broker-quote-intake",
+            "method": "GET",
+            "status": 0,
+            "error": "TimeoutError: Signal timed out.",
+            "latency_ms": 8002.205686000001
+          },
+          {
+            "path": "/api/mission-brief",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 10849.211542000001
+          },
+          {
+            "path": "/api/production-closure",
+            "method": "GET",
+            "status": 503,
+            "latency_ms": 9674.914063999999
+          },
+          {
+            "path": "/functions/v1/paper-broker-quote-intake",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 1665.2460370000008
+          },
+          {
+            "path": "/functions/v1/public-gold-opportunity-governor",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 2129.2545370000007
+          },
+          {
+            "path": "/api/production-closure",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 8621.942337
+          },
+          {
+            "path": "/api/capital-calendar",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 207.70097700000042
+          },
+          {
+            "path": "/api/earnings-calendar",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 2183.6261120000017
+          },
+          {
+            "path": "/functions/v1/public-gold-execution-desk",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 1410.337348000001
+          },
+          {
+            "path": "/functions/v1/public-gold-learning-state",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 846.2354849999992
+          },
+          {
+            "path": "/functions/v1/public-gold-outcome-learning",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 920.649483000001
+          },
+          {
+            "path": "/functions/v1/public-gold-transition-state",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 358.54119100000025
+          },
+          {
+            "path": "/functions/v1/public-gold-trigger-watch",
+            "method": "GET",
+            "status": 0,
+            "error": "TimeoutError: Signal timed out.",
+            "latency_ms": 8001.861687999999
+          },
+          {
+            "path": "/functions/v1/public-gold-signal-reputation",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 449.11398499999996
+          },
+          {
+            "path": "/functions/v1/public-gold-review-intelligence",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 310.99757900000077
+          },
+          {
+            "path": "/functions/v1/public-gold-disagreement-intelligence",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 304.5564630000008
+          },
+          {
+            "path": "/functions/v1/public-gold-contextual-disagreement",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 310.65818200000103
+          },
+          {
+            "path": "/functions/v1/public-gold-review-priority",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 332.798635000001
+          },
+          {
+            "path": "/functions/v1/public-gold-review-freshness",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 393.5915789999999
+          },
+          {
+            "path": "/functions/v1/public-gold-autonomous-shadow-trader",
+            "method": "GET",
+            "status": 200,
+            "latency_ms": 3577.3376559999997
+          },
+          {
+            "path": "/functions/v1/public-gold-shadow-portfolio-brain",
+            "method": "GET",
+            "status": 0,
+            "error": "qa_deadline_aborted",
+            "latency_ms": 4959.626239000001
+          },
+          {
+            "path": "/functions/v1/public-gold-execution-reality",
+            "method": "GET",
+            "status": 0,
+            "error": "qa_deadline_aborted",
+            "latency_ms": 3512.359401999998
+          },
+          {
+            "path": "/functions/v1/public-gold-trigger-watch",
+            "method": "GET",
+            "status": 0,
+            "error": "qa_deadline_aborted",
+            "latency_ms": 1018.7237630000018
+          }
+        ],
+        "probes": [
+          {
+            "name": "home",
+            "status": 200,
+            "started": true,
+            "latency_ms": 72.05446699999996,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "capitalSurface",
+            "status": 200,
+            "started": true,
+            "latency_ms": 77.30962400000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "gold",
+            "status": 200,
+            "started": true,
+            "latency_ms": 76.98304499999998,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "ownerSurface",
+            "status": 200,
+            "started": true,
+            "latency_ms": 64.53025300000002,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "ownerReviewAnon",
+            "status": 401,
+            "started": true,
+            "latency_ms": 88.52722,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "privateAnon",
+            "status": 401,
+            "started": true,
+            "latency_ms": 102.19472200000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "paperFeedAnon",
+            "status": 401,
+            "started": true,
+            "latency_ms": 72.79245900000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "paperFeed",
+            "status": 200,
+            "started": true,
+            "latency_ms": 1665.2239520000003,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "mission",
+            "status": 200,
+            "started": true,
+            "latency_ms": 10849.198342000002,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "productionClosure",
+            "status": 200,
+            "started": true,
+            "latency_ms": 8621.934087999998,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "opportunityGovernor",
+            "status": 200,
+            "started": true,
+            "latency_ms": 2129.2428070000005,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "capitalCalendar",
+            "status": 200,
+            "started": true,
+            "latency_ms": 207.69366300000002,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "earningsCalendar",
+            "status": 200,
+            "started": true,
+            "latency_ms": 2183.618905000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "desk",
+            "status": 200,
+            "started": true,
+            "latency_ms": 1410.324222000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "learning",
+            "status": 200,
+            "started": true,
+            "latency_ms": 846.2219349999996,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "outcome",
+            "status": 200,
+            "started": true,
+            "latency_ms": 920.6362130000016,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "transition",
+            "status": 200,
+            "started": true,
+            "latency_ms": 358.5268820000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "trigger",
+            "status": 0,
+            "started": true,
+            "latency_ms": 1018.7205109999995,
+            "error": "qa_deadline_aborted",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "reputation",
+            "status": 200,
+            "started": true,
+            "latency_ms": 449.0998870000003,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "reviewIntel",
+            "status": 200,
+            "started": true,
+            "latency_ms": 310.98459,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "disagreementIntel",
+            "status": 200,
+            "started": true,
+            "latency_ms": 304.5411960000001,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "contextIntel",
+            "status": 200,
+            "started": true,
+            "latency_ms": 310.6443390000004,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "priorityIntel",
+            "status": 200,
+            "started": true,
+            "latency_ms": 332.78840599999785,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "freshnessIntel",
+            "status": 200,
+            "started": true,
+            "latency_ms": 393.577113000003,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "shadowTrader",
+            "status": 200,
+            "started": true,
+            "latency_ms": 3577.320157000002,
+            "deadline_exceeded": false
+          },
+          {
+            "name": "shadowPortfolio",
+            "status": 0,
+            "started": true,
+            "latency_ms": 4959.617989000002,
+            "error": "qa_deadline_aborted",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "executionReality",
+            "status": 0,
+            "started": true,
+            "latency_ms": 3512.3557269999983,
+            "error": "qa_deadline_aborted",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "brokerLab",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "auto",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "day",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "quality",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "selftest",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "tournament",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "shadow",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "quota",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "v79",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "v81",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "v82",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "v83",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          },
+          {
+            "name": "v83self",
+            "status": 0,
+            "started": false,
+            "latency_ms": 0,
+            "error": "qa_deadline_not_started",
+            "deadline_exceeded": true
+          }
+        ]
+      },
+      "invariants": {
+        "canonical_execution_permission": "UNCHANGED",
+        "action_permitted": "WAIT",
+        "capital_permission": "0R",
+        "automatic_promotion": false
+      }
+    },
+    "first_run_bridge_deployment_id": "dpl_LYWM7DGHN3gsT5VMH5n5SRpESrt2",
+    "note": "The existing bridge's first bounded run reached the new Edge runtime. A complete live certification has not passed.",
+    "paper_quote_contract": {
+      "name": "v172_paper_quote_intake_contract",
+      "pass": true,
+      "detail": "state=NOT_CONNECTED, broker_verified=false, capital=0R",
+      "latency_ms": 1665.2239520000003
+    },
+    "private_anonymous_denial": {
+      "name": "v115_private_runtime_anonymous_denial",
+      "pass": true,
+      "detail": "status=401, error=unauthorized_private_runtime",
+      "latency_ms": 102.19472200000001
+    },
+    "owner_quote_surface": {
+      "name": "v173_owner_paper_quote_surface_contract",
+      "pass": true,
+      "detail": "status=200, paper_intake=present, default_locked=true",
+      "latency_ms": 64.53025300000002
+    }
+  },
+  "governance": {
+    "action_permitted": "WAIT",
+    "capital_permission": "0R",
+    "live_order_routing": false,
+    "automatic_rescheduling": false,
+    "automatic_rollback": false,
+    "broker_connection_verified": false
+  },
+  "pull_request": {
+    "number": 112,
+    "url": "https://github.com/youngshekeh/youngshekeh/pull/112",
+    "head_sha": "260aeed00a8eab6ae35db5c378892d799669be5d",
+    "merge_sha": "b6c959ccdc9598846a00c398385cc05d5a3254ca",
+    "pr_workflows_passed": 28,
+    "feature_push_workflows_passed": 1,
+    "production_build_passed": true,
+    "workflows": [
+      {
+        "id": 36917713523,
+        "name": "Verify V164 Bounded QA Runtime",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713564,
+        "name": "Verify V159 Latest Experiment Admission",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713542,
+        "name": "Verify V163 Safe Alternative Minute Search",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713458,
+        "name": "Verify V160 Latest Rollback Rehearsal",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713031,
+        "name": "Verify V172 Paper Broker Feed",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713320,
+        "name": "Verify V151.1 Controlled Anomaly Shift Package",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712708,
+        "name": "Verify V149 Dependency Isolation Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713160,
+        "name": "Verify V155 Guard-Aware V146.1 Status",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713151,
+        "name": "Verify V157 Controlled Member Alert Shift",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713174,
+        "name": "Verify V166 Production Closure Gate",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713202,
+        "name": "Verify V156 Quota Guard Recovery Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712834,
+        "name": "Verify V158 Member Alert Post Shift Observer",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713102,
+        "name": "Verify V151 Single Candidate Plan Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713133,
+        "name": "Verify V154 Rollback Rehearsal Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712878,
+        "name": "Verify V150 Network SLA Evidence Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712988,
+        "name": "Verify V153 Scheduler Mutation Admission",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713158,
+        "name": "Verify V146 Peak Minute Spreader",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713147,
+        "name": "Verify V173 Owner Paper Quote",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713223,
+        "name": "Verify V167 Capital OS",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713205,
+        "name": "Verify V147 Connection Pressure Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712955,
+        "name": "Verify V161 Scheduler Experiment Registry",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712919,
+        "name": "Verify V165 Safe Alternative Admission Handoff",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713036,
+        "name": "Verify V146.1 Controlled Peak Spreader",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713340,
+        "name": "Verify V152 Post Shift Observer",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713085,
+        "name": "Verify V162 Prospective Collision Revalidation",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917712936,
+        "name": "Verify V148 Predictive Collision Shadow",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713132,
+        "name": "Verify THE FATHER ANALYTICS",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917713299,
+        "name": "Verify V174 QA Deadline",
+        "event": "pull_request",
+        "conclusion": "success"
+      },
+      {
+        "id": 36917694377,
+        "name": "Verify V174 QA Deadline",
+        "event": "push",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "deployment": {
+    "id": "dpl_3ygnxF9ypJRDgpJeVmamsvAhX5Sc",
+    "url": "https://the-father-analytics-mcutkadgh-the-father.vercel.app",
+    "alias": "https://thefatheranalytics.com",
+    "target": "production",
+    "state": "READY",
+    "commit_sha": "b6c959ccdc9598846a00c398385cc05d5a3254ca",
+    "framework": "vite",
+    "build_duration_ms": 29752
+  },
+  "edge": {
+    "name": "runtime-v115-autonomous-qa",
+    "version": 45,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "sha256": "46c690b2ec07274a8fbb3ef3127acf178e84244ccc686dcbfce64b8db56745bf",
+    "files": [
+      "index.ts",
+      "transport.mjs"
+    ]
+  },
+  "observability": {
+    "error_scan": {
+      "deployment_id": "dpl_3ygnxF9ypJRDgpJeVmamsvAhX5Sc",
+      "since": "1h",
+      "application_errors_observed": 0,
+      "dependency_deprecation_warning_observed": 1,
+      "note": "The log scan returned url.parse() deprecation on HTTP-200 earnings-calendar. This is a narrow initial post-deploy sample, not a clean-bill runtime certification."
+    },
+    "drains": "NOT_INSPECTED",
+    "monitoring": "FAIL_CLOSED_DEPENDENCIES_EXPOSED_BY_BOUNDED_QA",
+    "status_code_scan": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Runtime Log Counts\n\n**Project:** prj_WOGzSCTWULzGNgFGqVE5dFpg6anx\n**Grouped by:** statusCode\n\n| statusCode | count |\n|---|---|\n| 200 | 236 |\n| 503 | 64 |\n\n*3 distinct values total; showing top 2.*"
+        }
+      ],
+      "isError": false
+    }
+  },
+  "browser": {
+    "url": "https://thefatheranalytics.com/",
+    "qa_badge": "39/78 INCOMPLETE",
+    "quant_status": "QA INCOMPLETE",
+    "quant_detail": "39/78 invariants confirmed · 26 probes not reached · refresh to check again",
+    "registry": "44 ENGINES",
+    "owner_quote_panel_visible": false,
+    "owner_quote_submit_enabled": false,
+    "application_console_errors_observed": 0,
+    "excluded_errors": [
+      "Browser extension metadata error"
+    ],
+    "note": "Browser result is a separate live QA window, not the operator's 53/78 result. Neither run is a complete certification."
+  }
+}

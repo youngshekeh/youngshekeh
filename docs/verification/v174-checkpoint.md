@@ -21,7 +21,27 @@ The dashboard displays the incomplete result, performs no automatic second QA ru
 
 - 19 new tests cover the actual QA handler, three-worker ceiling, shared authentication budget, retry limits, queued-work prevention, cancellation, a real stalled HTTP response body, truthful incomplete counts, anonymous denial, and dashboard retry/overlap behavior.
 - The 81 V172/V173 quote and owner workflow tests also passed. All 78 live QA predicates and custom authentication are byte-identical to V173.
-- GitHub build, deployment, and live results are recorded separately in `v174-results.json` when measured. A local test pass is not a live certification pass.
+- All 28 PR workflow runs and the V174 feature-push workflow passed: 29/29, including the production build. PR #112 was merged at `b6c959ccdc9598846a00c398385cc05d5a3254ca`.
+- The new Edge function is ACTIVE at version 45 with `index.ts` and `transport.mjs`. Its SHA-256 is `46c690b2ec07274a8fbb3ef3127acf178e84244ccc686dcbfce64b8db56745bf`. Existing custom private authentication remains enforced; anonymous probes returned 401.
+- The operator's first bounded live request returned HTTP 200 with **53/78 confirmed**, 25 unconfirmed/failed checks, and state `INCOMPLETE`. The 24,007 ms transport window started 27 of 40 probes; 13 never started and three were aborted at the shared deadline. This exercised the existing 30-second bridge against the new Edge runtime and did not time out the bridge.
+- A separate live browser window rendered **39/78 INCOMPLETE**, `QA INCOMPLETE`, and `26 probes not reached`, with **44 ENGINES** present. The owner quote panel was hidden and its submit control disabled while signed out. No application console errors were observed; a browser-extension metadata error was excluded.
+- The live paper quote contract passed with `NOT_CONNECTED`, broker verification false, and capital permission `0R`. No authentic owner/MFA submission was attempted.
+- Failed backend evidence included unavailable receipt/attestation/key/checkpoint lanes, fail-closed autonomous health, and an external-root comparison reporting mismatch while its local checkpoint evidence was unavailable. This is not evidence of tampering or a repaired provenance chain.
+- Complete source, workflow, transport, browser, and deployment results are recorded in `v174-results.json`. Neither live window is a complete certification pass.
+
+## Deploy Result
+
+| Field | Result |
+| --- | --- |
+| URL | https://the-father-analytics-mcutkadgh-the-father.vercel.app |
+| Production alias | https://thefatheranalytics.com/ |
+| Target | production |
+| Status | READY |
+| Commit | `b6c959ccdc9598846a00c398385cc05d5a3254ca` |
+| Framework | Vite |
+| Build duration | 29.752 seconds |
+
+Post-deploy error-level logs contained one `url.parse()` dependency deprecation on an HTTP-200 earnings response. A later status-code log count showed 64 entries associated with HTTP 503 and 236 associated with HTTP 200; these are log counts, not deduplicated requests. Runtime recovery is incomplete. Drains were not inspected. The bounded QA and existing health/provenance gates expose the continuing failures.
 
 ## Remaining gates
 
