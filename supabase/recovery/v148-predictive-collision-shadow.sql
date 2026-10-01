@@ -139,7 +139,7 @@ begin
   minute_grid as (
     select g as minute_of_hour,coalesce(m.avg_starts,0)::numeric as avg_starts
     from generate_series(0,59) g
-    left join minute_load m using(minute_of_hour)
+    left join minute_load m on m.minute_of_hour=g
   ),
   job_stats as (
     select
