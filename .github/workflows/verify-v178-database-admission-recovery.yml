@@ -1,0 +1,45 @@
+name: Verify V178 Database Admission Recovery
+
+on:
+  push:
+    branches:
+      - tfa-v178-db-admission-recovery
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-staging
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  v178-invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify recovery assets
+        run: |
+          test -f supabase/recovery/v178-database-admission-recovery.sql
+          test -f supabase/recovery/v178-database-admission-recovery-rollback.sql
+          grep -q "cron.alter_job" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "previous_schedule" supabase/recovery/v178-database-admission-recovery-rollback.sql
+          grep -q "pg_try_advisory_xact_lock" supabase/recovery/v178-database-admission-recovery.sql
+      - name: Verify governed phasing is preserved
+        run: |
+          grep -q "tfa-v80-gold-state-capture','\*/2 \* \* \* \*'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "tfa-v84-research-components','1-59/2 \* \* \* \*'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "tfa-v125-gold-signal-reputation','0-59/5 \* \* \* \*'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "tfa-v136-gold-execution-firewall','3-59/5 \* \* \* \*'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "tfa-v138-risk-challenger-evaluation','11,26,41,56 \* \* \* \*'" supabase/recovery/v178-database-admission-recovery.sql
+      - name: Verify fail-closed governance
+        run: |
+          grep -q "'action_permitted','WAIT'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'capital_permission','0R'" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'live_order_routing',false" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'order_submission_enabled',false" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'automatic_real_capital',false" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'automatic_rescheduling',false" supabase/recovery/v178-database-admission-recovery.sql
+          grep -q "'human_release_required',true" supabase/recovery/v178-database-admission-recovery.sql
