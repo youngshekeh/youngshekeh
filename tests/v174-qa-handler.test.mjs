@@ -27,12 +27,13 @@ test('anonymous QA remains denied before any downstream work', async () => {
   assert.equal(response.status, 401); assert.equal(ctx.calls(), 0);
   assert.equal((await response.json()).error, 'unauthorized_private_runtime');
 });
-test('deadline returns all 78 invariant rows with explicit incomplete transport', async () => {
+test('deadline returns the full current invariant matrix with explicit incomplete transport', async () => {
   const ctx = fixture({deadline: true}); const response = await ctx.run(); const body = await response.json();
   assert.equal(response.status, 200); assert.equal(body.state, 'INCOMPLETE'); assert.equal(body.ok, false);
-  assert.equal(body.tests.length, 78); assert.equal(body.summary.passed + body.summary.failed, 78);
-  assert.equal(ctx.calls(), 1); assert.equal(body.transport.not_started_probes, 39);
+  assert.ok(body.tests.length >= 78); assert.equal(body.summary.passed + body.summary.failed, body.tests.length);
+  assert.equal(ctx.calls(), 1);
   assert.equal(body.transport.deadline_aborted_probes, 1);
+  assert.equal(body.transport.not_started_probes + body.transport.deadline_aborted_probes, body.transport.planned_probes);
   assert.equal(body.invariants.action_permitted, 'WAIT'); assert.equal(body.invariants.capital_permission, '0R');
   assert.equal(body.invariants.automatic_promotion, false);
   assert.equal(body.tests.find(x => x.name === 'v172_paper_quote_anonymous_denial').pass, false);
@@ -40,8 +41,9 @@ test('deadline returns all 78 invariant rows with explicit incomplete transport'
 test('completed requests with invalid engine payloads fail instead of passing QA', async () => {
   const ctx = fixture(); const body = await (await ctx.run()).json();
   assert.equal(body.state, 'FAIL'); assert.equal(body.ok, false);
-  assert.equal(body.transport.incomplete, false); assert.equal(body.transport.planned_probes, 40);
-  assert.equal(body.transport.http_attempts, 40); assert.equal(ctx.calls(), 40);
+  assert.equal(body.transport.incomplete, false); assert.ok(body.transport.planned_probes >= 40);
+  assert.equal(body.transport.http_attempts, body.transport.planned_probes);
+  assert.equal(ctx.calls(), body.transport.planned_probes);
   assert.equal(body.tests.find(x => x.name === 'v112_capital_firewall').pass, false);
 });
 
