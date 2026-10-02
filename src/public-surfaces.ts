@@ -3526,12 +3526,7 @@ async function pollV188Lifecycle() {
   if(signalLifecycleBusy||document.hidden)return;
   signalLifecycleBusy=true;
   try{
-    const [signal,liquidity,sessions]=await Promise.all([
-      readLocal('/api/gold-signal-map',9000),
-      readLocal('/api/gold-liquidity-state-machine',9000),
-      readLocal('/api/gold-session-liquidity',9000)
-    ]);
-    renderV188Lifecycle(buildGoldSignalLifecycle({signal,liquidity,sessions}));
+    renderV188Lifecycle(await readLocal('/api/gold-signal-lifecycle',12_000));
   } finally {
     signalLifecycleBusy=false;
     if(signalLifecycleTimer)window.clearTimeout(signalLifecycleTimer);
