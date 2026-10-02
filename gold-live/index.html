@@ -400,6 +400,34 @@
       </section>
     </section>
 
+    <section class="section-block" id="v202-relay-ledger">
+      <div class="section-heading">
+        <div><span class="kicker">V202 · RELAY CONNECTIVITY EVENT LEDGER</span><h2>Every material connectivity transition leaves an immutable footprint.</h2></div>
+        <p>V202 records only state changes from V199, hash-chains them, and excludes bridge secrets, tick sequence values, owner identity and broker account numbers.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>CHAIN STATE</span><strong id="v202-state">CHECKING</strong></article>
+        <article><span>EVENTS</span><strong id="v202-count">0</strong></article>
+        <article><span>CHAIN FAILURES</span><strong id="v202-failures">0</strong></article>
+        <article><span>CAPTURE</span><strong id="v202-capture">CHECKING</strong></article>
+      </section>
+      <section class="command-grid two">
+        <article class="command-card">
+          <span class="kicker">LATEST TRANSITION</span>
+          <h3 id="v202-latest">CHECKING</h3>
+          <p id="v202-latest-copy">Waiting for immutable relay history.</p>
+        </article>
+        <article class="command-card">
+          <span class="kicker">LEDGER GOVERNANCE</span>
+          <h3>APPEND ONLY · HASH CHAINED</h3>
+          <p>Database constraints keep execution OFF, WAIT · 0R, and reject UPDATE/DELETE mutation.</p>
+        </article>
+      </section>
+      <div id="v202-event-grid" class="command-grid two">
+        <article class="command-card"><span class="kicker">EVENT HISTORY</span><h3>CHECKING</h3><p>Loading material relay transitions.</p></article>
+      </div>
+    </section>
+
     <section class="section-block">
       <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
