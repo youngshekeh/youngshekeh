@@ -37,6 +37,8 @@ let bridgeReadinessBusy = false;
 let bridgeReadinessTimer: number | undefined;
 let feedQualityBusy = false;
 let feedQualityTimer: number | undefined;
+let liveAnchorGuardBusy = false;
+let liveAnchorGuardTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3871,6 +3873,42 @@ function startV196FeedQuality(){
   void pollV196FeedQuality();
 }
 
+function renderV197LiveAnchorGuard(data: AnyJson){
+  const blockers=Array.isArray(data?.blockers)?data.blockers:[];
+  set('v197-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
+  set('v197-certified',data?.anchor?.certified===true?'YES':'NO');
+  set('v197-quality',data?.anchor?.quality_score==null
+    ? String(data?.anchor?.quality_state||'UNAVAILABLE').replaceAll('_',' ')
+    : `${String(data.anchor.quality_state||'UNKNOWN').replaceAll('_',' ')} · ${data.anchor.quality_score}/100`);
+  set('v197-review',data?.promotion?.human_review_ready_after_live_anchor_guard===true?'HUMAN REVIEW READY':'LOCKED');
+  set('v197-blockers',blockers.length?`${blockers.length} ACTIVE`:'NONE');
+  set('v197-blocker-copy',blockers.length?blockers.map((x:string)=>String(x).replaceAll('_',' ')).join(' · '):'V195 commissioning and V196 feed quality both pass.');
+  set('v197-next',String(data?.next_step||'UNKNOWN').replaceAll('_',' '));
+  set('v197-permission',`${data?.decision_compression?.action_permitted??'WAIT'} · ${data?.decision_compression?.capital_permission??'0R'}`);
+  set('v197-detail',`${data?.decision_compression?.what_changed??'Anchor state unavailable.'} · ${data?.decision_compression?.what_matters??'Preserve fail-closed gates.'}`);
+}
+async function pollV197LiveAnchorGuard(){
+  if(liveAnchorGuardBusy||document.hidden)return;
+  liveAnchorGuardBusy=true;
+  try{renderV197LiveAnchorGuard(await readLocal('/api/gold-live-anchor-guard-v197',11000));}
+  finally{
+    liveAnchorGuardBusy=false;
+    if(liveAnchorGuardTimer)window.clearTimeout(liveAnchorGuardTimer);
+    if(!document.hidden)liveAnchorGuardTimer=window.setTimeout(()=>void pollV197LiveAnchorGuard(),5_000);
+  }
+}
+function startV197LiveAnchorGuard(){
+  if(liveAnchorGuardTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(liveAnchorGuardTimer)window.clearTimeout(liveAnchorGuardTimer);
+      liveAnchorGuardTimer=undefined;
+      set('v197-state','PAUSED · TAB HIDDEN');
+    }else void pollV197LiveAnchorGuard();
+  });
+  void pollV197LiveAnchorGuard();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3915,6 +3953,7 @@ function startGoldPulse() {
   startV194GoldCommand();
   startV195BridgeReadiness();
   startV196FeedQuality();
+  startV197LiveAnchorGuard();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
