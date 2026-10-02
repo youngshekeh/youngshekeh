@@ -1,0 +1,24 @@
+name: Verify V201 MT5 Relay Doctor
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v201-mt5-relay-doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile V201 doctor
+        run: python -m py_compile public/downloads/mt5-live-market-doctor.py
+      - name: Run V186/V200/V201 owner relay regressions
+        run: node --test tests/v186-owner-live-market-control.test.mjs
