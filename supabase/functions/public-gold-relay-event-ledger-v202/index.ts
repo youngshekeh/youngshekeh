@@ -37,7 +37,7 @@ function sanitized(relay:any){
     sustained_stream:relay?.relay?.streaming===true,
     authenticated_requests:Number.isFinite(Number(relay?.bridge?.total_authenticated_requests))?Math.max(0,Number(relay.bridge.total_authenticated_requests)):0,
     accepted_ticks:Number.isFinite(Number(relay?.relay?.accepted_ticks_examined))?Math.max(0,Number(relay.relay.accepted_ticks_examined)):0,
-    latest_tick_age_seconds:Number.isFinite(Number(relay?.relay?.latest_tick_age_seconds))?Math.max(0,Math.round(Number(relay.relay.latest_tick_age_seconds))):null,
+    latest_tick_age_seconds:relay?.relay?.latest_tick_age_seconds==null?null:(Number.isFinite(Number(relay.relay.latest_tick_age_seconds))?Math.max(0,Math.round(Number(relay.relay.latest_tick_age_seconds))):null),
     source_version:String(relay?.version||'v199-gold-relay-observability-v1'),
     action_permitted:'WAIT',
     capital_permission:'0R',
