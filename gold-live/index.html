@@ -239,6 +239,35 @@
       </section>
     </section>
 
+    <section class="section-block" id="v195-bridge-readiness">
+      <div class="section-heading">
+        <div><span class="kicker">V195 · BROKER BRIDGE COMMISSIONING</span><h2>From zero bridge to broker-live, one verified gate at a time.</h2></div>
+        <p>V195 diagnoses the exact MT5 connection stage without exposing bridge credentials or confusing commissioning with trade permission.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>COMMISSIONING STATE</span><strong id="v195-state">CHECKING</strong></article>
+        <article><span>ACTIVE BRIDGES</span><strong id="v195-active">0</strong></article>
+        <article><span>BRIDGES WITH ACTIVITY</span><strong id="v195-active-used">0</strong></article>
+        <article><span>NEXT STEP</span><strong id="v195-next">CHECKING</strong></article>
+      </section>
+      <section class="command-grid two">
+        <article class="command-card"><span class="kicker">GATE 01 · ENROLLMENT</span><h3 id="v195-g1">CHECKING</h3><p>Owner AAL2 creates one read-only MT5 bridge credential.</p></article>
+        <article class="command-card"><span class="kicker">GATE 02 · FIRST TICK</span><h3 id="v195-g2">CHECKING</h3><p>Authenticated bridge traffic must reach the market-data intake.</p></article>
+        <article class="command-card"><span class="kicker">GATE 03 · FRESHNESS</span><h3 id="v195-g3">CHECKING</h3><p>The broker quote must remain inside the live freshness window.</p></article>
+        <article class="command-card"><span class="kicker">GATE 04 · BROKER LIVE</span><h3 id="v195-g4">CHECKING</h3><p>Only fresh connected market data can promote the feed state to BROKER LIVE.</p></article>
+      </section>
+      <section class="command-card">
+        <span class="kicker">COMMISSIONING INSTRUCTION</span>
+        <h3 id="v195-instruction">CHECKING</h3>
+        <p id="v195-detail">Reading bridge enrollment and live-market evidence.</p>
+      </section>
+      <section class="command-card">
+        <span class="kicker">GOVERNANCE</span>
+        <h3>MARKET DATA ONLY · WAIT · 0R</h3>
+        <p>Bridge readiness can unlock live data, never execution authority. Keys, bridge IDs, owner identity and broker account numbers stay private.</p>
+      </section>
+    </section>
+
     <section class="section-block">
       <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
