@@ -21,4 +21,4 @@ jobs:
       - name: Compile V201 doctor
         run: python -m py_compile public/downloads/mt5-live-market-doctor.py
       - name: Run V186/V200/V201 owner relay regressions
-        run: node --test tests/v186-owner-live-market-control.test.mjs
+        run: node --test tests/v186-owner-live-market-control.test.mjs tests/v201-mt5-live-market-doctor.test.mjs
