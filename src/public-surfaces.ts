@@ -272,9 +272,9 @@ async function loadLiveMarkets() {
   ]);
   set('market-status', marketStatus(markets));
   set('market-regime', first(markets?.regime?.state, typeof markets?.regime === 'string' ? markets.regime : null, markets?.market_regime, markets?.state, 'UNKNOWN'));
-  const gold = assetList(markets).find((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.symbol || x?.label || ''))) || markets?.gold || {};
-  set('gold-action', first(gold?.action, markets?.decision?.action, core?.gold?.action, 'WAIT'));
-  set('gold-capital', first(gold?.capital_permission, markets?.decision?.capital_permission, core?.gold?.capital_permission, '0R'));
+  // Indicative feed allowances cannot authorize real capital on this public research monitor.
+  set('gold-action', 'WAIT');
+  set('gold-capital', '0R');
   set('structure-state', first(core?.structure_signals?.market_status, core?.market_status, core?.state, 'UNKNOWN'));
   set('structure-copy', first(core?.decision_compression?.what_matters_now, core?.interpretation, 'Structural context remains conditional.'));
   const goldIntegrity = integrity?.signal_integrity_board?.assets?.find?.((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.label || '')));
@@ -347,8 +347,9 @@ async function loadGold() {
     canonicalPrice == null;
 
   const useShadow = canonicalUnavailable && day?.ok === true;
-  const action = useShadow ? 'WAIT' : first(gold?.engine?.action, gold?.action, gold?.decision?.action, core?.gold?.action, 'WAIT');
-  const capital = useShadow ? '0R' : first(gold?.engine?.capital_permission, gold?.capital_permission, gold?.decision?.capital_permission, core?.gold?.capital_permission, '0R');
+  // The broker route is unreleased; research setup allowances are not live execution authority.
+  const action = 'WAIT';
+  const capital = '0R';
   const market = useShadow ? first(day?.market_session, 'SHADOW_MARKET') : canonicalMarket;
   const price = useShadow ? day?.current?.price : (market === 'UNAVAILABLE' ? null : canonicalPrice);
   const evidenceState = useShadow
@@ -362,7 +363,7 @@ async function loadGold() {
       ? 'The governed Gold session is closed. Structural context is frozen until reopening.'
       : market === 'UNAVAILABLE'
         ? 'The live Gold market spine is unavailable. No structural price is promoted to a live execution quote.'
-        : 'Gold market state is live, but capital permission remains independently governed.');
+        : 'Indicative Gold market data is available. Live execution remains locked: WAIT · 0R, orders OFF.');
   set('gold-live-action', action);
   set('gold-live-capital', capital);
   set('gold-market', market);
@@ -410,7 +411,7 @@ async function loadGold() {
     set('v117-short-targets', dshort?.primary_target != null || dshort?.extension_target != null ? `${dshort?.primary_target ?? 'n/a'} / ${dshort?.extension_target ?? 'n/a'}` : null);
     set('v117-short-rr', dshort?.rr_at_prior_high ? `${dshort.rr_at_prior_high.primary ?? 'n/a'}R / ${dshort.rr_at_prior_high.extension ?? 'n/a'}R` : null);
 
-    set('v117-decision', `${first(dc?.action_permitted, 'WAIT')} · ${first(dc?.capital_permission, '0R')}`);
+    set('v117-decision', `${action} · ${capital}`);
     set('v117-decision-copy', first(dc?.note, desk?.execution?.broker_feed_rule, 'No machine-authorized trade is active.'));
   } else {
     for (const id of ['v117-desk-state','v117-feed-state','v117-broker-feed','v117-session','v117-long-state','v117-long-zone','v117-long-stop','v117-long-targets','v117-long-rr','v117-short-state','v117-short-trigger','v117-short-stop','v117-short-targets','v117-short-rr','v117-decision']) set(id, null);
@@ -3403,7 +3404,7 @@ async function loadVisualLab() {
   set('lab-session', first(core?.session?.overlap_state, core?.session_state?.overlap_state, market === 'MARKET_CLOSED' ? 'MARKET_CLOSED' : 'UNKNOWN'));
   set('lab-structure', market);
   set('lab-integrity', first(goldIntegrity?.lifecycle_stage, goldIntegrity?.false_breakout?.state, 'UNKNOWN'));
-  set('lab-permission', `${first(gold?.action, 'WAIT')} · ${first(gold?.capital_permission, '0R')}`);
+  set('lab-permission', 'WAIT · 0R');
   set('lab-adventure', market === 'MARKET_CLOSED'
     ? 'The journey is frozen at the last valid session state. No new “battle” or “breakout” animation is inferred while the market is closed.'
     : 'Base Camp → Structure → Liquidity → Confirmation → Permission.');

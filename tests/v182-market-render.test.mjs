@@ -40,3 +40,29 @@ test('the actual loader withholds stale snapshot prices while preserving observa
   assert.equal(result.available,false); assert.equal(ctx.grid.children[0].children[1].textContent,'WITHHELD');
   assert.match(ctx.grid.children[0].children[2].textContent,/STALE · 0R/);
 });
+test('upstream setup allowances cannot change live market execution permission', async () => {
+  const ctx=fixture();
+  const result=await ctx.run({ok:true,market_status:'DELAYED_LIVE',
+    decision:{action:'EVALUATE',capital_permission:'MAX_0.25R'},
+    assets:[{key:'gold',price:4220,action:'EVALUATE',capital_permission:'MAX_0.25R'}]});
+  assert.equal(result.available,true);
+  assert.equal(ctx.values.get('gold-action'),'WAIT');
+  assert.equal(ctx.values.get('gold-capital'),'0R');
+  assert.match(ctx.grid.children[0].children[2].textContent,/0R/);
+});
+test('the actual Gold loader keeps the desk and firewall locked when research feeds suggest risk', async () => {
+  const start=frontend.indexOf('async function loadGold()');
+  const goldSource=stripTypeScriptTypes(frontend.slice(start,frontend.indexOf('\nfunction renderV132ShadowStudies',start)));
+  const values=new Map(), first=(...values)=>values.find(value=>value!=null && value!=='');
+  const gold={ok:true,market_status:'DELAYED_LIVE',price:4220,engine:{state:'HERO_REPAIR',action:'EVALUATE',capital_permission:'MAX_0.25R'}};
+  const desk={ok:true,current_read:{action_permitted:'EVALUATE',capital_permission:'MAX_0.25R'}};
+  const load=new Function('read','readLocal','set','first','setupBrokerGoldBridge',`${goldSource}\nreturn loadGold;`)(
+    async path=>path==='public-gold-live-api'?gold:path==='public-gold-execution-desk'?desk:{},
+    async ()=>({}),(id,text)=>values.set(id,text),first,()=>{});
+  const result=await load();
+  assert.equal(result.available,true); assert.equal(values.get('gold-price'),4220);
+  assert.equal(values.get('gold-live-state'),'HERO_REPAIR');
+  assert.equal(values.get('gold-live-action'),'WAIT'); assert.equal(values.get('gold-live-capital'),'0R');
+  assert.equal(values.get('gold-firewall'),'WAIT · 0R');
+  assert.equal(values.get('v117-decision'),'WAIT · 0R');
+});
