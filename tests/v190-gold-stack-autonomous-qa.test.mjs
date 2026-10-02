@@ -10,3 +10,9 @@ test('V190 autonomous QA probes the complete V186-V189 Gold stack',()=>{
  assert.match(source,/capital_permission==='0R'/);
  assert.match(source,/machine_execution_allowed===false/);
 });
+
+test('V190.2 treats explicit DATA_BLOCKED WAIT/0R as a truthful fail-closed transition state',()=>{
+ assert.match(source,/transition\.body\?\.state==='DATA_BLOCKED'/);
+ assert.match(source,/transition\.body\?\.current\?\.action==='WAIT'/);
+ assert.match(source,/transition\.body\?\.current\?\.capital_permission==='0R'/);
+});

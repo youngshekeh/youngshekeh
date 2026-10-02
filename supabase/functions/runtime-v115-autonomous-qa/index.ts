@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v190.0-gold-stack-runtime-certification-v53';
+const VERSION='v190.2-gold-stack-runtime-certification-v54';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -426,7 +426,15 @@ async function legacyHandler(req:any,res:any,transport:any){
       &&transition.body?.governance?.automatic_orders===false
       &&transition.body?.governance?.transition_cannot_promote_permission===true
       &&transition.body?.governance?.capital_permission==='0R'
-      &&transition.body?.data_quality?.blocked===false,
+      &&(
+        transition.body?.data_quality?.blocked===false
+        ||(
+          transition.body?.data_quality?.blocked===true
+          &&transition.body?.state==='DATA_BLOCKED'
+          &&transition.body?.current?.action==='WAIT'
+          &&transition.body?.current?.capital_permission==='0R'
+        )
+      ),
     `state=${transition.body?.state}, event=${transition.body?.latest_transition?.transition_code}, blocked=${transition.body?.data_quality?.blocked}, capital=${transition.body?.governance?.capital_permission}`,
     transition.latency_ms));
   tests.push(result('v124_trigger_watch',
