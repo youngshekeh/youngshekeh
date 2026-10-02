@@ -268,6 +268,32 @@
       </section>
     </section>
 
+    <section class="section-block" id="v196-feed-quality">
+      <div class="section-heading">
+        <div><span class="kicker">V196 · LIVE FEED QUALITY PROBATION</span><h2>One tick is evidence. A stable stream must earn certification.</h2></div>
+        <p>V196 validates freshness, cadence, sequence integrity, terminal state, relay/runtime contract, transport lag and quote integrity before declaring the MT5 stream stable.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>QUALITY STATE</span><strong id="v196-state">CHECKING</strong></article>
+        <article><span>QUALITY SCORE</span><strong id="v196-score">WITHHELD</strong></article>
+        <article><span>TICKS / 60S</span><strong id="v196-ticks">0</strong></article>
+        <article><span>LATEST AGE</span><strong id="v196-age">WITHHELD</strong></article>
+      </section>
+      <section class="command-grid two">
+        <article class="command-card"><span class="kicker">FRESHNESS</span><h3 id="v196-fresh">CHECKING</h3><p>Latest observed tick must be ≤5 seconds old.</p></article>
+        <article class="command-card"><span class="kicker">CADENCE</span><h3 id="v196-cadence">CHECKING</h3><p>At least 3 ticks across at least 5 seconds of observed span.</p></article>
+        <article class="command-card"><span class="kicker">SEQUENCE</span><h3 id="v196-sequence">CHECKING</h3><p>Relay sequence must remain strictly increasing.</p></article>
+        <article class="command-card"><span class="kicker">RUNTIME CONTRACT</span><h3 id="v196-contract">CHECKING</h3><p>Windows · relay v186.0 · MetaTrader5 Python 5.0.6231.</p></article>
+        <article class="command-card"><span class="kicker">TRANSPORT LAG</span><h3 id="v196-lag">CHECKING</h3><p>Observed-to-received lag must remain ≤5 seconds.</p></article>
+        <article class="command-card"><span class="kicker">QUOTE INTEGRITY</span><h3 id="v196-quote">CHECKING</h3><p>Bid/ask ordering and spread must be valid.</p></article>
+      </section>
+      <section class="command-card">
+        <span class="kicker">FEED GOVERNANCE</span>
+        <h3 id="v196-decision">PROBATION · WAIT · 0R</h3>
+        <p id="v196-detail">Feed certification is market-data quality control only. It cannot authorize a trade.</p>
+      </section>
+    </section>
+
     <section class="section-block">
       <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
