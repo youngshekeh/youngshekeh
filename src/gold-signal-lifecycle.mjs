@@ -109,7 +109,7 @@ export function buildGoldSignalLifecycle({signal={},liquidity={},sessions={}}={}
     signal_window_active:signal?.signal_time?.state==='ACTIVE_SIGNAL_TIME',
     live_xauusd_fresh:signal?.live_anchor?.state==='BROKER_LIVE',
     tradeable_extreme:['LOWER_TRADEABLE_ZONE','UPPER_TRADEABLE_ZONE'].includes(signal?.tradeable_zones?.zones?.find?.(z=>z?.timeframe==='DAILY')?.state),
-    liquidity_transition_resolved:!/UNKNOWN|PENDING/.test(String(liquidity?.state?.acceptance||'UNKNOWN'))
+    liquidity_transition_resolved:/^(REJECTION_ACCEPTED|ACCEPTANCE_CONFIRMED|RECLAIM_ACCEPTED)$/.test(String(liquidity?.state?.acceptance||'UNKNOWN'))
   },
   decision_compression:{
     state:`${life.stage} · ${signal?.signal_time?.direction_candidate??'NEUTRAL'}`,
