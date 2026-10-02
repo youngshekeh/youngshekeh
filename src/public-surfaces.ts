@@ -43,6 +43,8 @@ let sessionIntelligenceBusy = false;
 let sessionIntelligenceTimer: number | undefined;
 let relayObservabilityBusy = false;
 let relayObservabilityTimer: number | undefined;
+let relayLedgerBusy = false;
+let relayLedgerTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -4025,6 +4027,62 @@ function startV199RelayObservability(){
   void pollV199RelayObservability();
 }
 
+function renderV202RelayLedger(data: AnyJson){
+  const counts=data?.counts??{}, events=Array.isArray(data?.events)?data.events:[];
+  set('v202-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
+  set('v202-count',counts?.events??0);
+  set('v202-failures',counts?.chain_failures??0);
+  set('v202-capture',String(data?.capture?.state||'UNKNOWN').replaceAll('_',' '));
+  const latest=events[0]??null;
+  set('v202-latest',latest
+    ? `${String(latest?.previous_state||'GENESIS').replaceAll('_',' ')} → ${String(latest?.event_state||'UNKNOWN').replaceAll('_',' ')}`
+    : 'NO EVENTS YET');
+  set('v202-latest-copy',latest
+    ? `${latest?.event_at??'time unavailable'} · auth ${latest?.authenticated_requests??0} · accepted ticks ${latest?.accepted_ticks??0} · hash ${String(latest?.event_sha256||'').slice(0,12)}…`
+    : 'The first material relay state will create the genesis event.');
+
+  const host=byId('v202-event-grid');
+  if(host){
+    host.replaceChildren();
+    const shown=events.slice(0,8);
+    for(const event of shown){
+      const card=document.createElement('article');card.className='command-card';
+      const k=document.createElement('span');k.className='kicker';k.textContent=event?.event_at??'EVENT';
+      const h=document.createElement('h3');h.textContent=`${String(event?.previous_state||'GENESIS').replaceAll('_',' ')} → ${String(event?.event_state||'UNKNOWN').replaceAll('_',' ')}`;
+      const p=document.createElement('p');
+      p.textContent=`auth ${event?.authenticated_requests??0} · ticks ${event?.accepted_ticks??0} · stream ${event?.sustained_stream===true?'yes':'no'} · next ${String(event?.next_step_code||'UNKNOWN').replaceAll('_',' ')} · ${String(event?.event_sha256||'').slice(0,12)}…`;
+      card.append(k,h,p);host.appendChild(card);
+    }
+    if(!shown.length){
+      const card=document.createElement('article');card.className='command-card';
+      const h=document.createElement('h3');h.textContent='NO MATERIAL RELAY EVENTS';
+      const p=document.createElement('p');p.textContent='Ledger is ready; the first V199 state capture will create the genesis event.';
+      card.append(h,p);host.appendChild(card);
+    }
+  }
+}
+async function pollV202RelayLedger(){
+  if(relayLedgerBusy||document.hidden)return;
+  relayLedgerBusy=true;
+  try{renderV202RelayLedger(await readLocal('/api/gold-relay-event-ledger-v202',10000));}
+  finally{
+    relayLedgerBusy=false;
+    if(relayLedgerTimer)window.clearTimeout(relayLedgerTimer);
+    if(!document.hidden)relayLedgerTimer=window.setTimeout(()=>void pollV202RelayLedger(),15_000);
+  }
+}
+function startV202RelayLedger(){
+  if(relayLedgerTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(relayLedgerTimer)window.clearTimeout(relayLedgerTimer);
+      relayLedgerTimer=undefined;
+      set('v202-state','PAUSED · TAB HIDDEN');
+    }else void pollV202RelayLedger();
+  });
+  void pollV202RelayLedger();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -4072,6 +4130,7 @@ function startGoldPulse() {
   startV197LiveAnchorGuard();
   startV198SessionIntelligence();
   startV199RelayObservability();
+  startV202RelayLedger();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
