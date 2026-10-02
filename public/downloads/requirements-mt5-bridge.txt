@@ -1,1 +1,1 @@
-MetaTrader5==5.0.6231\n
+MetaTrader5==5.0.6231
