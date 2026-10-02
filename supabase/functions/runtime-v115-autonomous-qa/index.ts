@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v199.0-relay-observability-certification-v64';
+const VERSION='v200.0-relay-launch-protocol-certification-v65';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -1105,6 +1105,13 @@ async function legacyHandler(req:any,res:any,transport:any){
       &&ownerSurface.body.includes('id="liveRelayState"')
       &&ownerSurface.body.includes('id="liveRelayNext"'),
     `status=${ownerSurface.status}, surface=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('V199 · RELAY DIAGNOSTIC')?'present':'missing'}`,
+    ownerSurface.latency_ms));
+  tests.push(result('v200_owner_relay_launch_surface_contract',
+    ownerSurface.status===200
+      &&typeof ownerSurface.body==='string'
+      &&ownerSurface.body.includes('V200 · ONE-TIME WINDOWS CONFIG · SMOKE TEST FIRST')
+      &&ownerSurface.body.includes('After creation, the command runs one test tick before continuous streaming.'),
+    `status=${ownerSurface.status}, smoke_test_first=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('V200 · ONE-TIME WINDOWS CONFIG · SMOKE TEST FIRST')}`,
     ownerSurface.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
