@@ -1,0 +1,19 @@
+name: Verify V198 Gold Live Session Intelligence
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v198-gold-live-session-intelligence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V198 live-session regressions
+        run: node --test tests/v198-*.test.mjs
