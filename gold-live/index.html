@@ -370,6 +370,36 @@
       </section>
     </section>
 
+    <section class="section-block" id="v199-relay-observability">
+      <div class="section-heading">
+        <div><span class="kicker">V199 · FIRST-TICK & RELAY OBSERVABILITY</span><h2>See exactly where the MT5 heartbeat stops.</h2></div>
+        <p>V199 separates credential issuance, intake authentication, first accepted tick, sustained streaming, staleness and recovery without exposing bridge secrets or account identity.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>RELAY STATE</span><strong id="v199-state">CHECKING</strong></article>
+        <article><span>AUTH REQUESTS</span><strong id="v199-auth">0</strong></article>
+        <article><span>ACCEPTED TICKS</span><strong id="v199-ticks">0</strong></article>
+        <article><span>NEXT STEP</span><strong id="v199-next">CHECKING</strong></article>
+      </section>
+      <section class="command-strip">
+        <article><span>FIRST TICK</span><strong id="v199-first">WAITING</strong></article>
+        <article><span>LATEST TICK AGE</span><strong id="v199-age">WITHHELD</strong></article>
+        <article><span>TICKS / 60S</span><strong id="v199-ticks60">0</strong></article>
+        <article><span>STREAMING</span><strong id="v199-streaming">NO</strong></article>
+      </section>
+      <section class="command-grid two">
+        <article class="command-card"><span class="kicker">MILESTONE 01</span><h3 id="v199-m1">CHECKING</h3><p>Read-only live-market credential enrolled.</p></article>
+        <article class="command-card"><span class="kicker">MILESTONE 02</span><h3 id="v199-m2">CHECKING</h3><p>Credential successfully reached V186 intake authentication.</p></article>
+        <article class="command-card"><span class="kicker">MILESTONE 03</span><h3 id="v199-m3">CHECKING</h3><p>First authenticated XAUUSD tick accepted and stored.</p></article>
+        <article class="command-card"><span class="kicker">MILESTONE 04</span><h3 id="v199-m4">CHECKING</h3><p>Sustained heartbeat observed across multiple fresh ticks.</p></article>
+      </section>
+      <section class="command-card">
+        <span class="kicker">RELAY DIAGNOSIS</span>
+        <h3 id="v199-diagnosis">CHECKING</h3>
+        <p id="v199-detail">Relay observability is market-data plumbing only. WAIT · 0R remains unchanged.</p>
+      </section>
+    </section>
+
     <section class="section-block">
       <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
