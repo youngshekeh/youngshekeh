@@ -1,6 +1,7 @@
       import { createPaperQuoteSubmitter, paperQuoteMessage } from './owner-paper-quote.mjs';
       import { paperQuoteView } from './paper-quote-view.mjs';
       import { createSandboxReceiptSubmitter, sandboxReceiptMessage } from './owner-sandbox-receipt.mjs';
+      import { prepareBridgeCreate, bridgeInstallSnippet, bridgeControlMessage } from './owner-bridge-control.mjs';
 
       const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const FUNCTIONS = `${SUPABASE}/functions/v1`;
@@ -18,6 +19,8 @@
       let sandboxStatusBusy = false;
       let sandboxStatus = null;
       let sandboxLast = null;
+      let bridgeBusy = false;
+      let bridgeStatus = null;
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
@@ -29,6 +32,11 @@
         $('sandboxReceiptIntake').classList.add('hidden');
         $('sandboxReceiptSubmit').disabled = true;
         $('sandboxReceiptResult').textContent = 'Owner verification and MFA are required.';
+        bridgeStatus = null;
+        $('bridgeControl').classList.add('hidden');
+        $('bridgeCreate').disabled = true;
+        $('bridgeConfig').textContent = 'No bridge key has been issued in this session.';
+        $('bridgeList').replaceChildren();
         $('paperQuoteSubmit').disabled = true;
         $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
         $('paperQuoteFeedState').textContent = 'CHECKING';
@@ -81,6 +89,10 @@
         $('sandboxReceiptResult').textContent = 'Owner and MFA verified. Demo/sandbox receipts only; production routing remains locked.';
         void loadPaperQuoteStatus();
         void loadSandboxStatus();
+        $('bridgeControl').classList.remove('hidden');
+        $('bridgeCreate').disabled = bridgeBusy;
+        $('bridgeResult').textContent = 'Owner and MFA verified. Create or inspect sandbox-only bridge credentials.';
+        void loadBridgeStatus();
       }
 
       const paperSubmitter = createPaperQuoteSubmitter({
@@ -182,6 +194,86 @@
         } finally {
           sandboxBusy = false;
           $('sandboxReceiptSubmit').disabled = !ownerVerified || !ownerMfaReady;
+        }
+      }
+
+      function renderBridgeStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        const host = $('bridgeList');
+        host.replaceChildren();
+        const bridges = Array.isArray(bridgeStatus?.bridges) ? bridgeStatus.bridges : [];
+        if (!bridges.length) {
+          host.appendChild(textEl('p', 'No sandbox bridge has been enrolled.', 'muted'));
+          return;
+        }
+        for (const bridge of bridges) {
+          const card = document.createElement('article');
+          card.className = 'card';
+          card.style.marginTop = '8px';
+          card.appendChild(textEl('div', `${bridge.bridge_label} · #${bridge.bridge_id} · ${bridge.active ? 'ACTIVE' : 'REVOKED'}`, 'value'));
+          card.appendChild(textEl('p', `${bridge.source_code} · ${bridge.provider_symbol} · requests ${bridge.use_count || 0} · last used ${bridge.last_used_at || 'never'} · production capable false · capital 0R`, 'muted'));
+          if (bridge.active) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'secondary';
+            button.textContent = 'Revoke bridge';
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await functionPost('broker-sandbox-bridge-control', {action:'revoke', bridge_id:bridge.bridge_id}, 10000);
+                $('bridgeResult').textContent = `Bridge #${bridge.bridge_id} revoked. Existing key is no longer accepted.`;
+                await loadBridgeStatus();
+              } catch (error) {
+                $('bridgeResult').textContent = bridgeControlMessage(error?.data?.error || 'bridge_revoke_unavailable');
+                button.disabled = false;
+              }
+            };
+            card.appendChild(button);
+          }
+          host.appendChild(card);
+        }
+      }
+
+      async function loadBridgeStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        try {
+          bridgeStatus = await functionPost('broker-sandbox-bridge-control', {action:'status'}, 10000);
+          renderBridgeStatus();
+        } catch (error) {
+          bridgeStatus = null;
+          $('bridgeResult').textContent = bridgeControlMessage(error?.data?.error || 'bridge_status_unavailable');
+          renderBridgeStatus();
+        }
+      }
+
+      async function createBridge(event) {
+        event.preventDefault();
+        if (bridgeBusy || !ownerVerified || !ownerMfaReady) return;
+        const prepared = prepareBridgeCreate({
+          label:$('bridgeLabel').value,
+          sourceCode:$('bridgeSource').value,
+          providerSymbol:$('bridgeSymbol').value,
+        });
+        if (!prepared.ok) {
+          $('bridgeResult').textContent = prepared.message;
+          return;
+        }
+        bridgeBusy = true;
+        $('bridgeCreate').disabled = true;
+        $('bridgeConfig').textContent = 'Creating one-time bridge credential…';
+        try {
+          const result = await functionPost('broker-sandbox-bridge-control', prepared.payload, 10000);
+          const snippet = bridgeInstallSnippet(result);
+          if (!snippet) throw Object.assign(new Error('unverified_bridge_receipt'), {data:{error:'bridge_create_unavailable'}});
+          $('bridgeConfig').textContent = snippet;
+          $('bridgeResult').textContent = 'Demo bridge created. Copy the one-time key now; the server stores only its hash. Production routing remains OFF.';
+          await loadBridgeStatus();
+        } catch (error) {
+          $('bridgeConfig').textContent = 'No bridge key was confirmed.';
+          $('bridgeResult').textContent = bridgeControlMessage(error?.data?.error || 'transport_unavailable');
+        } finally {
+          bridgeBusy = false;
+          $('bridgeCreate').disabled = !ownerVerified || !ownerMfaReady;
         }
       }
 
@@ -500,4 +592,6 @@
       $('paperQuoteRefresh').onclick = () => void loadPaperQuoteStatus();
       $('sandboxReceiptForm').addEventListener('submit', submitSandboxReceipt);
       $('sandboxRefresh').onclick = () => void loadSandboxStatus();
+      $('bridgeCreateForm').addEventListener('submit', createBridge);
+      $('bridgeRefresh').onclick = () => void loadBridgeStatus();
       window.setInterval(() => { if (!document.hidden) renderPaperQuoteStatus(); }, 1000);

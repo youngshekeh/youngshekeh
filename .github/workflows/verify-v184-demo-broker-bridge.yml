@@ -1,0 +1,24 @@
+name: Verify V184 Demo Broker Bridge
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v184-demo-broker-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run V184 bridge regressions
+        run: node --test tests/v184-*.test.mjs
+      - name: Compile MT5 relay
+        run: python -m py_compile scripts/mt5-demo-bridge.py

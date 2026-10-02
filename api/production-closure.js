@@ -9,7 +9,8 @@ const PUBLIC_ENDPOINTS={
   governor:'public-gold-opportunity-governor',
   reality:'public-gold-execution-reality',
   brokerLab:'public-gold-broker-adapter-lab',
-  sandbox:'broker-sandbox-receipt-intake'
+  sandbox:'broker-sandbox-receipt-intake',
+  sandboxBridge:'broker-sandbox-bridge-intake'
 };
 
 const PRIVATE_ENDPOINTS={
@@ -51,6 +52,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Engine','V166');
   res.setHeader('X-TFA-Pressure-Control','V176.1');
+  res.setHeader('X-TFA-Bridge','V184');
   res.setHeader('X-TFA-Sandbox','V183');
   return res.status(status).json({
     ok:false,
@@ -89,12 +91,13 @@ export default async function handler(req,res){
 
   const privateHeaders={Authorization:`Bearer ${oidcToken}`};
 
-  const [deskR,governorR,realityR,brokerLabR,sandboxR,admissionR,handoffR]=await Promise.all([
+  const [deskR,governorR,realityR,brokerLabR,sandboxR,sandboxBridgeR,admissionR,handoffR]=await Promise.all([
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.desk}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.governor}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.reality}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.brokerLab}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.sandbox}`),
+    fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.sandboxBridge}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PRIVATE_ENDPOINTS.admission}`,privateHeaders),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PRIVATE_ENDPOINTS.handoff}`,privateHeaders)
   ]);
@@ -104,6 +107,7 @@ export default async function handler(req,res){
   const reality=realityR.body||{};
   const brokerLab=brokerLabR.body||{};
   const sandbox=sandboxR.body||{};
+  const sandboxBridge=sandboxBridgeR.body||{};
   const admission=admissionR.body||{};
   const handoff=handoffR.body||{};
 
@@ -246,6 +250,21 @@ export default async function handler(req,res){
         live_order_submission_enabled:false,
         production_broker_verified:false,
         sandbox_evidence_can_unlock_capital:false
+      }
+    },
+    sandbox_bridge:{
+      available:sandboxBridgeR.ok,
+      state:sandboxBridge?.state??'UNAVAILABLE',
+      active_bridge_count:Number(sandboxBridge?.active_bridge_count||0),
+      authenticated_requests:Number(sandboxBridge?.authenticated_requests||0),
+      last_used_at:sandboxBridge?.last_used_at??null,
+      production_boundary:sandboxBridge?.production_boundary??null,
+      governance:{
+        action_permitted:'WAIT',
+        capital_permission:'0R',
+        live_order_submission_enabled:false,
+        production_capable:false,
+        bridge_can_unlock_capital:false
       }
     },
     scheduler:{

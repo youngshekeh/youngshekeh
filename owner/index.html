@@ -92,6 +92,28 @@
         <button id="sandboxRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh sandbox certification</button>
         <p id="sandboxDetail" class="muted">No demo broker execution evidence has been recorded.</p>
       </section>
+      <section id="bridgeControl" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V184 · MT5 DEMO BRIDGE</div>
+        <h2>Connect an external demo feed.</h2>
+        <p class="muted">Create a sandbox-only machine credential for an already logged-in MetaTrader 5 demo terminal. The secret is displayed once and only its SHA-256 digest is stored server-side.</p>
+        <form id="bridgeCreateForm">
+          <label for="bridgeLabel">Bridge label</label>
+          <input id="bridgeLabel" maxlength="80" value="MT5 Demo Bridge" autocomplete="off" />
+          <label for="bridgeSource">Source code</label>
+          <input id="bridgeSource" maxlength="64" value="MT5_DEMO" autocomplete="off" />
+          <label for="bridgeSymbol">MT5 XAUUSD symbol</label>
+          <input id="bridgeSymbol" maxlength="22" value="XAUUSD" autocomplete="off" />
+          <button id="bridgeCreate" type="submit" disabled style="margin-top: 12px">Create demo bridge</button>
+        </form>
+        <div id="bridgeResult" class="muted" role="status" aria-live="polite" style="margin-top: 12px">Owner verification and MFA are required.</div>
+        <div class="card" style="margin-top: 12px">
+          <div class="label">ONE-TIME LOCAL CONFIG</div>
+          <pre id="bridgeConfig" style="white-space: pre-wrap; overflow-wrap: anywhere">No bridge key has been issued in this session.</pre>
+        </div>
+        <button id="bridgeRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh bridge status</button>
+        <div id="bridgeList" style="margin-top: 12px"></div>
+        <p class="muted">The bridge can submit sandbox evidence only. It cannot place orders, verify a production broker, or unlock real capital.</p>
+      </section>
       <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V127 · REVIEW INTELLIGENCE</div>
         <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>
