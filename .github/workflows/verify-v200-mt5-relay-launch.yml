@@ -1,0 +1,19 @@
+name: Verify V200 MT5 Relay Launch
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v200-mt5-relay-launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V186/V200 live-market owner regressions
+        run: node --test tests/v186-owner-live-market-control.test.mjs
