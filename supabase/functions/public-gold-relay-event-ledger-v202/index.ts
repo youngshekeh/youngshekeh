@@ -64,9 +64,15 @@ Deno.serve(async(req:Request)=>{
     const ledger=await rpc(base,key,'get_v202_gold_relay_event_ledger',{p_limit:40});
     if(ledger?.ok!==true)throw new Error('ledger_unavailable');
 
+    const normalizedEvents=Array.isArray(ledger?.events)?ledger.events.map((e:any)=>({
+      ...e,
+      latest_tick_age_seconds:e?.first_tick_seen===true?e?.latest_tick_age_seconds:null
+    })):[];
     return Response.json({
       ...ledger,
+      events:normalizedEvents,
       public_version:VERSION,
+      normalization:{pre_v2021_null_age_corrected:true},
       capture:{
         ok:capture?.ok===true,
         state:capture?.state??'RELAY_OBSERVABILITY_UNAVAILABLE',
