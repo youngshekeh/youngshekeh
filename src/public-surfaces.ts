@@ -41,6 +41,8 @@ let liveAnchorGuardBusy = false;
 let liveAnchorGuardTimer: number | undefined;
 let sessionIntelligenceBusy = false;
 let sessionIntelligenceTimer: number | undefined;
+let relayObservabilityBusy = false;
+let relayObservabilityTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3972,6 +3974,57 @@ function startV198SessionIntelligence(){
   void pollV198SessionIntelligence();
 }
 
+function renderV199RelayObservability(data: AnyJson){
+  const b=data?.bridge??{}, r=data?.relay??{}, m=data?.milestones??{};
+  const pass=(v:boolean)=>v===true?'PASS':'WAITING';
+  const state=String(data?.state||'UNAVAILABLE');
+  const next=String(data?.next_step_code||'UNKNOWN');
+  const diagnosis:Record<string,string>={
+    NO_BRIDGE_ENROLLED:'No active V186 bridge exists.',
+    CREDENTIAL_ISSUED_AWAITING_RELAY:'The bridge credential exists, but no authenticated relay request has reached V186 yet.',
+    AUTH_REACHED_AWAITING_ACCEPTED_TICK:'The bridge key reached V186 authentication, but no tick has passed validation and storage yet.',
+    FIRST_TICK_ACCEPTED_PROBATION:'At least one authenticated XAUUSD tick is stored. Keep the relay running while V196 accumulates stream-quality evidence.',
+    RELAY_STREAMING:'The MT5 relay is delivering sustained fresh ticks. V196 and V197 can evaluate feed quality and anchor certification.',
+    RELAY_STALE:'The relay delivered ticks previously, but its heartbeat is now stale.'
+  };
+  set('v199-state',state.replaceAll('_',' '));
+  set('v199-auth',b?.total_authenticated_requests??0);
+  set('v199-ticks',r?.accepted_ticks_examined??0);
+  set('v199-next',next.replaceAll('_',' '));
+  set('v199-first',r?.first_tick_seen===true?'SEEN':'WAITING');
+  set('v199-age',r?.latest_tick_age_seconds==null?null:`${r.latest_tick_age_seconds}s`);
+  set('v199-ticks60',r?.ticks_60s??0);
+  set('v199-streaming',r?.streaming===true?'YES':'NO');
+  set('v199-m1',pass(m?.credential_issued));
+  set('v199-m2',pass(m?.intake_authentication_seen));
+  set('v199-m3',pass(m?.first_accepted_tick));
+  set('v199-m4',pass(m?.sustained_stream));
+  set('v199-diagnosis',state.replaceAll('_',' '));
+  set('v199-detail',`${diagnosis[state]??'Relay state unavailable.'} · Market data only · WAIT · 0R.`);
+}
+
+async function pollV199RelayObservability(){
+  if(relayObservabilityBusy||document.hidden)return;
+  relayObservabilityBusy=true;
+  try{renderV199RelayObservability(await readLocal('/api/gold-relay-observability-v199',9000));}
+  finally{
+    relayObservabilityBusy=false;
+    if(relayObservabilityTimer)window.clearTimeout(relayObservabilityTimer);
+    if(!document.hidden)relayObservabilityTimer=window.setTimeout(()=>void pollV199RelayObservability(),5_000);
+  }
+}
+function startV199RelayObservability(){
+  if(relayObservabilityTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(relayObservabilityTimer)window.clearTimeout(relayObservabilityTimer);
+      relayObservabilityTimer=undefined;
+      set('v199-state','PAUSED · TAB HIDDEN');
+    }else void pollV199RelayObservability();
+  });
+  void pollV199RelayObservability();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -4018,6 +4071,7 @@ function startGoldPulse() {
   startV196FeedQuality();
   startV197LiveAnchorGuard();
   startV198SessionIntelligence();
+  startV199RelayObservability();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
