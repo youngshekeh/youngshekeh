@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createPaperQuoteSubmitter,paperQuoteMessage} from '../src/owner-paper-quote.mjs';
 import {paperQuoteView} from '../src/paper-quote-view.mjs';
+import {bridgeControlMessage} from '../src/owner-bridge-control.mjs';
+import {liveMarketBridgeMessage} from '../src/owner-live-market-control.mjs';
 
 const source=(await readFile(new URL('../src/owner.ts',import.meta.url),'utf8')).replace(/^\s*import .*;\s*$/gm,'');
 function element(id,hidden=false) {
@@ -38,8 +40,12 @@ function setup() {
   const document={getElementById:get,createElement:tag=>element(tag),hidden:false};
   const window={setInterval:callback=>{clocks.push(callback);}};
   const createSandboxReceiptSubmitter=()=>({submit:async()=>({ok:false,error:'unused_fixture'})});
-  new Function('createPaperQuoteSubmitter','paperQuoteMessage','paperQuoteView','createSandboxReceiptSubmitter','document','window','fetch',source)(
-    createPaperQuoteSubmitter,paperQuoteMessage,paperQuoteView,createSandboxReceiptSubmitter,document,window,fetch
+  new Function(
+    'createPaperQuoteSubmitter','paperQuoteMessage','paperQuoteView','createSandboxReceiptSubmitter',
+    'bridgeControlMessage','liveMarketBridgeMessage','document','window','fetch',source
+  )(
+    createPaperQuoteSubmitter,paperQuoteMessage,paperQuoteView,createSandboxReceiptSubmitter,
+    bridgeControlMessage,liveMarketBridgeMessage,document,window,fetch
   );
   const signin=async()=>{get('email').value='fixture@example.invalid';get('password').value='fixture-password';await get('signin').onclick();};
   const submit=async()=>get('paperQuoteForm').submit({preventDefault(){}});
