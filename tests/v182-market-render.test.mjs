@@ -57,7 +57,7 @@ test('the actual Gold loader keeps the desk and firewall locked when research fe
   const gold={ok:true,market_status:'DELAYED_LIVE',price:4220,engine:{state:'HERO_REPAIR',action:'EVALUATE',capital_permission:'MAX_0.25R'}};
   const desk={ok:true,current_read:{action_permitted:'EVALUATE',capital_permission:'MAX_0.25R'}};
   const load=new Function('read','readLocal','set','first','setupBrokerGoldBridge',`${goldSource}\nreturn loadGold;`)(
-    async path=>path==='public-gold-live-api'?gold:path==='public-gold-execution-desk'?desk:{},
+    async path=>path==='public-gold-live-xauusd'?gold:path==='public-gold-execution-desk'?desk:{},
     async ()=>({}),(id,text)=>values.set(id,text),first,()=>{});
   const result=await load();
   assert.equal(result.available,true); assert.equal(values.get('gold-price'),4220);
