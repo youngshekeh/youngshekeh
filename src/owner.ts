@@ -27,6 +27,7 @@
       let liveMarketBridgeBusy = false;
       let liveMarketBridgeStatus = null;
       let liveMarketQuoteStatus = null;
+      let liveRelayObservability = null;
       let alertInboxBusy = false;
       let alertInboxData = null;
 
@@ -50,6 +51,7 @@
         $('bridgeHealthDetail').textContent = 'No demo client heartbeat confirmed.';
         liveMarketBridgeStatus = null;
         liveMarketQuoteStatus = null;
+        liveRelayObservability = null;
         $('liveMarketBridgeControl').classList.add('hidden');
         $('liveMarketBridgeCreate').disabled = true;
         $('liveMarketBridgeConfig').textContent = 'No live-market key has been issued in this session.';
@@ -377,14 +379,33 @@
         $('liveMarketOwnerPrice').textContent = q?.mid == null ? 'WITHHELD' : Number(q.mid).toFixed(2);
         $('liveMarketOwnerSpread').textContent = q?.spread_usd == null ? 'WITHHELD' : Number(q.spread_usd).toFixed(3);
         $('liveMarketOwnerMode').textContent = q?.trade_mode || 'WAITING';
+
+        const relay = liveRelayObservability || {};
+        $('liveRelayState').textContent = String(relay?.state || 'UNAVAILABLE').replaceAll('_', ' ');
+        $('liveRelayAuth').textContent = String(relay?.bridge?.total_authenticated_requests ?? 0);
+        $('liveRelayTicks').textContent = String(relay?.relay?.accepted_ticks_examined ?? 0);
+        $('liveRelayNext').textContent = String(relay?.next_step_code || 'UNKNOWN').replaceAll('_', ' ');
+        const relayMessages = {
+          NO_BRIDGE_ENROLLED:'No active live-market bridge is enrolled.',
+          CREDENTIAL_ISSUED_AWAITING_RELAY:'Credential issued, but the MT5 relay has not reached V186 authentication yet.',
+          AUTH_REACHED_AWAITING_ACCEPTED_TICK:'Relay authentication reached V186, but no tick has passed validation and storage.',
+          FIRST_TICK_ACCEPTED_PROBATION:'First XAUUSD tick accepted. Keep the relay running while feed-quality probation accumulates.',
+          RELAY_STREAMING:'Sustained MT5 market-data heartbeat is live.',
+          RELAY_STALE:'The relay previously delivered ticks but is currently stale.'
+        };
+        $('liveRelayDetail').textContent = `${relayMessages[relay?.state] || 'Relay observability unavailable.'} · market data only · orders OFF · capital 0R.`;
       }
 
       async function loadLiveMarketBridgeStatus() {
         if (!ownerVerified || !ownerMfaReady) return;
         try {
           liveMarketBridgeStatus = await functionPost('broker-live-market-control', {action:'status'}, 10000);
-          const response = await fetch(`${FUNCTIONS}/broker-live-market-intake`, {headers:{apikey:KEY,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(5000)});
-          liveMarketQuoteStatus = response.ok ? await response.json().catch(() => null) : null;
+          const [quoteResponse, relayResponse] = await Promise.all([
+            fetch(`${FUNCTIONS}/broker-live-market-intake`, {headers:{apikey:KEY,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(5000)}),
+            fetch('/api/gold-relay-observability-v199', {headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(7000)})
+          ]);
+          liveMarketQuoteStatus = quoteResponse.ok ? await quoteResponse.json().catch(() => null) : null;
+          liveRelayObservability = relayResponse.ok ? await relayResponse.json().catch(() => null) : null;
           renderLiveMarketBridgeStatus();
         } catch (error) {
           $('liveMarketBridgeResult').textContent = liveMarketBridgeMessage(error?.data?.error || 'live_bridge_status_unavailable');
