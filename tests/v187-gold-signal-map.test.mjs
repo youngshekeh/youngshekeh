@@ -39,6 +39,7 @@ test('missing broker tick preserves structural zones but cannot claim active liv
  assert.equal(out.live_anchor.state,'STRUCTURAL_FALLBACK');
  assert.equal(out.signal_time.state,'SIGNAL_WINDOW_WAITING_FOR_LIVE_XAUUSD');
  assert.equal(out.tradeable_zones.price_basis,'GC_FUTURES_STRUCTURE');
+ assert.equal(out.live_anchor.futures_spot_basis_usd,null);
  assert.equal(out.governance.machine_execution_allowed,false);
 });
 test('normal day inside a session does not become a signal day',()=>{
