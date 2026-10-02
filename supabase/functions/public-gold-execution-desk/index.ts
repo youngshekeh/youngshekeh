@@ -6,7 +6,7 @@ const CORS={
   "Access-Control-Allow-Methods":"GET, OPTIONS"
 };
 const BASE="https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1";
-const VERSION="v186-gold-live-execution-desk-v4-live-broker-reference";
+const VERSION="v120-v186-gold-live-execution-desk-v4-live-broker-reference";
 const TTL=20_000;
 let cache:any=null,cachedAt=0,inflight:Promise<any>|null=null;
 
