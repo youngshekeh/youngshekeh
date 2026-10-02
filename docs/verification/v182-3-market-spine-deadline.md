@@ -1,0 +1,7 @@
+# V182.3 nested market-spine deadline
+
+Production browser checks showed Gold refreshing successfully while Live Markets sometimes displayed an UNAVAILABLE response carrying a valid source-generation timestamp. Inspection of the deployed `public-live-markets-api` version 9 found an inner six-second read of `public-gold-live-api`. Any timeout generated a truthful empty fallback and cached it for a minute, even when the Gold surface could obtain the same feed within its longer deadline.
+
+V182.3 changes that inner timeout to 8.5 seconds. The complete chain remains bounded: 8.5 seconds for the market-spine Gold read, 10 seconds for the website bridge, and at least 12 seconds for the browser. All source interpretation, cache policy, HTTP methods, existing public authentication setting, fail-closed fallback, and trading gates are preserved. No provider, scheduler, schema, or broker change is included.
+
+The deployed source is now tracked in the repository. Three actual-function regressions verify a healthy 7.5-second observation, rejection of unavailable/failed responses, and an 8.5-second failure without retry. The complete local suite and release checks must pass before publishing the function and verifying deployed dashboard refreshes. The preceding broad production QA run was 77/78, with one closure dependency deadline failure; that result remains separate from market monitoring verification.
