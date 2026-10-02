@@ -1,5 +1,6 @@
       import { createPaperQuoteSubmitter, paperQuoteMessage } from './owner-paper-quote.mjs';
       import { paperQuoteView } from './paper-quote-view.mjs';
+      import { createSandboxReceiptSubmitter, sandboxReceiptMessage } from './owner-sandbox-receipt.mjs';
 
       const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const FUNCTIONS = `${SUPABASE}/functions/v1`;
@@ -13,12 +14,21 @@
       let paperStatusBusy = false;
       let paperStatus = null;
       let paperReceipt = null;
+      let sandboxBusy = false;
+      let sandboxStatusBusy = false;
+      let sandboxStatus = null;
+      let sandboxLast = null;
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
         paperStatus = null;
         paperReceipt = null;
         $('paperQuoteIntake').classList.add('hidden');
+        sandboxStatus = null;
+        sandboxLast = null;
+        $('sandboxReceiptIntake').classList.add('hidden');
+        $('sandboxReceiptSubmit').disabled = true;
+        $('sandboxReceiptResult').textContent = 'Owner verification and MFA are required.';
         $('paperQuoteSubmit').disabled = true;
         $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
         $('paperQuoteFeedState').textContent = 'CHECKING';
@@ -66,7 +76,11 @@
         $('paperQuoteIntake').classList.remove('hidden');
         $('paperQuoteSubmit').disabled = paperQuoteBusy;
         $('paperQuoteResult').textContent = 'Owner and MFA verified. Submit a fresh demo source event; no automatic submission occurs.';
+        $('sandboxReceiptIntake').classList.remove('hidden');
+        $('sandboxReceiptSubmit').disabled = sandboxBusy;
+        $('sandboxReceiptResult').textContent = 'Owner and MFA verified. Demo/sandbox receipts only; production routing remains locked.';
         void loadPaperQuoteStatus();
+        void loadSandboxStatus();
       }
 
       const paperSubmitter = createPaperQuoteSubmitter({
@@ -99,6 +113,75 @@
         } finally {
           paperQuoteBusy = false;
           $('paperQuoteSubmit').disabled = !ownerVerified || !ownerMfaReady;
+        }
+      }
+
+      function renderSandboxStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        const s = sandboxStatus || {};
+        const gates = s.sandbox_gates || {};
+        const ev = s.evidence || {};
+        $('sandboxState').textContent = String(s.state || 'UNAVAILABLE').replaceAll('_', ' ');
+        $('sandboxSpread').textContent = gates.observed_spread_available ? 'OBSERVED' : 'WAITING';
+        $('sandboxSlippage').textContent = gates.observed_slippage_available ? 'OBSERVED' : 'WAITING';
+        $('sandboxRecon').textContent = gates.order_reconciliation_tested ? 'PASS' : 'WAITING';
+        $('sandboxKill').textContent = gates.kill_switch_receipt_observed ? 'OBSERVED' : 'WAITING';
+        $('sandboxDetail').textContent = s?.ok === true
+          ? `24h receipts ${ev.total_receipts || 0} · quotes ${ev.quote_receipts || 0}/5 · fills ${ev.fill_receipts || 0}/3 · reconciled ${ev.reconciled_fill_receipts || 0} · kill-switch ${ev.kill_switch_receipts || 0}/1. Production broker verification remains false and capital remains 0R.`
+          : 'Sandbox certification status is unavailable. Production routing remains locked.';
+        if (sandboxLast) $('sandboxReceiptLast').textContent =
+          `Receipt #${sandboxLast.receipt_id} · ${sandboxLast.event_type} · ${sandboxLast.inserted ? 'recorded' : 'already recorded'} · sandbox only · capital 0R.`;
+      }
+
+      async function loadSandboxStatus() {
+        if (sandboxStatusBusy || !ownerVerified || !ownerMfaReady) return;
+        sandboxStatusBusy = true;
+        const tokenAtStart = accessToken;
+        try {
+          const response = await fetch(`${FUNCTIONS}/broker-sandbox-receipt-intake`, {
+            headers: { apikey: KEY, Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(8000),
+          });
+          const data = await response.json().catch(() => null);
+          if (accessToken === tokenAtStart && ownerVerified && ownerMfaReady) sandboxStatus = response.ok ? data : null;
+        } catch {
+          if (accessToken === tokenAtStart) sandboxStatus = null;
+        } finally {
+          sandboxStatusBusy = false;
+          renderSandboxStatus();
+        }
+      }
+
+      const sandboxSubmitter = createSandboxReceiptSubmitter({
+        getSession: () => ({token: accessToken, owner: ownerVerified, mfa: ownerMfaReady}),
+        send: receipt => functionPost('broker-sandbox-receipt-intake', receipt, 10000),
+      });
+
+      async function submitSandboxReceipt(event) {
+        event.preventDefault();
+        if (sandboxBusy || !ownerVerified || !ownerMfaReady) return;
+        sandboxBusy = true;
+        $('sandboxReceiptSubmit').disabled = true;
+        $('sandboxReceiptResult').textContent = 'Submitting one sandbox evidence receipt…';
+        try {
+          const result = await sandboxSubmitter.submit($('sandboxReceiptJson').value);
+          if (result.error === 'session_changed') return;
+          if (['invalid_session','aal2_required','owner_only'].includes(result.error)) {
+            lockOwnerPaperQuote();
+            $('result').textContent = sandboxReceiptMessage(result.error);
+            return;
+          }
+          if (result.ok) {
+            sandboxLast = result;
+            sandboxStatus = result.certification || sandboxStatus;
+            $('sandboxReceiptResult').textContent = 'Sandbox receipt confirmed. Production broker verification and live orders remain OFF.';
+          } else {
+            $('sandboxReceiptResult').textContent = result.message;
+          }
+          renderSandboxStatus();
+          await loadSandboxStatus();
+        } finally {
+          sandboxBusy = false;
+          $('sandboxReceiptSubmit').disabled = !ownerVerified || !ownerMfaReady;
         }
       }
 
@@ -415,4 +498,6 @@
       $('reviewRefresh').onclick = () => loadReviewInbox();
       $('paperQuoteForm').addEventListener('submit', submitPaperQuote);
       $('paperQuoteRefresh').onclick = () => void loadPaperQuoteStatus();
+      $('sandboxReceiptForm').addEventListener('submit', submitSandboxReceipt);
+      $('sandboxRefresh').onclick = () => void loadSandboxStatus();
       window.setInterval(() => { if (!document.hidden) renderPaperQuoteStatus(); }, 1000);

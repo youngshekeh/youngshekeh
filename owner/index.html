@@ -69,6 +69,29 @@
         <p class="muted">A paper receipt confirms intake only. Broker provenance remains unverified, live orders remain OFF, and a manually supplied quote does not connect an autonomous feed.</p>
         <a class="secondary" href="../gold-live/#v172-paper-broker-feed">View the public paper feed</a>
       </section>
+      <section id="sandboxReceiptIntake" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V183 · BROKER DEMO SANDBOX CERTIFICATION</div>
+        <h2>Record sandbox execution evidence.</h2>
+        <p class="muted">Use receipts from a broker demo/sandbox account only. Supported events: QUOTE, ORDER_ACK, FILL, CANCEL_ACK and KILL_SWITCH_ACK. Events expire after 30 seconds.</p>
+        <p class="muted">Never paste passwords, API keys, access tokens, account secrets or production order credentials. Sandbox evidence cannot unlock real capital.</p>
+        <form id="sandboxReceiptForm">
+          <label for="sandboxReceiptJson">Demo broker receipt JSON</label>
+          <textarea id="sandboxReceiptJson" rows="10" maxlength="32768" spellcheck="false" autocomplete="off" placeholder="Paste one fresh sandbox receipt JSON object" style="width: 100%; margin-top: 8px"></textarea>
+          <button id="sandboxReceiptSubmit" type="submit" disabled style="margin-top: 12px">Record sandbox receipt</button>
+        </form>
+        <div id="sandboxReceiptResult" class="muted" role="status" aria-live="polite" style="margin-top: 12px">Owner verification and MFA are required.</div>
+        <div id="sandboxReceiptLast" class="muted" style="margin-top: 8px">No sandbox receipt confirmed.</div>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card"><div class="label">SANDBOX STATE</div><div id="sandboxState" class="value wait">CHECKING</div></div>
+          <div class="card"><div class="label">SPREAD</div><div id="sandboxSpread" class="value">WAITING</div></div>
+          <div class="card"><div class="label">SLIPPAGE</div><div id="sandboxSlippage" class="value">WAITING</div></div>
+          <div class="card"><div class="label">RECONCILIATION</div><div id="sandboxRecon" class="value">WAITING</div></div>
+          <div class="card"><div class="label">KILL SWITCH</div><div id="sandboxKill" class="value">WAITING</div></div>
+          <div class="card"><div class="label">REAL CAPITAL</div><div class="value">0R · LOCKED</div></div>
+        </div>
+        <button id="sandboxRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh sandbox certification</button>
+        <p id="sandboxDetail" class="muted">No demo broker execution evidence has been recorded.</p>
+      </section>
       <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V127 · REVIEW INTELLIGENCE</div>
         <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>
