@@ -1,4 +1,4 @@
-function n(v){const x=Number(v);return Number.isFinite(x)?x:null;}
+function n(v){if(v===null||v===undefined||v==='')return null;const x=Number(v);return Number.isFinite(x)?x:null;}
 const r=(v,d=2)=>{const x=n(v);return x==null?null:Number(x.toFixed(d));};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
