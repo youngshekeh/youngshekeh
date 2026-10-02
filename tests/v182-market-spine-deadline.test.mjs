@@ -11,7 +11,7 @@ function fixture({delay=7500,status=200,data=body}={}) {
   const events=[];let calls=0;
   const AbortSignal={timeout(ms){const controller=new AbortController();events.push({at:ms,run:()=>controller.abort(new Error('timeout'))});return controller.signal;}};
   const fetch=(url,{signal})=>{
-    calls++;assert.equal(url,'https://example.test/public-gold-live-api');
+    calls++;assert.equal(url,'https://example.test/public-gold-live-xauusd');
     return new Promise((resolve,reject)=>{
       signal.addEventListener('abort',()=>reject(signal.reason),{once:true});
       events.push({at:delay,run:()=>resolve({ok:status===200,json:async()=>data})});
