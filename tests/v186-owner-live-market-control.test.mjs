@@ -23,3 +23,18 @@ test('V200 install snippet smoke-tests first tick before continuous relay',()=>{
  assert.match(s,/continuous mode was not started/i);
  assert.match(s,/first_tick_seen/);
 });
+
+test('V201 doctor runs before V200 one-shot and continuous modes',()=>{
+ const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:9,bridge_key:'tfa_live_'+'c'.repeat(43),provider_symbol:'XAUUSD'});
+ const doctorDownload=s.indexOf('mt5-live-market-doctor.py -OutFile');
+ const doctorRun=s.indexOf('python .\\\\mt5-live-market-doctor.py');
+ const once=s.indexOf('mt5-live-market-bridge.py --once');
+ const verify=s.indexOf('gold-relay-observability-v199');
+ const continuous=s.lastIndexOf('python .\\\\mt5-live-market-bridge.py');
+ assert.ok(doctorDownload>=0);
+ assert.ok(doctorRun>doctorDownload);
+ assert.ok(once>doctorRun);
+ assert.ok(verify>once);
+ assert.ok(continuous>verify);
+ assert.match(s,/V201 relay doctor found a failed prerequisite/);
+});
