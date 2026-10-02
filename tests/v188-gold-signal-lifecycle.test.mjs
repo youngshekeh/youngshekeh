@@ -42,3 +42,14 @@ test('no live basis preserves GC levels and flags missing live anchor',()=>{
  assert.equal(x.lifecycle.live_anchor_required,true);
  assert.equal(x.session_liquidity.sessions[0].price_relation,'MID_RANGE');
 });
+
+test('tentative reclaim is not liquidity-transition resolved',()=>{
+ const l={state:{...liquidity.state,acceptance:'RECLAIM_TENTATIVE'}};
+ const x=buildGoldSignalLifecycle({signal,liquidity:l,sessions});
+ assert.equal(x.flags.liquidity_transition_resolved,false);
+});
+test('explicit reclaim acceptance is liquidity-transition resolved',()=>{
+ const l={state:{...liquidity.state,acceptance:'RECLAIM_ACCEPTED'}};
+ const x=buildGoldSignalLifecycle({signal,liquidity:l,sessions});
+ assert.equal(x.flags.liquidity_transition_resolved,true);
+});
