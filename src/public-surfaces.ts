@@ -29,6 +29,8 @@ let triggerWatchBusy = false;
 let triggerWatchTimer: number | undefined;
 let eventLedgerBusy = false;
 let eventLedgerTimer: number | undefined;
+let alertRouterBusy = false;
+let alertRouterTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3648,6 +3650,60 @@ function startV191EventLedger(){
   void pollV191EventLedger();
 }
 
+function renderV192AlertRouter(data: AnyJson) {
+  set('v192-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
+  set('v192-visible', data?.counts?.visible_alerts ?? 0);
+  set('v192-notify', data?.counts?.notification_ready ?? 0);
+  set('v192-failures', data?.counts?.chain_failures ?? null);
+  set('v192-dashboard-threshold', data?.policy?.minimum_dashboard_score == null ? null : `${data.policy.minimum_dashboard_score}/100`);
+  set('v192-notify-threshold', data?.policy?.minimum_notification_score == null ? null : `${data.policy.minimum_notification_score}/100`);
+  set('v192-cooldown', data?.policy?.cooldown_minutes == null ? null : `${data.policy.cooldown_minutes} min`);
+  set('v192-transport', data?.policy?.transport_enabled===true ? String(data?.policy?.transport_type||'ENABLED') : 'DISABLED');
+  set('v192-governance', data?.policy?.transport_enabled===true ? 'ALERT ROUTING ENABLED · WAIT · 0R' : 'DASHBOARD ONLY · WAIT · 0R');
+  set('v192-copy', data?.policy?.transport_enabled===true
+    ? 'External alert transport is configured. Alerts remain review prompts only and cannot grant execution permission.'
+    : 'External alert transport is deliberately disabled. V192 prioritizes and records alerts on the dashboard only.');
+  const grid=byId('v192-alert-grid');
+  if(!grid)return;
+  grid.replaceChildren();
+  const alerts=Array.isArray(data?.alerts)?data.alerts:[];
+  if(!alerts.length){
+    const card=document.createElement('article');card.className='command-card';
+    const k=document.createElement('span');k.className='kicker';k.textContent='PRIORITY ALERTS';
+    const h=document.createElement('h3');h.textContent='WAITING FOR NEXT MATERIAL TRANSITION';
+    const p=document.createElement('p');p.textContent='V192 does not backfill the V191 baseline. The next qualifying state change will appear here.';
+    card.append(k,h,p);grid.appendChild(card);return;
+  }
+  for(const a of alerts.slice(0,10)){
+    const card=document.createElement('article');card.className='command-card';
+    const k=document.createElement('span');k.className='kicker';k.textContent=`${a.severity} · ${a.route_state}`;
+    const h=document.createElement('h3');h.textContent=`${String(a.alert_type||'ALERT').replaceAll('_',' ')} · ${a.priority_score}/100`;
+    const p=document.createElement('p');p.textContent=`${a.reason||'Review alert.'} · ${a.direction_candidate||'NEUTRAL'}`;
+    card.append(k,h,p);grid.appendChild(card);
+  }
+}
+async function pollV192AlertRouter(){
+  if(alertRouterBusy||document.hidden)return;
+  alertRouterBusy=true;
+  try{renderV192AlertRouter(await readLocal('/api/gold-alert-router-v192',9000));}
+  finally{
+    alertRouterBusy=false;
+    if(alertRouterTimer)window.clearTimeout(alertRouterTimer);
+    if(!document.hidden)alertRouterTimer=window.setTimeout(()=>void pollV192AlertRouter(),30_000);
+  }
+}
+function startV192AlertRouter(){
+  if(alertRouterTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(alertRouterTimer)window.clearTimeout(alertRouterTimer);
+      alertRouterTimer=undefined;
+      set('v192-state','PAUSED · TAB HIDDEN');
+    }else void pollV192AlertRouter();
+  });
+  void pollV192AlertRouter();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3688,6 +3744,7 @@ function startGoldPulse() {
   startV188Lifecycle();
   startV189TriggerWatch();
   startV191EventLedger();
+  startV192AlertRouter();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
