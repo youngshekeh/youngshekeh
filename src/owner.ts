@@ -27,6 +27,8 @@
       let liveMarketBridgeBusy = false;
       let liveMarketBridgeStatus = null;
       let liveMarketQuoteStatus = null;
+      let alertInboxBusy = false;
+      let alertInboxData = null;
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
@@ -56,6 +58,10 @@
         $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
         $('paperQuoteFeedState').textContent = 'CHECKING';
         $('paperQuoteResult').textContent = 'Owner verification and MFA are required.';
+        alertInboxData = null;
+        $('alertInbox').classList.add('hidden');
+        $('alertInboxList').replaceChildren();
+        $('alertInboxState').textContent = 'LOCKED UNTIL AAL2';
       }
 
       function renderPaperQuoteStatus() {
@@ -113,6 +119,7 @@
         $('liveMarketBridgeCreate').disabled = liveMarketBridgeBusy;
         $('liveMarketBridgeResult').textContent = 'Owner and MFA verified. Live-market credentials are read-only and cannot submit orders.';
         void loadLiveMarketBridgeStatus();
+        void loadOwnerAlertInbox();
       }
 
       const paperSubmitter = createPaperQuoteSubmitter({
@@ -454,6 +461,113 @@
         ownerVerified = true;
       }
 
+      function renderOwnerAlertInbox(data) {
+        alertInboxData = data;
+        $('alertInbox').classList.remove('hidden');
+        const counts = data?.counts || {};
+        $('alertInboxState').textContent = String(data?.state || 'UNAVAILABLE').replaceAll('_', ' ');
+        $('alertInboxState').className = `value ${data?.state === 'ACTION_CHAIN_VERIFIED' ? 'good' : 'bad'}`;
+        $('alertInboxOpen').textContent = String(counts.open || 0);
+        $('alertInboxSnoozed').textContent = String(counts.snoozed || 0);
+        $('alertInboxClosed').textContent = String(counts.closed || 0);
+        $('alertInboxFailures').textContent = String(counts.chain_failures ?? 'n/a');
+        $('alertInboxDetail').textContent =
+          `Reviewable ${counts.total_reviewable || 0} · acknowledgement is evidence handling only · actions are append-only · capital 0R.`;
+
+        const host = $('alertInboxList');
+        host.replaceChildren();
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (!items.length) {
+          host.appendChild(textEl('p', 'No V192 dashboard/notification alerts are currently reviewable.', 'muted'));
+          return;
+        }
+
+        for (const item of items) {
+          const card = document.createElement('article');
+          card.className = 'card';
+          card.style.marginTop = '10px';
+          card.appendChild(textEl(
+            'div',
+            `${item.severity || 'INFO'} · ${item.priority_score ?? 'n/a'}/100 · ${String(item.alert_type || 'ALERT').replaceAll('_',' ')} · ${item.review_state || 'UNREVIEWED'}`,
+            'value'
+          ));
+          card.appendChild(textEl(
+            'p',
+            `${item.reason || 'Review alert.'} · ${item.direction_candidate || 'NEUTRAL'} · route #${item.alert_route_id} · hash ${String(item.route_sha256 || '').slice(0,12)}…`,
+            'muted'
+          ));
+
+          if (item.review_state === 'CLOSED') {
+            card.appendChild(textEl('p', 'Closed. The underlying V191/V192 evidence remains immutable.', 'muted'));
+            host.appendChild(card);
+            continue;
+          }
+
+          const note = document.createElement('textarea');
+          note.rows = 2;
+          note.maxLength = 500;
+          note.placeholder = 'Optional owner note. Do not enter passwords, API keys, or broker credentials.';
+          note.style.width = '100%';
+          card.appendChild(note);
+
+          const actions = document.createElement('div');
+          actions.className = 'row';
+          actions.style.marginTop = '10px';
+          actions.style.flexWrap = 'wrap';
+
+          const defs = [
+            ['ACKNOWLEDGED','Acknowledge',null],
+            ['SNOOZED','Snooze 15m',15],
+            ['CLOSED','Close',null],
+          ];
+          for (const [decision,label,snoozeMinutes] of defs) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'secondary';
+            button.textContent = label;
+            button.onclick = async () => {
+              const buttons = actions.querySelectorAll('button');
+              buttons.forEach(x => x.disabled = true);
+              $('alertInboxDetail').textContent = `Recording ${decision} for alert #${item.alert_route_id}…`;
+              try {
+                const result = await functionPost('owner-gold-alert-actions', {
+                  action:'record',
+                  alert_route_id:item.alert_route_id,
+                  decision,
+                  snooze_minutes:snoozeMinutes,
+                  note:note.value,
+                });
+                $('alertInboxDetail').textContent =
+                  `Recorded ${result?.state_after || decision} · action ${String(result?.action_sha256 || '').slice(0,12) || 'confirmed'}… · capital 0R.`;
+                await loadOwnerAlertInbox();
+              } catch (error) {
+                $('alertInboxDetail').textContent = error?.message || 'Alert action could not be recorded.';
+                buttons.forEach(x => x.disabled = false);
+              }
+            };
+            actions.appendChild(button);
+          }
+          card.appendChild(actions);
+          host.appendChild(card);
+        }
+      }
+
+      async function loadOwnerAlertInbox() {
+        if (alertInboxBusy || !ownerVerified || !ownerMfaReady) return;
+        alertInboxBusy = true;
+        try {
+          const data = await functionPost('owner-gold-alert-actions', {action:'inbox'}, 12000);
+          renderOwnerAlertInbox(data);
+        } catch (error) {
+          $('alertInbox').classList.remove('hidden');
+          $('alertInboxState').textContent = 'ALERT INBOX LOCKED';
+          $('alertInboxState').className = 'value bad';
+          $('alertInboxDetail').textContent = error?.message || 'Owner alert inbox unavailable.';
+        } finally {
+          alertInboxBusy = false;
+        }
+      }
+
       const REVIEW_LABELS = {
         EVIDENCE_SUPPORTIVE: 'Evidence supportive',
         EVIDENCE_CONTRADICTORY: 'Evidence contradictory',
@@ -643,6 +757,7 @@
             'Owner verification and MFA are active for this session.';
           enableOwnerPaperQuote();
           await loadReviewInbox();
+          await loadOwnerAlertInbox();
           return;
         }
         factorId = status?.factors?.[0]?.id || null;
@@ -660,6 +775,8 @@
         accessToken = null;
         factorId = null;
         $('reviewInbox').classList.add('hidden');
+        $('alertInbox').classList.add('hidden');
+        $('alertInboxList').replaceChildren();
         $('reviewIntelligence').classList.add('hidden');
         $('reviewQueue').replaceChildren();
         $('reviewIntelHorizons').replaceChildren();
@@ -727,6 +844,7 @@
       $('signin').onclick = signIn;
       $('verify').onclick = verifyMfa;
       $('reviewRefresh').onclick = () => loadReviewInbox();
+      $('alertInboxRefresh').onclick = () => void loadOwnerAlertInbox();
       $('paperQuoteForm').addEventListener('submit', submitPaperQuote);
       $('paperQuoteRefresh').onclick = () => void loadPaperQuoteStatus();
       $('sandboxReceiptForm').addEventListener('submit', submitSandboxReceipt);

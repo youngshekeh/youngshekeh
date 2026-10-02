@@ -149,6 +149,22 @@
         <div id="liveMarketBridgeList" style="margin-top: 12px"></div>
         <p class="muted">Market-data only. Orders OFF. Machine execution OFF. Capital permission 0R.</p>
       </section>
+      <section id="alertInbox" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V193 · OWNER GOLD ALERT INBOX</div>
+        <div id="alertInboxState" class="value wait">LOCKED UNTIL AAL2</div>
+        <p id="alertInboxDetail" class="muted">
+          V192 priority alerts can be acknowledged, snoozed or closed. These actions never approve a trade or change the underlying event.
+        </p>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card" style="min-width: 150px"><div class="label">OPEN</div><div id="alertInboxOpen" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">SNOOZED</div><div id="alertInboxSnoozed" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">CLOSED</div><div id="alertInboxClosed" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">CHAIN FAILURES</div><div id="alertInboxFailures" class="value">0</div></div>
+          <div class="card" style="min-width: 150px"><div class="label">CAPITAL</div><div class="value">0R</div></div>
+        </div>
+        <button id="alertInboxRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh alert inbox</button>
+        <div id="alertInboxList" style="margin-top: 12px"></div>
+      </section>
       <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V127 · REVIEW INTELLIGENCE</div>
         <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>

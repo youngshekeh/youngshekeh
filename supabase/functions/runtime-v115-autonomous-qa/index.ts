@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v192.0-gold-alert-router-certification-v57';
+const VERSION='v193.0-owner-alert-inbox-certification-v58';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -39,12 +39,13 @@ async function legacyHandler(req:any,res:any,transport:any){
   const tfaRetry=(task:()=>Promise<any>,delay=250)=>transport.retry(task,delay);
   async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=3){return transport.all(tasks,concurrency);}
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router]=await tfaBoundedAll([
+  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,ownerAlertAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router]=await tfaBoundedAll([
     ()=>fetchAny('/'),
     ()=>fetchAny('/capital-os/'),
     ()=>fetchAny('/gold-live/'),
     ()=>fetchAny('/owner/'),
     ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/owner-gold-review-actions',{action:'queue'},8000),
+    ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/owner-gold-alert-actions',{action:'inbox'},8000),
     ()=>tfaRetry(()=>fetchAbsolute(PRIVATE_LOCK_PROBE)),
     ()=>fetchAbsolutePost('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',{},8000),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/paper-broker-quote-intake',8000)),
@@ -477,6 +478,14 @@ async function legacyHandler(req:any,res:any,transport:any){
       &&ownerReviewAnon.body?.error==='missing_token',
     `status=${ownerReviewAnon.status}, error=${ownerReviewAnon.body?.error}`,
     ownerReviewAnon.latency_ms));
+  tests.push(result('v193_owner_alert_inbox_protected',
+    ownerAlertAnon.status===401
+      &&ownerAlertAnon.body?.error==='missing_token'
+      &&ownerSurface.status===200
+      &&typeof ownerSurface.body==='string'
+      &&ownerSurface.body.includes('V193 · OWNER GOLD ALERT INBOX'),
+    `anon_status=${ownerAlertAnon.status}, error=${ownerAlertAnon.body?.error}, surface=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('V193 · OWNER GOLD ALERT INBOX')?'present':'missing'}`,
+    Math.max(ownerAlertAnon.latency_ms||0,ownerSurface.latency_ms||0)));
   tests.push(result('v127_review_intelligence',
     reviewIntel.status===200
       &&reviewIntel.body?.ok===true
