@@ -385,7 +385,7 @@
         $('liveRelayAuth').textContent = String(relay?.bridge?.total_authenticated_requests ?? 0);
         $('liveRelayTicks').textContent = String(relay?.relay?.accepted_ticks_examined ?? 0);
         $('liveRelayNext').textContent = String(relay?.next_step_code || 'UNKNOWN').replaceAll('_', ' ');
-        const relayMessages = {
+        const relayMessages: Record<string,string> = {
           NO_BRIDGE_ENROLLED:'No active live-market bridge is enrolled.',
           CREDENTIAL_ISSUED_AWAITING_RELAY:'Credential issued, but the MT5 relay has not reached V186 authentication yet.',
           AUTH_REACHED_AWAITING_ACCEPTED_TICK:'Relay authentication reached V186, but no tick has passed validation and storage.',
