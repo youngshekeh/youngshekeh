@@ -31,6 +31,8 @@ let eventLedgerBusy = false;
 let eventLedgerTimer: number | undefined;
 let alertRouterBusy = false;
 let alertRouterTimer: number | undefined;
+let goldCommandBusy = false;
+let goldCommandTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3704,6 +3706,70 @@ function startV192AlertRouter(){
   void pollV192AlertRouter();
 }
 
+function renderV194GoldCommand(data: AnyJson) {
+  const command=data?.command??{}, evidence=data?.evidence??{}, blockers=Array.isArray(data?.blockers)?data.blockers:[];
+  set('v194-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
+  set('v194-live', command?.live_market_state ? String(command.live_market_state).replaceAll('_',' ') : null);
+  set('v194-signal-day', command?.signal_day ? `${String(command.signal_day).replaceAll('_',' ')} · ${command?.signal_day_score ?? 'n/a'}/100` : null);
+  set('v194-signal-time', command?.signal_time ? String(command.signal_time).replaceAll('_',' ') : null);
+  set('v194-lifecycle', command?.lifecycle_stage ? String(command.lifecycle_stage).replaceAll('_',' ') : null);
+  const next=command?.next_signal_window;
+  set('v194-next-window', next?.label ? `${next.label} · ${next.phase ?? 'UNKNOWN'}` : 'WITHHELD');
+  set('v194-ledger', `${String(evidence?.event_ledger_state||'UNAVAILABLE').replaceAll('_',' ')} · ${evidence?.event_count ?? 0} events`);
+  set('v194-alerts', `${evidence?.visible_alerts ?? 0} visible · ${evidence?.notification_ready ?? 0} notify`);
+  set('v194-owner-review', String(evidence?.owner_review_state||'AAL2_OWNER_ONLY').replaceAll('_',' '));
+  set('v194-blockers', blockers.length ? `${blockers.length} ACTIVE` : 'NONE');
+  set('v194-detail', blockers.length
+    ? blockers.map((x:string)=>String(x).replaceAll('_',' ')).join(' · ')
+    : 'No V194 review blockers are active. Human review readiness still does not grant execution permission.');
+  set('v194-permission', `${data?.decision_compression?.action_permitted ?? 'WAIT'} · ${data?.decision_compression?.capital_permission ?? '0R'}`);
+  set('v194-decision', `${data?.decision_compression?.what_changed ?? 'No material change.'} · ${data?.decision_compression?.what_matters ?? 'Preserve evidence gates.'}`);
+
+  const grid=byId('v194-component-grid');
+  if(grid){
+    grid.replaceChildren();
+    const components=data?.components&&typeof data.components==='object'?Object.entries(data.components):[];
+    for(const [key,value] of components){
+      const x=value as AnyJson;
+      const card=document.createElement('article');card.className='command-card';
+      const k=document.createElement('span');k.className='kicker';k.textContent=String(key).replaceAll('_',' ').toUpperCase();
+      const h=document.createElement('h3');h.textContent=String(x?.state||'UNKNOWN').replaceAll('_',' ');
+      const p=document.createElement('p');
+      p.textContent=x?.age_seconds==null
+        ? `${x?.version ?? 'version withheld'}`
+        : `${x?.version ?? 'version withheld'} · age ${Number(x.age_seconds).toFixed(0)}s`;
+      card.append(k,h,p);grid.appendChild(card);
+    }
+    if(!components.length){
+      const card=document.createElement('article');card.className='command-card';
+      const h=document.createElement('h3');h.textContent='COMPONENT HEALTH UNAVAILABLE';
+      card.appendChild(h);grid.appendChild(card);
+    }
+  }
+}
+
+async function pollV194GoldCommand(){
+  if(goldCommandBusy||document.hidden)return;
+  goldCommandBusy=true;
+  try{renderV194GoldCommand(await readLocal('/api/gold-command-v194',11_000));}
+  finally{
+    goldCommandBusy=false;
+    if(goldCommandTimer)window.clearTimeout(goldCommandTimer);
+    if(!document.hidden)goldCommandTimer=window.setTimeout(()=>void pollV194GoldCommand(),15_000);
+  }
+}
+function startV194GoldCommand(){
+  if(goldCommandTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(goldCommandTimer)window.clearTimeout(goldCommandTimer);
+      goldCommandTimer=undefined;
+      set('v194-state','PAUSED · TAB HIDDEN');
+    }else void pollV194GoldCommand();
+  });
+  void pollV194GoldCommand();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3745,6 +3811,7 @@ function startGoldPulse() {
   startV189TriggerWatch();
   startV191EventLedger();
   startV192AlertRouter();
+  startV194GoldCommand();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
