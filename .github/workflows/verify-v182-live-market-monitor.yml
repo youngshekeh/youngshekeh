@@ -1,0 +1,19 @@
+name: Verify V182 Live Market Monitor
+on:
+  push:
+    branches: [tfa-v182-live-market-monitor, the-father-analytics-staging, the-father-analytics-deploy]
+  pull_request:
+    branches: [the-father-analytics-staging, the-father-analytics-deploy]
+permissions:
+  contents: read
+jobs:
+  live-market-monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V182 polling and public-read bridge regressions
+        run: node --test tests/v182-*.test.mjs

@@ -1,9 +1,6 @@
 import './styles.css';
 import { paperQuoteView } from './paper-quote-view.mjs';
-
-const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
-const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
-const FUNCTIONS = `${SUPABASE}/functions/v1`;
+import { createLiveMonitor, runBounded, marketAssetView } from './live-monitor.mjs';
 
 type AnyJson = Record<string, any>;
 
@@ -16,16 +13,22 @@ let brokerTranslationFuturesPrice: number | null = null;
 let brokerTranslationExpired = false;
 let goldLastRefreshAt: number | null = null;
 let goldNextRefreshAt: number | null = null;
-let goldRefreshBusy = false;
+let goldMonitor: ReturnType<typeof createLiveMonitor> | null = null;
+let marketMonitor: ReturnType<typeof createLiveMonitor> | null = null;
+let goldDiagnosticsBusy = false;
+let goldDiagnosticsAt: number | null = null;
 let goldPulseStarted = false;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
-    const response = await fetch(`${FUNCTIONS}/${path}`, {
-      headers: { apikey: KEY, Accept: 'application/json' },
+    const response = await fetch(`/api/market-feed?feed=${encodeURIComponent(path)}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: AbortSignal.timeout(timeout),
     });
-    return await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => null);
+    return response.ok && data && typeof data === 'object' && !Array.isArray(data)
+      ? data : { ok: false, state: 'UNAVAILABLE' };
   } catch {
     return { ok: false, state: 'UNAVAILABLE', error: 'transport_unavailable' };
   }
@@ -38,7 +41,9 @@ async function readLocal(path: string, timeout = 6500): Promise<AnyJson> {
       cache: 'no-store',
       signal: AbortSignal.timeout(timeout),
     });
-    return await response.json().catch(() => ({}));
+    const data = await response.json().catch(() => null);
+    return response.ok && data && typeof data === 'object' && !Array.isArray(data)
+      ? data : { ok: false, state: 'UNAVAILABLE' };
   } catch {
     return { ok: false, state: 'UNAVAILABLE', error: 'local_transport_unavailable' };
   }
@@ -266,7 +271,7 @@ async function loadLiveMarkets() {
     read('public-v65-model-evidence-fabric', 5000),
   ]);
   set('market-status', marketStatus(markets));
-  set('market-regime', first(markets?.regime, markets?.market_regime, markets?.state, 'UNKNOWN'));
+  set('market-regime', first(markets?.regime?.state, typeof markets?.regime === 'string' ? markets.regime : null, markets?.market_regime, markets?.state, 'UNKNOWN'));
   const gold = assetList(markets).find((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.symbol || x?.label || ''))) || markets?.gold || {};
   set('gold-action', first(gold?.action, markets?.decision?.action, core?.gold?.action, 'WAIT'));
   set('gold-capital', first(gold?.capital_permission, markets?.decision?.capital_permission, core?.gold?.capital_permission, '0R'));
@@ -277,20 +282,41 @@ async function loadLiveMarkets() {
   set('integrity-copy', first(goldIntegrity?.false_breakout?.reason, integrity?.decision_compression?.what_matters_now, 'Signal integrity is evidence-gated.'));
   set('market-evidence', first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN'));
 
-  const grid = byId('asset-grid');
-  if (!grid) return;
   const assets = assetList(markets);
+  const status = String(marketStatus(markets));
+  const observation = {
+    available: markets?.ok === true && assets.some((asset: AnyJson) => marketAssetView(asset, status).price != null),
+    marketState: status, generatedAt: markets?.generated_at || null,
+  };
+  const grid = byId('asset-grid');
+  if (!grid) return observation;
+  grid.replaceChildren();
   if (!assets.length) {
-    grid.innerHTML = '<div class="empty-state">Live asset rows are unavailable. Structural context remains research-only and Gold stays WAIT · 0R.</div>';
-    return;
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'Live asset rows are unavailable. Gold stays WAIT · 0R; the next refresh will check the feed again.';
+    grid.appendChild(empty);
+    return observation;
   }
-  grid.innerHTML = assets.map((asset: AnyJson) => {
-    const name = first(asset?.label, asset?.symbol, asset?.key, 'Asset');
-    const state = first(asset?.state, asset?.market_status, 'UNKNOWN');
-    const price = first(asset?.price, asset?.last, asset?.quote?.price, null);
-    const permission = first(asset?.capital_permission, /gold|xau/i.test(String(name)) ? '0R' : 'NOT_GRANTED');
-    return `<article class="asset-card"><span>${String(name)}</span><strong>${price == null ? 'WITHHELD' : String(price)}</strong><small>${String(state)} · ${String(permission)}</small></article>`;
-  }).join('');
+  for (const asset of assets) {
+    const view = marketAssetView(asset, status);
+    const card = document.createElement('article');
+    card.className = 'asset-card';
+    const label = document.createElement('span');
+    const price = document.createElement('strong');
+    const state = document.createElement('small');
+    const asOf = document.createElement('small');
+    label.textContent = view.name;
+    price.textContent = view.price == null ? 'WITHHELD' : String(view.price);
+    state.textContent = `${view.state} · ${view.permission}`;
+    const stamp = Date.parse(String(view.marketTime || ''));
+    asOf.textContent = Number.isFinite(stamp)
+      ? `Source ${new Date(stamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName:'short'})} · indicative`
+      : 'Source time unavailable · indicative';
+    card.append(label, price, state, asOf);
+    grid.appendChild(card);
+  }
+  return observation;
 }
 
 async function loadGold() {
@@ -460,6 +486,12 @@ async function loadGold() {
     set('v83-false-risk', first(active?.false_breakout_risk, 'NORMAL'));
     set('v83-false-copy', active ? `Reclaim closes: ${active.consecutive_reclaim ?? 0} · current close ${active.current_close ?? 'n/a'}.` : 'No active breakout risk state.');
   }
+  return {
+    available: (useShadow && typeof day?.current?.price === 'number' && day.current.price > 0)
+      || (!canonicalUnavailable && typeof canonicalPrice === 'number' && canonicalPrice > 0),
+    marketState: market,
+    generatedAt: useShadow ? day?.generated_at : first(gold?.generated_at, desk?.generated_at, null),
+  };
 }
 
 function renderV132ShadowStudies(shadow: AnyJson) {
@@ -3251,90 +3283,111 @@ async function loadV172PaperQuoteFeed() {
   }
 }
 
-async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
-  if (goldRefreshBusy) return;
-  goldRefreshBusy = true;
-  set('v121-pulse-state', 'REFRESHING');
-  set('v121-pulse-copy', reason === 'manual'
-    ? 'Manual Gold refresh in progress.'
-    : 'Refreshing the Gold desk and prospective learning heartbeat.');
-
+async function refreshGoldDiagnostics() {
+  if (goldDiagnosticsBusy || document.hidden || (goldDiagnosticsAt != null && Date.now() - goldDiagnosticsAt < 300_000)) return;
+  goldDiagnosticsBusy = true;
+  goldDiagnosticsAt = Date.now();
   try {
-    await loadGold();
-    goldLastRefreshAt = Date.now();
-    goldNextRefreshAt = goldLastRefreshAt + 60_000;
-    set('v121-pulse-state', 'LIVE · 60s');
-    set('v121-pulse-copy', 'Gold structure refreshes every 60 seconds while this page is active. Learning, outcome and transition intelligence update asynchronously so they cannot slow the execution desk.');
-    void Promise.allSettled([
-      loadV166ProductionClosureGate(),
-      loadV165SafeAlternativeAdmissionHandoff(),
-      loadV163SafeAlternativeMinuteSearch(),
-      loadV162ProspectiveCollisionRevalidation(),
-      loadV161SchedulerExperimentRegistry(),
-      loadV160LatestRollbackRehearsal(),
-      loadV159LatestExperimentAdmission(),
-      loadV158MemberAlertPostShiftObserver(),
-      loadV156QuotaGuardRecoveryShadow(),
-      loadV154RollbackRehearsalShadow(),
-      loadV153SchedulerMutationAdmission(),
-      loadV152PostShiftObserver(),
-      loadV151SingleCandidatePlanShadow(),
-      loadV150NetworkSlaEvidenceShadow(),
-      loadV149DependencyIsolationShadow(),
-      loadV148PredictiveCollisionShadow(),
-      loadV147ConnectionPressureShadow(),
-      loadV1461ControlledPeakSpreader(),
-      loadV145ConnectionAdmissionShadow(),
-      loadV144SchedulerLoadGovernor(),
-      loadV143StabilityConfirmation(),
-      loadV142RuntimeRecoveryEngine(),
-      loadV141RuntimeRecoverySentinel(),
-      loadGoldRiskChallengerEvaluation(),
-      loadGoldAdaptivePaperRisk(),
-      loadGoldExecutionFirewall(),
-      loadGoldOpportunityGovernor(),
-      loadGoldBrokerAdapterLab(),
-      loadV172PaperQuoteFeed(),
-      loadGoldExecutionReality(),
-      loadGoldAutonomousShadowTrader(),
-      loadGoldReviewFreshness(),
-      loadGoldReviewPriority(),
-      loadGoldContextualDisagreement(),
-      loadGoldDisagreementIntelligence(),
-      loadGoldReviewIntelligence(),
-      loadGoldSignalReputation(),
-      loadGoldTriggerWatch(),
-      loadGoldTransitions(),
-      loadGoldLearning(),
-      loadGoldOutcomeLearning(),
-    ]);
+    const tasks = [
+    () => loadV166ProductionClosureGate(),
+    () => loadV165SafeAlternativeAdmissionHandoff(),
+    () => loadV163SafeAlternativeMinuteSearch(),
+    () => loadV162ProspectiveCollisionRevalidation(),
+    () => loadV161SchedulerExperimentRegistry(),
+    () => loadV160LatestRollbackRehearsal(),
+    () => loadV159LatestExperimentAdmission(),
+    () => loadV158MemberAlertPostShiftObserver(),
+    () => loadV156QuotaGuardRecoveryShadow(),
+    () => loadV154RollbackRehearsalShadow(),
+    () => loadV153SchedulerMutationAdmission(),
+    () => loadV152PostShiftObserver(),
+    () => loadV151SingleCandidatePlanShadow(),
+    () => loadV150NetworkSlaEvidenceShadow(),
+    () => loadV149DependencyIsolationShadow(),
+    () => loadV148PredictiveCollisionShadow(),
+    () => loadV147ConnectionPressureShadow(),
+    () => loadV1461ControlledPeakSpreader(),
+    () => loadV145ConnectionAdmissionShadow(),
+    () => loadV144SchedulerLoadGovernor(),
+    () => loadV143StabilityConfirmation(),
+    () => loadV142RuntimeRecoveryEngine(),
+    () => loadV141RuntimeRecoverySentinel(),
+    () => loadGoldRiskChallengerEvaluation(),
+    () => loadGoldAdaptivePaperRisk(),
+    () => loadGoldExecutionFirewall(),
+    () => loadGoldOpportunityGovernor(),
+    () => loadGoldBrokerAdapterLab(),
+    () => loadV172PaperQuoteFeed(),
+    () => loadGoldExecutionReality(),
+    () => loadGoldAutonomousShadowTrader(),
+    () => loadGoldReviewFreshness(),
+    () => loadGoldReviewPriority(),
+    () => loadGoldContextualDisagreement(),
+    () => loadGoldDisagreementIntelligence(),
+    () => loadGoldReviewIntelligence(),
+    () => loadGoldSignalReputation(),
+    () => loadGoldTriggerWatch(),
+    () => loadGoldTransitions(),
+    () => loadGoldLearning(),
+    () => loadGoldOutcomeLearning(),
+    ];
+    const results = await runBounded(tasks, 3, () => !document.hidden);
+    if (results.filter(Boolean).length < tasks.length) goldDiagnosticsAt = null;
   } finally {
-    goldRefreshBusy = false;
-    renderGoldPulseClock();
+    goldDiagnosticsBusy = false;
   }
+}
+
+async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
+  set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
+  const observation = await loadGold();
+  void refreshGoldDiagnostics();
+  return observation;
+}
+
+function renderMarketPulseClock() {
+  if (!marketMonitor) return;
+  const state = marketMonitor.snapshot();
+  const age = state.lastSuccessAt == null ? null : Math.max(0, Math.floor((Date.now() - state.lastSuccessAt) / 1000));
+  set('v182-last-refresh', age == null ? 'NOT YET' : `${age}s ago`);
+  set('v182-next-refresh', document.hidden ? 'ON RETURN' : state.busy ? 'IN PROGRESS' : state.nextAt == null ? 'WITHHELD' : `${Math.max(0, Math.ceil((state.nextAt - Date.now()) / 1000))}s`);
+  set('v182-pulse-mode', document.hidden ? 'PAUSED · TAB HIDDEN' : 'ACTIVE · 60s');
+  const stamp = Date.parse(String(state.observation?.generatedAt || ''));
+  set('v182-source-time', Number.isFinite(stamp) ? new Date(stamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName:'short'}) : 'WITHHELD');
+  set('v182-pulse-state', state.busy ? 'REFRESHING' : !state.available ? 'DATA UNAVAILABLE' : age != null && age > 90 ? 'STALE · REFRESH OVERDUE' : state.observation?.marketState === 'MARKET_CLOSED' ? 'UPDATED · MARKET CLOSED' : 'DATA UPDATED · 60s');
+}
+
+function startMarketPulse() {
+  if (marketMonitor) return;
+  marketMonitor = createLiveMonitor({refresh:loadLiveMarkets, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
+    const button = byId('v182-refresh-now') as HTMLButtonElement | null;
+    if (button) button.disabled = state.busy;
+    renderMarketPulseClock();
+  }});
+  byId('v182-refresh-now')?.addEventListener('click', () => void marketMonitor?.refresh('manual'));
+  document.addEventListener('visibilitychange', () => {marketMonitor?.visibilityChanged(); renderMarketPulseClock();});
+  window.setInterval(renderMarketPulseClock, 1000);
+  void marketMonitor.refresh('initial');
 }
 
 function startGoldPulse() {
   if (goldPulseStarted) return;
   goldPulseStarted = true;
-
-  const button = byId('v121-refresh-now') as HTMLButtonElement | null;
-  button?.addEventListener('click', () => void refreshGoldSurface('manual'));
-
-  document.addEventListener('visibilitychange', () => {
+  goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
+    goldLastRefreshAt = state.lastSuccessAt;
+    goldNextRefreshAt = state.nextAt;
+    set('v121-pulse-state', state.busy ? 'REFRESHING' : state.available ? 'DATA UPDATED · 60s' : 'DATA UNAVAILABLE');
+    if (!state.busy) set('v121-pulse-copy', state.available
+      ? 'Gold structure refreshes every 60 seconds while active. Quotes may be delayed. Background engine checks run every five minutes with three requests at a time; capital stays independently governed.'
+      : 'The Gold feed is unavailable. The pulse will check again in 60 seconds; no successful data update is claimed.');
+    const button = byId('v121-refresh-now') as HTMLButtonElement | null;
+    if (button) button.disabled = state.busy;
     renderGoldPulseClock();
-    if (!document.hidden && (!goldLastRefreshAt || Date.now() - goldLastRefreshAt >= 60_000)) {
-      void refreshGoldSurface('visibility');
-    }
-  });
-
-  window.setInterval(() => {
-    renderGoldPulseClock();
-  }, 1_000);
-
-  window.setInterval(() => {
-    if (!document.hidden) void refreshGoldSurface('timer');
-  }, 60_000);
+  }});
+  byId('v121-refresh-now')?.addEventListener('click', () => void goldMonitor?.refresh('manual'));
+  document.addEventListener('visibilitychange', () => {goldMonitor?.visibilityChanged(); renderGoldPulseClock();});
+  window.setInterval(renderGoldPulseClock, 1000);
+  void goldMonitor.refresh('initial');
 }
 
 async function loadVisualLab() {
@@ -3375,9 +3428,6 @@ async function loadVisualLab() {
 
 const surface = document.body.dataset.surface;
 if (surface === 'intelligence') void loadIntelligence();
-if (surface === 'live-markets') void loadLiveMarkets();
-if (surface === 'gold-live') {
-  startGoldPulse();
-  void refreshGoldSurface('initial');
-}
+if (surface === 'live-markets') startMarketPulse();
+if (surface === 'gold-live') startGoldPulse();
 if (surface === 'visual-lab') void loadVisualLab();

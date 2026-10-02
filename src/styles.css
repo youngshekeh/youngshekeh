@@ -1336,6 +1336,10 @@ button:disabled {
   border-color: rgba(156,115,255,.72);
   background: rgba(156,115,255,.18);
 }
+.pulse-actions button:disabled {
+  opacity: .55;
+  cursor: progress;
+}
 
 
 /* V132 Autonomous Shadow Execution · elite Gold cockpit */
