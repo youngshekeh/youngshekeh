@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v191.0-gold-event-ledger-certification-v55';
+const VERSION='v191.1-gold-event-ledger-certification-v56';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -57,7 +57,7 @@ async function legacyHandler(req:any,res:any,transport:any){
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-learning-state',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-outcome-learning',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-transition-state',8000)),
-    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-trigger-watch',8000)),
+    ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-trigger-watch',12000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-signal-reputation',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-review-intelligence',8000)),
     ()=>tfaRetry(()=>fetchAbsolute('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-gold-disagreement-intelligence',8000)),
