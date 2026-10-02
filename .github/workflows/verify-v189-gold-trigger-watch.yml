@@ -1,0 +1,19 @@
+name: Verify V189 Gold Trigger Watch
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v189-gold-trigger-watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V189 trigger-watch regressions
+        run: node --test tests/v189-*.test.mjs

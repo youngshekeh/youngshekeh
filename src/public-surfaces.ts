@@ -25,6 +25,8 @@ let signalMapBusy = false;
 let signalMapTimer: number | undefined;
 let signalLifecycleBusy = false;
 let signalLifecycleTimer: number | undefined;
+let triggerWatchBusy = false;
+let triggerWatchTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3545,6 +3547,54 @@ function startV188Lifecycle(){
   void pollV188Lifecycle();
 }
 
+function renderV189TriggerWatch(data: AnyJson) {
+  set('v189-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
+  const next=data?.next_signal_window?.next;
+  set('v189-next-window', next?.label ?? null);
+  set('v189-countdown', next?.phase==='ACTIVE'?'ACTIVE NOW':next?.minutes_to_start==null?null:`${next.minutes_to_start} min · ${next.phase}`);
+  set('v189-review', data?.review_gate?.ready===true?'HUMAN REVIEW READY':'LOCKED');
+  const grid=byId('v189-trigger-grid');
+  if(grid){
+    grid.replaceChildren();
+    const triggers=Array.isArray(data?.triggers)?data.triggers:[];
+    for(const t of triggers){
+      const card=document.createElement('article');card.className='command-card';
+      const k=document.createElement('span');k.className='kicker';k.textContent=`${t.id} · ${t.state}`;
+      const h=document.createElement('h3');h.textContent=String(t.condition||'UNKNOWN').replaceAll('_',' ');
+      const p=document.createElement('p');p.textContent=t.detail||'No detail.';
+      card.append(k,h,p);grid.appendChild(card);
+    }
+    if(!triggers.length){
+      const card=document.createElement('article');card.className='command-card';
+      const h=document.createElement('h3');h.textContent='TRIGGERS UNAVAILABLE';
+      card.appendChild(h);grid.appendChild(card);
+    }
+  }
+  set('v189-decision','WAIT · 0R');
+  set('v189-next',data?.decision_compression?.what_matters ?? 'Trigger Watch cannot grant execution permission.');
+}
+async function pollV189TriggerWatch(){
+  if(triggerWatchBusy||document.hidden)return;
+  triggerWatchBusy=true;
+  try{renderV189TriggerWatch(await readLocal('/api/gold-trigger-watch-v189',9000));}
+  finally{
+    triggerWatchBusy=false;
+    if(triggerWatchTimer)window.clearTimeout(triggerWatchTimer);
+    if(!document.hidden)triggerWatchTimer=window.setTimeout(()=>void pollV189TriggerWatch(),15_000);
+  }
+}
+function startV189TriggerWatch(){
+  if(triggerWatchTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(triggerWatchTimer)window.clearTimeout(triggerWatchTimer);
+      triggerWatchTimer=undefined;
+      set('v189-state','PAUSED · TAB HIDDEN');
+    }else void pollV189TriggerWatch();
+  });
+  void pollV189TriggerWatch();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3583,6 +3633,7 @@ function startGoldPulse() {
   startV186LiveGoldTicker();
   startV187SignalMap();
   startV188Lifecycle();
+  startV189TriggerWatch();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
