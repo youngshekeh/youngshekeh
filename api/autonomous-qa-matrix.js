@@ -35,12 +35,13 @@ export default async function handler(req,res){
     const pressureOpen=body?.transport?.pressure_circuit?.open===true;
     // Keep browsers uncached. Only a truthful pressure-open result is shared at Vercel's CDN
     // for the current five-minute URL bucket to suppress cross-client diagnostic amplification.
-    res.setHeader('Cache-Control','private, no-store');
     if(pressureOpen){
+      res.setHeader('Cache-Control','public, max-age=0, s-maxage=300, must-revalidate');
       res.setHeader('CDN-Cache-Control','public, max-age=300');
       res.setHeader('Vercel-CDN-Cache-Control','public, max-age=300');
       res.setHeader('X-TFA-Pressure-Cache','ACTIVE_5M');
     }else{
+      res.setHeader('Cache-Control','private, no-store');
       res.setHeader('CDN-Cache-Control','no-store');
       res.setHeader('Vercel-CDN-Cache-Control','no-store');
       res.setHeader('X-TFA-Pressure-Cache','BYPASS');

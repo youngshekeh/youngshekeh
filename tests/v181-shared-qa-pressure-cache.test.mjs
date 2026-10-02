@@ -53,7 +53,7 @@ test('pressure-open QA evidence is CDN-shared while browser cache stays disabled
 
   assert.equal(ctx.fetchCalls.length, 1);
   assert.match(ctx.fetchCalls[0].url, /ui_bucket=123/);
-  assert.equal(rec.headers.get('cache-control'), 'private, no-store');
+  assert.equal(rec.headers.get('cache-control'), 'public, max-age=0, s-maxage=300, must-revalidate');
   assert.equal(rec.headers.get('cdn-cache-control'), 'public, max-age=300');
   assert.equal(rec.headers.get('vercel-cdn-cache-control'), 'public, max-age=300');
   assert.equal(rec.headers.get('x-tfa-pressure-cache'), 'ACTIVE_5M');
