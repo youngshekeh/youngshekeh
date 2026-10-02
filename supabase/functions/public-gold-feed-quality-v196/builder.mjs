@@ -14,7 +14,7 @@ export function buildGoldFeedQuality({now=new Date(),ticks=[]}={}){
   const ticks5m=rows.filter(x=>nowMs-x._obs<=300_000).length;
   const recent=rows.filter(x=>nowMs-x._obs<=60_000);
   const spanSeconds=recent.length>=2?Math.max(0,Math.round((recent.at(-1)._obs-recent[0]._obs)/1000)):0;
-  const monotonic=rows.length<2||rows.every((x,i)=>i===0||x._seq>rows[i-1]._seq);
+  const monotonic=rows.length>0&&(rows.length===1||rows.every((x,i)=>i===0||x._seq>rows[i-1]._seq));
   const latestLag=latest?Math.max(0,Math.round((latest._recv-latest._obs)/1000)):null;
   const freshness=latestAge!==null&&latestAge<=5;
   const cadence=ticks60>=3&&spanSeconds>=5;
