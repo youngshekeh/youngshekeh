@@ -37,3 +37,9 @@ test('off-window signal day waits for timing',()=>{
  const x=buildGoldTriggerWatch({now:new Date('2026-10-02T18:00:00Z'),lifecycle:{...lifecycle,signal_time:{...lifecycle.signal_time,state:'OUTSIDE_SIGNAL_WINDOW',active_window:null}}});
  assert.equal(x.state,'WAITING_FOR_SIGNAL_TIME');assert.equal(x.review_gate.ready,false);
 });
+
+test('upcoming session timestamp is normalized to exact minute boundary',()=>{
+ const x=nextSignalWindow(new Date('2026-10-02T19:05:37Z'));
+ assert.equal(new Date(x.next.start_at).getUTCSeconds(),0);
+ assert.equal(new Date(x.next.start_at).getUTCMilliseconds(),0);
+});

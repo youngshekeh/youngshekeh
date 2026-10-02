@@ -20,7 +20,10 @@ function nextWindow(now,def){
   for(let add=5;add<=5*24*60*4;add+=5){
     const d=new Date(now.getTime()+add*60_000),c=zonedClock(d,def.timeZone);
     if(weekday(c)&&c.minute_of_day>=start&&c.minute_of_day<start+5){
-      return{key:def.key,label:def.label,time_zone:def.timeZone,phase:'UPCOMING',minutes_to_start:add,start_at:d.toISOString()};
+      const offsetMinutes=c.minute_of_day-start;
+      const exact=new Date(d.getTime()-offsetMinutes*60_000-d.getUTCSeconds()*1000-d.getUTCMilliseconds());
+      const minutes=Math.max(0,Math.ceil((exact.getTime()-now.getTime())/60_000));
+      return{key:def.key,label:def.label,time_zone:def.timeZone,phase:'UPCOMING',minutes_to_start:minutes,start_at:exact.toISOString()};
     }
   }
   return{key:def.key,label:def.label,time_zone:def.timeZone,phase:'UNAVAILABLE',minutes_to_start:null,start_at:null};

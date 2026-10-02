@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v179.0-integrated-engine-certification-v52-pressure-circuit';
+const VERSION='v190.0-gold-stack-runtime-certification-v53';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -39,7 +39,7 @@ async function legacyHandler(req:any,res:any,transport:any){
   const tfaRetry=(task:()=>Promise<any>,delay=250)=>transport.retry(task,delay);
   async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=3){return transport.all(tasks,concurrency);}
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self]=await tfaBoundedAll([
+  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch]=await tfaBoundedAll([
     ()=>fetchAny('/'),
     ()=>fetchAny('/capital-os/'),
     ()=>fetchAny('/gold-live/'),
@@ -79,7 +79,12 @@ async function legacyHandler(req:any,res:any,transport:any){
     ()=>fetchAny('/api/gold-mtf-zones'),
     ()=>fetchAny('/api/gold-mtf-confluence'),
     ()=>fetchAny('/api/gold-breakout-acceptance'),
-    ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1')
+    ()=>fetchAny('/api/gold-breakout-acceptance?selftest=1'),
+    ()=>fetchAny('/api/gold-live-price',6000),
+    ()=>fetchAny('/api/gold-signal-map',12000),
+    ()=>fetchAny('/api/gold-session-liquidity',10000),
+    ()=>fetchAny('/api/gold-signal-lifecycle',15000),
+    ()=>fetchAny('/api/gold-trigger-watch-v189',15000)
   ],3);
   const tests=[];
 
@@ -806,10 +811,56 @@ async function legacyHandler(req:any,res:any,transport:any){
       &&ownerSurface.body.includes('id="paperQuoteJson"')&&ownerSurface.body.includes('id="paperQuoteReceipt"'),
     `status=${ownerSurface.status}, paper_intake=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('id="paperQuoteIntake"')?'present':'missing'}, default_locked=true`,ownerSurface.latency_ms));
 
+  tests.push(result('v190_live_xauusd_runtime_contract',
+    v186live.status===200&&v186live.body?.ok===true&&v186live.body?.symbol==='XAUUSD'
+      &&v186live.body?.governance?.action_permitted==='WAIT'
+      &&v186live.body?.governance?.capital_permission==='0R'
+      &&v186live.body?.governance?.market_data_only===true
+      &&v186live.body?.governance?.machine_execution_allowed===false
+      &&v186live.body?.governance?.live_order_submission_enabled===false,
+    `status=${v186live.status}, state=${v186live.body?.state}, capital=${v186live.body?.governance?.capital_permission}`,
+    v186live.latency_ms));
+  tests.push(result('v190_signal_map_runtime_contract',
+    v187signal.status===200&&v187signal.body?.ok===true&&v187signal.body?.symbol==='XAUUSD'
+      &&Array.isArray(v187signal.body?.tradeable_zones?.zones)&&v187signal.body.tradeable_zones.zones.length===5
+      &&typeof v187signal.body?.signal_day?.state==='string'
+      &&typeof v187signal.body?.signal_time?.state==='string'
+      &&v187signal.body?.governance?.action_permitted==='WAIT'
+      &&v187signal.body?.governance?.capital_permission==='0R'
+      &&v187signal.body?.governance?.machine_execution_allowed===false,
+    `status=${v187signal.status}, signal_day=${v187signal.body?.signal_day?.state}, signal_time=${v187signal.body?.signal_time?.state}, zones=${v187signal.body?.tradeable_zones?.zones?.length ?? 0}`,
+    v187signal.latency_ms));
+  tests.push(result('v190_session_liquidity_runtime_contract',
+    v188session.status===200&&v188session.body?.ok===true
+      &&Array.isArray(v188session.body?.sessions)&&v188session.body.sessions.length===3
+      &&v188session.body?.governance?.action_permitted==='WAIT'
+      &&v188session.body?.governance?.capital_permission==='0R'
+      &&v188session.body?.governance?.automatic_execution===false,
+    `status=${v188session.status}, sessions=${v188session.body?.sessions?.length ?? 0}, capital=${v188session.body?.governance?.capital_permission}`,
+    v188session.latency_ms));
+  tests.push(result('v190_signal_lifecycle_runtime_contract',
+    v188lifecycle.status===200&&v188lifecycle.body?.ok===true&&v188lifecycle.body?.symbol==='XAUUSD'
+      &&typeof v188lifecycle.body?.lifecycle?.stage==='string'
+      &&v188lifecycle.body?.governance?.action_permitted==='WAIT'
+      &&v188lifecycle.body?.governance?.capital_permission==='0R'
+      &&v188lifecycle.body?.governance?.machine_execution_allowed===false,
+    `status=${v188lifecycle.status}, stage=${v188lifecycle.body?.lifecycle?.stage}, capital=${v188lifecycle.body?.governance?.capital_permission}`,
+    v188lifecycle.latency_ms));
+  tests.push(result('v190_trigger_watch_runtime_contract',
+    v189watch.status===200&&v189watch.body?.ok===true&&v189watch.body?.symbol==='XAUUSD'
+      &&Array.isArray(v189watch.body?.triggers)&&v189watch.body.triggers.length>=7
+      &&typeof v189watch.body?.review_gate?.ready==='boolean'
+      &&v189watch.body?.governance?.action_permitted==='WAIT'
+      &&v189watch.body?.governance?.capital_permission==='0R'
+      &&v189watch.body?.governance?.machine_execution_allowed===false
+      &&v189watch.body?.governance?.live_order_submission_enabled===false,
+    `status=${v189watch.status}, state=${v189watch.body?.state}, triggers=${v189watch.body?.triggers?.length ?? 0}, review=${v189watch.body?.review_gate?.ready}, capital=${v189watch.body?.governance?.capital_permission}`,
+    v189watch.latency_ms));
+
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
-  const transportStatus=transport.summary([home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,mission,paperFeed,paperFeedAnon,productionClosure,ownerSurface]);
-  transportStatus.probes=[['home',home],['capitalSurface',capitalSurface],['gold',gold],['ownerSurface',ownerSurface],['ownerReviewAnon',ownerReviewAnon],['privateAnon',privateAnon],['paperFeedAnon',paperFeedAnon],['paperFeed',paperFeed],['mission',mission],['productionClosure',productionClosure],['opportunityGovernor',opportunityGovernor],['capitalCalendar',capitalCalendar],['earningsCalendar',earningsCalendar],['desk',desk],['learning',learning],['outcome',outcome],['transition',transition],['trigger',trigger],['reputation',reputation],['reviewIntel',reviewIntel],['disagreementIntel',disagreementIntel],['contextIntel',contextIntel],['priorityIntel',priorityIntel],['freshnessIntel',freshnessIntel],['shadowTrader',shadowTrader],['shadowPortfolio',shadowPortfolio],['executionReality',executionReality],['brokerLab',brokerLab],['auto',auto],['day',day],['quality',quality],['selftest',selftest],['tournament',tournament],['shadow',shadow],['quota',quota],['v79',v79],['v81',v81],['v82',v82],['v83',v83],['v83self',v83self]].map(([name,probe]:any)=>({name,status:probe.status,started:probe.started,latency_ms:probe.latency_ms,error:probe.error,deadline_exceeded:probe.deadline_exceeded===true}));
+  const transportStatus=transport.summary([home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,mission,paperFeed,paperFeedAnon,productionClosure,ownerSurface]);
+  transportStatus.probes=[['home',home],['capitalSurface',capitalSurface],['gold',gold],['ownerSurface',ownerSurface],['ownerReviewAnon',ownerReviewAnon],['privateAnon',privateAnon],['paperFeedAnon',paperFeedAnon],['paperFeed',paperFeed],['mission',mission],['productionClosure',productionClosure],['opportunityGovernor',opportunityGovernor],['capitalCalendar',capitalCalendar],['earningsCalendar',earningsCalendar],['desk',desk],['learning',learning],['outcome',outcome],['transition',transition],['trigger',trigger],['reputation',reputation],['reviewIntel',reviewIntel],['disagreementIntel',disagreementIntel],['contextIntel',contextIntel],['priorityIntel',priorityIntel],['freshnessIntel',freshnessIntel],['shadowTrader',shadowTrader],['shadowPortfolio',shadowPortfolio],['executionReality',executionReality],['brokerLab',brokerLab],['auto',auto],['day',day],['quality',quality],['selftest',selftest],['tournament',tournament],['shadow',shadow],['quota',quota],['v79',v79],['v81',v81],['v82',v82],['v83',v83],['v83self',v83self],['v186live',v186live],['v187signal',v187signal],['v188session',v188session],['v188lifecycle',v188lifecycle],['v189watch',v189watch]].map(([name,probe]:any)=>({name,status:probe.status,started:probe.started,latency_ms:probe.latency_ms,error:probe.error,deadline_exceeded:probe.deadline_exceeded===true}));
   const state=transportStatus.incomplete?'INCOMPLETE':failed===0?'PASS':failed<=2?'DEGRADED':'FAIL';
   const maxLatency=Math.max(...tests.map(x=>Number(x.latency_ms)||0));
   res.setHeader('Cache-Control','no-store');
