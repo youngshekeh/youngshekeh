@@ -14,9 +14,10 @@ test('install snippet accepts only V186 one-time live key',()=>{
 
 test('V200 install snippet smoke-tests first tick before continuous relay',()=>{
  const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:7,bridge_key:'tfa_live_'+'b'.repeat(43),provider_symbol:'XAUUSD'});
- const once=s.indexOf('mt5-live-market-bridge.py --once');
- const verify=s.indexOf('gold-relay-observability-v199');
- const continuous=s.lastIndexOf('python .\\\\mt5-live-market-bridge.py');
+ const lines=s.split('\n');
+ const once=lines.findIndex(line=>line.includes('mt5-live-market-bridge.py --once'));
+ const verify=lines.findIndex(line=>line.includes('gold-relay-observability-v199'));
+ const continuous=lines.findLastIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-bridge.py')&&!line.includes('--once'));
  assert.ok(once>=0);
  assert.ok(verify>once);
  assert.ok(continuous>verify);
@@ -26,11 +27,12 @@ test('V200 install snippet smoke-tests first tick before continuous relay',()=>{
 
 test('V201 doctor runs before V200 one-shot and continuous modes',()=>{
  const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:9,bridge_key:'tfa_live_'+'c'.repeat(43),provider_symbol:'XAUUSD'});
- const doctorDownload=s.indexOf('mt5-live-market-doctor.py -OutFile');
- const doctorRun=s.indexOf('python .\\\\mt5-live-market-doctor.py');
- const once=s.indexOf('mt5-live-market-bridge.py --once');
- const verify=s.indexOf('gold-relay-observability-v199');
- const continuous=s.lastIndexOf('python .\\\\mt5-live-market-bridge.py');
+ const lines=s.split('\n');
+ const doctorDownload=lines.findIndex(line=>line.includes('mt5-live-market-doctor.py')&&line.includes('-OutFile'));
+ const doctorRun=lines.findIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-doctor.py'));
+ const once=lines.findIndex(line=>line.includes('mt5-live-market-bridge.py --once'));
+ const verify=lines.findIndex(line=>line.includes('gold-relay-observability-v199'));
+ const continuous=lines.findLastIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-bridge.py')&&!line.includes('--once'));
  assert.ok(doctorDownload>=0);
  assert.ok(doctorRun>doctorDownload);
  assert.ok(once>doctorRun);
