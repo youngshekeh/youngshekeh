@@ -22,7 +22,7 @@ test('V192 database router is append-only, cooldown-aware and transport disabled
   assert.match(sql,/append-only/);
   assert.match(sql,/SUPPRESSED_COOLDOWN/);
   assert.match(sql,/cooldown_minutes/);
-  assert.match(sql,/transport_enabled,false/);
+  assert.match(sql,/values\('V192_ALERT_ROUTER_V1',50,80,15,false,'NONE'/);
   assert.match(sql,/historical_retrofit,false/);
   assert.match(sql,/action_permitted='WAIT'/);
   assert.match(sql,/capital_permission='0R'/);
