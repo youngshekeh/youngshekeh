@@ -20,6 +20,8 @@ let goldDiagnosticsAt: number | null = null;
 let goldPulseStarted = false;
 let liveGoldTickerBusy = false;
 let liveGoldTickerTimer: number | undefined;
+let signalMapBusy = false;
+let signalMapTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3399,6 +3401,78 @@ function startV186LiveGoldTicker() {
   void pollV186LiveGoldTicker();
 }
 
+function zoneRangeText(z: AnyJson) {
+  const f=(v: unknown)=>Number.isFinite(Number(v))?Number(v).toFixed(2):'n/a';
+  return `${f(z?.low)} → ${f(z?.high)}`;
+}
+function renderV187SignalMap(data: AnyJson) {
+  const sd=data?.signal_day??{}, st=data?.signal_time??{}, dna=data?.day_dna??{}, anchor=data?.live_anchor??{};
+  set('v187-signal-day', sd?.state ? `${String(sd.state).replaceAll('_',' ')} · ${sd.score ?? 0}/100` : null);
+  set('v187-day-dna', dna?.day_state ? `${dna.day_state} · ${dna.liquidity_phase ?? 'PHASE N/A'}` : null);
+  set('v187-signal-time', st?.state ? String(st.state).replaceAll('_',' ') : null);
+  set('v187-direction', st?.direction_candidate ? String(st.direction_candidate).replaceAll('_',' ') : 'NEUTRAL');
+  set('v187-quality', st?.deterministic_quality_score == null ? null : `${st.deterministic_quality_score}/100 · DETERMINISTIC`);
+  set('v187-window', st?.active_window ?? st?.prep_window ?? 'NONE');
+  set('v187-anchor', anchor?.price == null ? null : `${Number(anchor.price).toFixed(2)} · ${String(anchor.state||'').replaceAll('_',' ')}`);
+  set('v187-basis', anchor?.futures_spot_basis_usd == null ? 'STRUCTURAL ONLY' : `${Number(anchor.futures_spot_basis_usd).toFixed(2)} USD GC−XAU`);
+  const sessions=Array.isArray(st?.sessions)?st.sessions:[];
+  const s=(key:string)=>sessions.find((x:AnyJson)=>x?.key===key);
+  for(const [id,key] of [['v187-asia','ASIA'],['v187-london','LONDON'],['v187-new-york','NEW_YORK']] as const){
+    const x=s(key);set(id,x?`${x.state} · ${x.local_time}`:null);
+  }
+  const event=st?.event??{};
+  set('v187-event', event?.dominant_state ? `${String(event.dominant_state).replaceAll('_',' ')} · Q${event.quality_score ?? 'n/a'}` : null);
+
+  const grid=byId('v187-zone-grid');
+  if(grid){
+    grid.replaceChildren();
+    const zones=Array.isArray(data?.tradeable_zones?.zones)?data.tradeable_zones.zones:[];
+    if(!zones.length){
+      const card=document.createElement('article');card.className='command-card';
+      const h=document.createElement('h3');h.textContent='ZONES UNAVAILABLE';
+      const p=document.createElement('p');p.textContent='Multi-timeframe structural zones are currently withheld.';
+      card.append(h,p);grid.appendChild(card);
+    }else{
+      for(const z of zones){
+        const card=document.createElement('article');card.className='command-card';
+        const k=document.createElement('span');k.className='kicker';k.textContent=`${z.timeframe} · ${String(z.state||'UNKNOWN').replaceAll('_',' ')}`;
+        const h=document.createElement('h3');h.textContent=`LOWER ${zoneRangeText(z.lower_zone)}`;
+        const p=document.createElement('p');
+        p.textContent=`EQ ${zoneRangeText(z.equilibrium_zone)} · UPPER ${zoneRangeText(z.upper_zone)} · position ${z.position_pct ?? 'n/a'}% · full ${z.low ?? 'n/a'} → ${z.high ?? 'n/a'}`;
+        card.append(k,h,p);grid.appendChild(card);
+      }
+    }
+  }
+  const lower=data?.tradeable_zones?.nearest_below, upper=data?.tradeable_zones?.nearest_above;
+  set('v187-lower-cluster', lower?.center == null ? null : `${Number(lower.center).toFixed(2)} · strength ${lower.strength ?? 0}`);
+  set('v187-lower-copy', lower?.labels?.length ? lower.labels.join(' · ') : 'No lower confluence cluster available.');
+  set('v187-upper-cluster', upper?.center == null ? null : `${Number(upper.center).toFixed(2)} · strength ${upper.strength ?? 0}`);
+  set('v187-upper-copy', upper?.labels?.length ? upper.labels.join(' · ') : 'No upper confluence cluster available.');
+  set('v187-decision','WAIT · 0R');
+  set('v187-decision-copy',data?.decision_compression?.what_matters ?? 'Signal detection cannot grant execution authority.');
+}
+async function pollV187SignalMap() {
+  if(signalMapBusy||document.hidden)return;
+  signalMapBusy=true;
+  try{renderV187SignalMap(await readLocal('/api/gold-signal-map',9000));}
+  finally{
+    signalMapBusy=false;
+    if(signalMapTimer)window.clearTimeout(signalMapTimer);
+    if(!document.hidden)signalMapTimer=window.setTimeout(()=>void pollV187SignalMap(),15_000);
+  }
+}
+function startV187SignalMap(){
+  if(signalMapTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(signalMapTimer)window.clearTimeout(signalMapTimer);
+      signalMapTimer=undefined;
+      set('v187-signal-time','PAUSED · TAB HIDDEN');
+    }else void pollV187SignalMap();
+  });
+  void pollV187SignalMap();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3435,6 +3509,7 @@ function startGoldPulse() {
   if (goldPulseStarted) return;
   goldPulseStarted = true;
   startV186LiveGoldTicker();
+  startV187SignalMap();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;

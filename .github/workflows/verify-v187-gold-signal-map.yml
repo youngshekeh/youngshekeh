@@ -1,0 +1,19 @@
+name: Verify V187 Gold Signal Map
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v187-gold-signal-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V187 signal-map regressions
+        run: node --test tests/v187-*.test.mjs
