@@ -100,6 +100,37 @@
       </section>
     </section>
 
+    <section class="section-block" id="v188-signal-lifecycle">
+      <div class="section-heading">
+        <div><span class="kicker">V188 · SIGNAL LIFECYCLE / SESSION LIQUIDITY</span><h2>Track the setup from window prep to exhaustion.</h2></div>
+        <p>Asia, London and New York ranges, opening ranges and sweep states are fused with V187 timing and V79 liquidity transitions. This is a deterministic state machine, not an order signal.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>LIFECYCLE</span><strong id="v188-stage">CHECKING</strong></article>
+        <article><span>DETECTOR SCORE</span><strong id="v188-score">WITHHELD</strong></article>
+        <article><span>STRUCTURAL PHASE</span><strong id="v188-phase">CHECKING</strong></article>
+        <article><span>ACCEPTANCE</span><strong id="v188-acceptance">CHECKING</strong></article>
+      </section>
+      <section class="command-strip">
+        <article><span>NEAREST SESSION LIQUIDITY ↑</span><strong id="v188-nearest-up">WITHHELD</strong></article>
+        <article><span>NEAREST SESSION LIQUIDITY ↓</span><strong id="v188-nearest-down">WITHHELD</strong></article>
+        <article><span>EXTENSION</span><strong id="v188-extension">CHECKING</strong></article>
+        <article><span>EXHAUSTION RISK</span><strong id="v188-exhaustion">CHECKING</strong></article>
+      </section>
+      <div id="v188-session-grid" class="command-grid two">
+        <article class="command-card"><span class="kicker">SESSION RANGES</span><h3>CHECKING</h3><p>Loading Asia, London and New York liquidity.</p></article>
+      </div>
+      <section class="command-grid two">
+        <article class="command-card"><span class="kicker">LONDON vs ASIA</span><h3 id="v188-la-state">CHECKING</h3><p id="v188-la-copy">Comparing session liquidity.</p></article>
+        <article class="command-card"><span class="kicker">NEW YORK vs LONDON</span><h3 id="v188-nyl-state">CHECKING</h3><p id="v188-nyl-copy">Comparing session liquidity.</p></article>
+      </section>
+      <section class="command-card">
+        <span class="kicker">NEXT CONDITION</span>
+        <h3 id="v188-decision">WAIT · 0R</h3>
+        <p id="v188-next">Waiting for lifecycle evidence.</p>
+      </section>
+    </section>
+
     <section class="section-block">
       <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>

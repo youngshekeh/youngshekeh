@@ -1,0 +1,19 @@
+name: Verify V188 Gold Signal Lifecycle
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v188-gold-signal-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V188 lifecycle regressions
+        run: node --test tests/v188-*.test.mjs

@@ -1,6 +1,7 @@
 import './styles.css';
 import { paperQuoteView } from './paper-quote-view.mjs';
 import { createLiveMonitor, runBounded, marketAssetView } from './live-monitor.mjs';
+import { buildGoldSignalLifecycle } from './gold-signal-lifecycle.mjs';
 
 type AnyJson = Record<string, any>;
 
@@ -22,6 +23,8 @@ let liveGoldTickerBusy = false;
 let liveGoldTickerTimer: number | undefined;
 let signalMapBusy = false;
 let signalMapTimer: number | undefined;
+let signalLifecycleBusy = false;
+let signalLifecycleTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3473,6 +3476,80 @@ function startV187SignalMap(){
   void pollV187SignalMap();
 }
 
+function formatLiquidityLevel(x: AnyJson) {
+  if (!x || !Number.isFinite(Number(x.price))) return 'WITHHELD';
+  const d=Number(x.distance);
+  return `${x.session} ${String(x.kind).replaceAll('_',' ')} · ${Number(x.price).toFixed(2)}${Number.isFinite(d)?` · Δ ${d.toFixed(2)}`:''}`;
+}
+function renderV188Lifecycle(data: AnyJson) {
+  const life=data?.lifecycle??{}, st=data?.structural_state??{}, sl=data?.session_liquidity??{};
+  set('v188-stage', life?.stage ? String(life.stage).replaceAll('_',' ') : null);
+  set('v188-score', life?.detector_score == null ? null : `${life.detector_score}/100 · DETECTOR`);
+  set('v188-phase', st?.phase ? String(st.phase).replaceAll('_',' ') : null);
+  set('v188-acceptance', st?.acceptance ? String(st.acceptance).replaceAll('_',' ') : null);
+  set('v188-extension', st?.extension_state ? String(st.extension_state).replaceAll('_',' ') : null);
+  set('v188-exhaustion', st?.exhaustion_risk ? String(st.exhaustion_risk).replaceAll('_',' ') : null);
+  set('v188-nearest-up', formatLiquidityLevel(sl?.nearest_above));
+  set('v188-nearest-down', formatLiquidityLevel(sl?.nearest_below));
+  const grid=byId('v188-session-grid');
+  if(grid){
+    grid.replaceChildren();
+    const sessions=Array.isArray(sl?.sessions)?sl.sessions:[];
+    if(!sessions.length){
+      const card=document.createElement('article');card.className='command-card';
+      const h=document.createElement('h3');h.textContent='SESSION DATA UNAVAILABLE';
+      const p=document.createElement('p');p.textContent='No Asia/London/New York window range is currently available.';
+      card.append(h,p);grid.appendChild(card);
+    } else {
+      for(const s of sessions){
+        const card=document.createElement('article');card.className='command-card';
+        const k=document.createElement('span');k.className='kicker';k.textContent=`${s.key} · ${s.state}`;
+        const h=document.createElement('h3');
+        const lo=s?.latest?.low,hi=s?.latest?.high;
+        h.textContent=lo==null||hi==null?'RANGE WITHHELD':`${Number(lo).toFixed(2)} → ${Number(hi).toFixed(2)}`;
+        const p=document.createElement('p');
+        const or=s?.latest?.opening_range;
+        p.textContent=`${String(s.sweep_state||'UNKNOWN').replaceAll('_',' ')} · OR ${or?.low==null?'n/a':Number(or.low).toFixed(2)} → ${or?.high==null?'n/a':Number(or.high).toFixed(2)} · price position ${s.price_position_pct ?? 'n/a'}%`;
+        card.append(k,h,p);grid.appendChild(card);
+      }
+    }
+  }
+  const la=sl?.cross_session?.london_vs_asia??{}, nyl=sl?.cross_session?.new_york_vs_london??{};
+  set('v188-la-state', la?.state ? String(la.state).replaceAll('_',' ') : null);
+  set('v188-la-copy', la?.reference_high==null?'Session comparison unavailable.':`Asia ${Number(la.reference_low).toFixed(2)}–${Number(la.reference_high).toFixed(2)} · London close ${Number(la.active_close).toFixed(2)}`);
+  set('v188-nyl-state', nyl?.state ? String(nyl.state).replaceAll('_',' ') : null);
+  set('v188-nyl-copy', nyl?.reference_high==null?'Session comparison unavailable.':`London ${Number(nyl.reference_low).toFixed(2)}–${Number(nyl.reference_high).toFixed(2)} · New York close ${Number(nyl.active_close).toFixed(2)}`);
+  set('v188-decision','WAIT · 0R');
+  set('v188-next',life?.next_condition ?? 'Lifecycle detection cannot grant execution authority.');
+}
+async function pollV188Lifecycle() {
+  if(signalLifecycleBusy||document.hidden)return;
+  signalLifecycleBusy=true;
+  try{
+    const [signal,liquidity,sessions]=await Promise.all([
+      readLocal('/api/gold-signal-map',9000),
+      readLocal('/api/gold-liquidity-state-machine',9000),
+      readLocal('/api/gold-session-liquidity',9000)
+    ]);
+    renderV188Lifecycle(buildGoldSignalLifecycle({signal,liquidity,sessions}));
+  } finally {
+    signalLifecycleBusy=false;
+    if(signalLifecycleTimer)window.clearTimeout(signalLifecycleTimer);
+    if(!document.hidden)signalLifecycleTimer=window.setTimeout(()=>void pollV188Lifecycle(),30_000);
+  }
+}
+function startV188Lifecycle(){
+  if(signalLifecycleTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(signalLifecycleTimer)window.clearTimeout(signalLifecycleTimer);
+      signalLifecycleTimer=undefined;
+      set('v188-stage','PAUSED · TAB HIDDEN');
+    }else void pollV188Lifecycle();
+  });
+  void pollV188Lifecycle();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3510,6 +3587,7 @@ function startGoldPulse() {
   goldPulseStarted = true;
   startV186LiveGoldTicker();
   startV187SignalMap();
+  startV188Lifecycle();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
