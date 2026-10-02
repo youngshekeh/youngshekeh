@@ -26,6 +26,7 @@ test('session levels translate by the GC-XAU basis',()=>{
  assert.equal(london.latest.high,4200);
  assert.equal(london.latest.low,4160);
  assert.equal(x.structural_state.invalidation_level,4202.8);
+ assert.equal(x.session_liquidity.nearest_above.distance,10);
 });
 test('outside signal window cannot claim active lifecycle',()=>{
  const s={...signal,signal_time:{state:'OUTSIDE_SIGNAL_WINDOW',active_window:null,direction_candidate:'SHORT_REPAIR_BIAS'}};
@@ -39,4 +40,5 @@ test('no live basis preserves GC levels and flags missing live anchor',()=>{
  assert.equal(x.anchor.level_basis,'GC_FUTURES_STRUCTURE');
  assert.equal(x.session_liquidity.sessions[0].latest.high,4210);
  assert.equal(x.lifecycle.live_anchor_required,true);
+ assert.equal(x.session_liquidity.sessions[0].price_relation,'MID_RANGE');
 });

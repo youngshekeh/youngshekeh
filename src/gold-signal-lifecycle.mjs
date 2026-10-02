@@ -2,7 +2,7 @@ function n(v){if(v===null||v===undefined||v==='')return null;const x=Number(v);r
 const r=(v,d=2)=>{const x=n(v);return x==null?null:Number(x.toFixed(d));};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function level(v,basis){const x=n(v);return x==null?null:r(basis==null?x:x-basis,2);}
-function distance(price,target){const p=n(price),t=n(target);return p==null||t==null?null:r(p-t,2);}
+function distance(price,target){const p=n(price),t=n(target);return p==null||t==null?null:r(t-p,2);}
 function copyRange(x,basis){
  if(!x)return null;
  return{
@@ -16,10 +16,10 @@ function translateSessions(raw,basis,anchor){
  return sessions.map(s=>{
    const latest=copyRange(s?.latest,basis),previous=copyRange(s?.previous,basis);
    const lo=latest?.low,hi=latest?.high,p=n(anchor);
-   const position=p!=null&&lo!=null&&hi!=null&&hi>lo?clamp((p-lo)/(hi-lo)*100,0,100):null;
+   const rawPosition=p!=null&&lo!=null&&hi!=null&&hi>lo?(p-lo)/(hi-lo)*100:null;
    return{key:s?.key??'UNKNOWN',label:s?.label??s?.key??'UNKNOWN',state:s?.state??'UNKNOWN',time_zone:s?.time_zone??null,
      window_local:s?.window_local??null,sweep_state:s?.sweep_state??'UNKNOWN',latest,previous,
-     price_position_pct:r(position,1),price_relation:position==null?'UNKNOWN':position<0?'BELOW':position>100?'ABOVE':position<=25?'LOWER_QUARTILE':position>=75?'UPPER_QUARTILE':'MID_RANGE'};
+     price_position_pct:r(rawPosition,1),price_relation:rawPosition==null?'UNKNOWN':rawPosition<0?'BELOW_SESSION_RANGE':rawPosition>100?'ABOVE_SESSION_RANGE':rawPosition<=25?'LOWER_QUARTILE':rawPosition>=75?'UPPER_QUARTILE':'MID_RANGE'};
  });
 }
 function gatherLevels(sessions,anchor){
