@@ -37,7 +37,10 @@ function setup() {
   const clocks=[];
   const document={getElementById:get,createElement:tag=>element(tag),hidden:false};
   const window={setInterval:callback=>{clocks.push(callback);}};
-  new Function('createPaperQuoteSubmitter','paperQuoteMessage','paperQuoteView','document','window','fetch',source)(createPaperQuoteSubmitter,paperQuoteMessage,paperQuoteView,document,window,fetch);
+  const createSandboxReceiptSubmitter=()=>({submit:async()=>({ok:false,error:'unused_fixture'})});
+  new Function('createPaperQuoteSubmitter','paperQuoteMessage','paperQuoteView','createSandboxReceiptSubmitter','document','window','fetch',source)(
+    createPaperQuoteSubmitter,paperQuoteMessage,paperQuoteView,createSandboxReceiptSubmitter,document,window,fetch
+  );
   const signin=async()=>{get('email').value='fixture@example.invalid';get('password').value='fixture-password';await get('signin').onclick();};
   const submit=async()=>get('paperQuoteForm').submit({preventDefault(){}});
   const draft=()=>JSON.stringify({mode:'PAPER_DEMO',asset:'XAUUSD',provenance:'BROKER_DEMO_USER_SUPPLIED',source_code:'DEMO_01',provider_symbol:'XAUUSD',sequence:1,observed_at:new Date().toISOString(),bid:4000,ask:4000.2});
