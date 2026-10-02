@@ -2,6 +2,7 @@
       import { paperQuoteView } from './paper-quote-view.mjs';
       import { createSandboxReceiptSubmitter, sandboxReceiptMessage } from './owner-sandbox-receipt.mjs';
       import { prepareBridgeCreate, bridgeInstallSnippet, bridgeControlMessage } from './owner-bridge-control.mjs';
+      import { prepareLiveMarketBridgeCreate, liveMarketBridgeInstallSnippet, liveMarketBridgeMessage } from './owner-live-market-control.mjs';
 
       const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const FUNCTIONS = `${SUPABASE}/functions/v1`;
@@ -23,6 +24,9 @@
       let bridgeStatus = null;
       let bridgeHealthBusy = false;
       let bridgeHealth = null;
+      let liveMarketBridgeBusy = false;
+      let liveMarketBridgeStatus = null;
+      let liveMarketQuoteStatus = null;
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
@@ -42,6 +46,12 @@
         bridgeHealth = null;
         $('bridgeHealthState').textContent = 'CHECKING';
         $('bridgeHealthDetail').textContent = 'No demo client heartbeat confirmed.';
+        liveMarketBridgeStatus = null;
+        liveMarketQuoteStatus = null;
+        $('liveMarketBridgeControl').classList.add('hidden');
+        $('liveMarketBridgeCreate').disabled = true;
+        $('liveMarketBridgeConfig').textContent = 'No live-market key has been issued in this session.';
+        $('liveMarketBridgeList').replaceChildren();
         $('paperQuoteSubmit').disabled = true;
         $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
         $('paperQuoteFeedState').textContent = 'CHECKING';
@@ -99,6 +109,10 @@
         $('bridgeResult').textContent = 'Owner and MFA verified. Create or inspect sandbox-only bridge credentials.';
         void loadBridgeStatus();
         void loadBridgeHealth();
+        $('liveMarketBridgeControl').classList.remove('hidden');
+        $('liveMarketBridgeCreate').disabled = liveMarketBridgeBusy;
+        $('liveMarketBridgeResult').textContent = 'Owner and MFA verified. Live-market credentials are read-only and cannot submit orders.';
+        void loadLiveMarketBridgeStatus();
       }
 
       const paperSubmitter = createPaperQuoteSubmitter({
@@ -318,6 +332,87 @@
         } finally {
           bridgeBusy = false;
           $('bridgeCreate').disabled = !ownerVerified || !ownerMfaReady;
+        }
+      }
+
+      function renderLiveMarketBridgeStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        const host = $('liveMarketBridgeList');
+        host.replaceChildren();
+        for (const bridge of Array.isArray(liveMarketBridgeStatus?.bridges) ? liveMarketBridgeStatus.bridges : []) {
+          const card = document.createElement('article');
+          card.className = 'card';
+          card.style.marginTop = '8px';
+          card.appendChild(textEl('div', `${bridge.bridge_label} · #${bridge.bridge_id} · ${bridge.active ? 'ACTIVE' : 'REVOKED'}`, 'value'));
+          card.appendChild(textEl('p', `${bridge.source_code} · ${bridge.provider_symbol} · requests ${bridge.use_count || 0} · market data only · orders OFF · capital 0R`, 'muted'));
+          if (bridge.active) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'secondary';
+            button.textContent = 'Revoke live-market key';
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await functionPost('broker-live-market-control', {action:'revoke', bridge_id:bridge.bridge_id}, 10000);
+                $('liveMarketBridgeResult').textContent = `Live-market bridge #${bridge.bridge_id} revoked.`;
+                await loadLiveMarketBridgeStatus();
+              } catch (error) {
+                $('liveMarketBridgeResult').textContent = liveMarketBridgeMessage(error?.data?.error || 'live_bridge_revoke_unavailable');
+                button.disabled = false;
+              }
+            };
+            card.appendChild(button);
+          }
+          host.appendChild(card);
+        }
+        const q = liveMarketQuoteStatus?.quote || null;
+        $('liveMarketOwnerState').textContent = String(liveMarketQuoteStatus?.state || 'WAITING_FOR_LIVE_MARKET_BRIDGE').replaceAll('_', ' ');
+        $('liveMarketOwnerPrice').textContent = q?.mid == null ? 'WITHHELD' : Number(q.mid).toFixed(2);
+        $('liveMarketOwnerSpread').textContent = q?.spread_usd == null ? 'WITHHELD' : Number(q.spread_usd).toFixed(3);
+        $('liveMarketOwnerMode').textContent = q?.trade_mode || 'WAITING';
+      }
+
+      async function loadLiveMarketBridgeStatus() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        try {
+          liveMarketBridgeStatus = await functionPost('broker-live-market-control', {action:'status'}, 10000);
+          const response = await fetch(`${FUNCTIONS}/broker-live-market-intake`, {headers:{apikey:KEY,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(5000)});
+          liveMarketQuoteStatus = response.ok ? await response.json().catch(() => null) : null;
+          renderLiveMarketBridgeStatus();
+        } catch (error) {
+          $('liveMarketBridgeResult').textContent = liveMarketBridgeMessage(error?.data?.error || 'live_bridge_status_unavailable');
+          renderLiveMarketBridgeStatus();
+        }
+      }
+
+      async function createLiveMarketBridge(event) {
+        event.preventDefault();
+        if (liveMarketBridgeBusy || !ownerVerified || !ownerMfaReady) return;
+        const prepared = prepareLiveMarketBridgeCreate({
+          label:$('liveMarketBridgeLabel').value,
+          sourceCode:$('liveMarketBridgeSource').value,
+          providerSymbol:$('liveMarketBridgeSymbol').value,
+        });
+        if (!prepared.ok) {
+          $('liveMarketBridgeResult').textContent = prepared.message;
+          return;
+        }
+        liveMarketBridgeBusy = true;
+        $('liveMarketBridgeCreate').disabled = true;
+        $('liveMarketBridgeConfig').textContent = 'Creating one-time read-only live-market credential…';
+        try {
+          const result = await functionPost('broker-live-market-control', prepared.payload, 10000);
+          const snippet = liveMarketBridgeInstallSnippet(result);
+          if (!snippet) throw Object.assign(new Error('unverified_live_bridge_receipt'), {data:{error:'live_bridge_create_unavailable'}});
+          $('liveMarketBridgeConfig').textContent = snippet;
+          $('liveMarketBridgeResult').textContent = 'Live XAUUSD read-only bridge created. Copy the key now; only its hash is stored server-side.';
+          await loadLiveMarketBridgeStatus();
+        } catch (error) {
+          $('liveMarketBridgeConfig').textContent = 'No live-market key was confirmed.';
+          $('liveMarketBridgeResult').textContent = liveMarketBridgeMessage(error?.data?.error || 'transport_unavailable');
+        } finally {
+          liveMarketBridgeBusy = false;
+          $('liveMarketBridgeCreate').disabled = !ownerVerified || !ownerMfaReady;
         }
       }
 
@@ -638,4 +733,6 @@
       $('sandboxRefresh').onclick = () => void loadSandboxStatus();
       $('bridgeCreateForm').addEventListener('submit', createBridge);
       $('bridgeRefresh').onclick = () => { void loadBridgeStatus(); void loadBridgeHealth(); };
+      $('liveMarketBridgeCreateForm').addEventListener('submit', createLiveMarketBridge);
+      $('liveMarketBridgeRefresh').onclick = () => void loadLiveMarketBridgeStatus();
       window.setInterval(() => { if (!document.hidden) renderPaperQuoteStatus(); }, 1000);

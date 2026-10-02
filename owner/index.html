@@ -121,6 +121,34 @@
         <p id="bridgeHealthDetail" class="muted">No demo client heartbeat confirmed.</p>
         <p class="muted">The bridge can submit sandbox evidence only. It cannot place orders, verify a production broker, or unlock real capital.</p>
       </section>
+      <section id="liveMarketBridgeControl" class="card status-box hidden" style="max-width: 900px">
+        <div class="label">V186 · LIVE XAUUSD READ-ONLY BRIDGE</div>
+        <h2>Stream the broker price into THE FATHER ANALYTICS.</h2>
+        <p class="muted">The relay reads the current XAUUSD bid/ask from an already logged-in MT5 terminal. DEMO and REAL account quotes are allowed as market data. It contains no login or order submission path.</p>
+        <form id="liveMarketBridgeCreateForm">
+          <label for="liveMarketBridgeLabel">Bridge label</label>
+          <input id="liveMarketBridgeLabel" maxlength="80" value="MT5 Live XAUUSD" autocomplete="off" />
+          <label for="liveMarketBridgeSource">Source code</label>
+          <input id="liveMarketBridgeSource" maxlength="64" value="MT5_LIVE_XAU" autocomplete="off" />
+          <label for="liveMarketBridgeSymbol">MT5 XAUUSD symbol</label>
+          <input id="liveMarketBridgeSymbol" maxlength="22" value="XAUUSD" autocomplete="off" />
+          <button id="liveMarketBridgeCreate" type="submit" disabled style="margin-top: 12px">Create read-only live bridge</button>
+        </form>
+        <div id="liveMarketBridgeResult" class="muted" role="status" aria-live="polite" style="margin-top: 12px">Owner verification and MFA are required.</div>
+        <div class="card" style="margin-top: 12px">
+          <div class="label">ONE-TIME WINDOWS CONFIG</div>
+          <pre id="liveMarketBridgeConfig" style="white-space: pre-wrap; overflow-wrap: anywhere">No live-market key has been issued in this session.</pre>
+        </div>
+        <div class="row" style="margin-top: 12px; flex-wrap: wrap">
+          <div class="card"><div class="label">FEED STATE</div><div id="liveMarketOwnerState" class="value wait">WAITING</div></div>
+          <div class="card"><div class="label">XAUUSD MID</div><div id="liveMarketOwnerPrice" class="value">WITHHELD</div></div>
+          <div class="card"><div class="label">SPREAD</div><div id="liveMarketOwnerSpread" class="value">WITHHELD</div></div>
+          <div class="card"><div class="label">ACCOUNT MODE</div><div id="liveMarketOwnerMode" class="value">WAITING</div></div>
+        </div>
+        <button id="liveMarketBridgeRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh live XAUUSD status</button>
+        <div id="liveMarketBridgeList" style="margin-top: 12px"></div>
+        <p class="muted">Market-data only. Orders OFF. Machine execution OFF. Capital permission 0R.</p>
+      </section>
       <section id="reviewIntelligence" class="card status-box hidden" style="max-width: 900px">
         <div class="label">V127 · REVIEW INTELLIGENCE</div>
         <div id="reviewIntelState" class="value wait">LOCKED UNTIL AAL2</div>

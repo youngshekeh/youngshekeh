@@ -6,7 +6,7 @@ const CORS={
   "Access-Control-Allow-Methods":"GET, OPTIONS"
 };
 const BASE="https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1";
-const VERSION="v120-gold-live-execution-desk-v3-permission-semantics";
+const VERSION="v186-gold-live-execution-desk-v4-live-broker-reference";
 const TTL=20_000;
 let cache:any=null,cachedAt=0,inflight:Promise<any>|null=null;
 
@@ -99,7 +99,7 @@ function goldSessionClock(now=new Date()){
 
 async function build(){
   const [live,zones,bias]=await Promise.all([
-    get("public-gold-live-api",9000),
+    get("public-gold-live-xauusd",10000),
     get("public-market-zones",7000),
     get("public-daily-bias",7000)
   ]);
@@ -115,7 +115,11 @@ async function build(){
   const marketStatus=statusText(l?.market_status);
   const delayed=engine?.delayed_feed===true||marketStatus==="DELAYED_LIVE";
   const hardStale=engine?.stale_data===true||["STALE","UNAVAILABLE","UNKNOWN"].includes(marketStatus);
-  const executionQuoteAllowed=marketStatus==="LIVE_BETA"&&!delayed&&!hardStale;
+  const brokerQuote=l?.live_broker?.quote||{};
+  const brokerAge=n(brokerQuote?.age_seconds);
+  const brokerLive=l?.live_broker?.state==="BROKER_LIVE"&&brokerAge!=null&&brokerAge<3;
+  const brokerReal=brokerQuote?.real_account_quote===true;
+  const executionQuoteAllowed=brokerLive&&brokerReal;
   const brokerFeedRequired=!executionQuoteAllowed;
 
   const prevHigh=n(zDaily?.reference?.high);
@@ -196,6 +200,17 @@ async function build(){
       broker_execution_feed_required:brokerFeedRequired,
       execution_quote_allowed:executionQuoteAllowed,
       quote_age_minutes:round(engine?.oldest_key_quote_age_minutes,1),
+      live_xauusd:{
+        state:l?.live_broker?.state??"UNAVAILABLE",
+        bid:n(brokerQuote?.bid),
+        ask:n(brokerQuote?.ask),
+        mid:n(brokerQuote?.mid),
+        spread_usd:n(brokerQuote?.spread_usd),
+        quote_age_seconds:brokerAge,
+        trade_mode:brokerQuote?.trade_mode??null,
+        real_account_quote:brokerReal,
+        manual_execution_reference:executionQuoteAllowed
+      },
       us10y_context_stale:engine?.yield_context_stale===true,
       us10y_quote_age_minutes:round(engine?.us10y_quote_age_minutes,1)
     },
@@ -254,7 +269,9 @@ async function build(){
       live_engine_may_auto_execute:false,
       manual_review_required:true,
       current_setup_executable_by_machine:false,
-      broker_feed_rule:"Use broker XAUUSD/GC bid-ask for any real order. This desk's delayed structural feed is not an execution quote.",
+      broker_feed_rule:executionQuoteAllowed
+        ?"Fresh read-only REAL-account XAUUSD broker quote is available for manual confirmation. Structural levels remain COMEX-calibrated; machine execution stays disabled."
+        :"Use a fresh REAL-account broker XAUUSD bid-ask for any manual execution reference. Delayed structural data is never an order quote.",
       chasing_rule:"Do not enter solely because price is beyond a breakout level. Require retest/acceptance or failed-break confirmation.",
       capital_firewall:{system_permission:systemPermission},
       legacy_compiler:{state:"REMOVED_FROM_HOT_PATH",reason:"The legacy F1/S1 compiler reads historical capture lanes and is not allowed to block the V117 live structural desk."}

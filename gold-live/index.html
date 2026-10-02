@@ -35,6 +35,32 @@
 
     <section class="section-block">
       <div class="section-heading">
+        <div><span class="kicker">V186 · LIVE XAUUSD PRICE ENGINE</span><h2>Broker bid/ask, separated from capital permission.</h2></div>
+        <p>Fresh MT5 broker ticks update this panel every two seconds. DEMO or REAL account quotes are accepted as read-only market data only. No order route exists.</p>
+      </div>
+      <section class="command-strip">
+        <article><span>LIVE STATE</span><strong id="v186-live-state">CHECKING</strong></article>
+        <article><span>BID</span><strong id="v186-bid">WITHHELD</strong></article>
+        <article><span>ASK</span><strong id="v186-ask">WITHHELD</strong></article>
+        <article><span>MID</span><strong id="v186-mid">WITHHELD</strong></article>
+      </section>
+      <section class="command-strip">
+        <article><span>SPREAD</span><strong id="v186-spread">WITHHELD</strong></article>
+        <article><span>QUOTE AGE</span><strong id="v186-age">WITHHELD</strong></article>
+        <article><span>ACCOUNT MODE</span><strong id="v186-mode">WAITING</strong></article>
+        <article><span>SOURCE</span><strong id="v186-source">NOT CONNECTED</strong></article>
+      </section>
+      <section class="command-strip">
+        <article><span>TICKS / 60S</span><strong id="v186-tick-rate">WITHHELD</strong></article>
+        <article><span>5M RANGE</span><strong id="v186-range">WITHHELD</strong></article>
+        <article><span>MACHINE ORDERS</span><strong>OFF</strong></article>
+        <article><span>CAPITAL</span><strong>0R</strong></article>
+      </section>
+      <p id="v186-detail">Waiting for the V186 read-only MT5 live-market bridge.</p>
+    </section>
+
+    <section class="section-block">
+      <div class="section-heading">
         <div><span class="kicker">V120 · MULTI-SESSION GOLD EXECUTION DESK</span><h2>Trade the structure, not the delayed quote.</h2></div>
         <p>The desk converts live structure into conditional Long/Short maps across the London framework and New York COMEX windows. A delayed engine quote is never treated as an order price. Confirm every real entry on your broker feed.</p>
       </div>

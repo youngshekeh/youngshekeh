@@ -2,7 +2,7 @@ const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 // Only existing anonymous read endpoints. No private runtimes, writes, or caller URLs.
 const FEEDS=new Set([
   'public-vertical-status','latest-global-markets','latest-global-trends','latest-nigeria-economy',
-  'public-live-markets-api','public-gold-live-api','public-gold-execution-desk',
+  'public-live-markets-api','public-gold-live-api','public-gold-live-xauusd','public-gold-execution-desk',
   'public-v63-structural-core-fabric','public-v56-signal-integrity-shield','public-v65-model-evidence-fabric',
   'public-v54-resilient-mission-control','public-gold-risk-challenger-evaluation',
   'public-gold-adaptive-paper-risk','public-gold-execution-firewall','public-gold-opportunity-governor',
@@ -30,7 +30,7 @@ async function observe(feed){
       const body=await response.json();
       if(!response.ok || !body || typeof body!=='object' || Array.isArray(body))throw new Error('feed_unavailable');
       const value={body};
-      if(body.ok===true && feed!=='paper-broker-quote-intake')cached.set(feed,{at:Date.now(),value});
+      if(body.ok===true && !['paper-broker-quote-intake','public-gold-live-xauusd'].includes(feed))cached.set(feed,{at:Date.now(),value});
       return value;
     }finally{clearTimeout(timer);}
   })().finally(()=>pending.delete(feed));
@@ -41,6 +41,7 @@ async function observe(feed){
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Monitor','V182');
+  res.setHeader('X-TFA-Live-XAUUSD','V186');
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return res.status(405).json({ok:false,state:'UNAVAILABLE',error:'method_not_allowed'});

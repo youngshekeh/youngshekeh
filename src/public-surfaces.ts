@@ -18,6 +18,8 @@ let marketMonitor: ReturnType<typeof createLiveMonitor> | null = null;
 let goldDiagnosticsBusy = false;
 let goldDiagnosticsAt: number | null = null;
 let goldPulseStarted = false;
+let liveGoldTickerBusy = false;
+let liveGoldTickerTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -322,7 +324,7 @@ async function loadLiveMarkets() {
 
 async function loadGold() {
   const [gold, core, evidence, desk, day, v79, v81, v82, v83] = await Promise.all([
-    read('public-gold-live-api', 6500),
+    read('public-gold-live-xauusd', 10500),
     read('public-v63-structural-core-fabric', 6000),
     read('public-v65-model-evidence-fabric', 6000),
     read('public-gold-execution-desk', 10000),
@@ -335,6 +337,7 @@ async function loadGold() {
 
   const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
   const canonicalPrice = first(
+    gold?.feed?.gold_spot?.price,
     gold?.feed?.gold_futures?.price,
     gold?.feed?.gold?.price,
     gold?.price,
@@ -364,7 +367,9 @@ async function loadGold() {
       ? 'The governed Gold session is closed. Structural context is frozen until reopening.'
       : market === 'UNAVAILABLE'
         ? 'The live Gold market spine is unavailable. No structural price is promoted to a live execution quote.'
-        : 'Indicative Gold market data is available. Live execution remains locked: WAIT · 0R, orders OFF.');
+        : market === 'BROKER_LIVE'
+          ? 'Live XAUUSD broker bid/ask is connected in read-only mode. Price is live; machine execution remains locked at WAIT · 0R.'
+          : 'Indicative Gold market data is available. Live execution remains locked: WAIT · 0R, orders OFF.');
   set('gold-live-action', action);
   set('gold-live-capital', capital);
   set('gold-market', market);
@@ -3340,6 +3345,60 @@ async function refreshGoldDiagnostics() {
   }
 }
 
+
+function renderV186LiveGoldTicker(data: AnyJson) {
+  const q = data?.quote ?? null;
+  const quality = data?.quality ?? {};
+  const source = data?.source ?? {};
+  const state = first(data?.state, 'UNAVAILABLE');
+  set('v186-live-state', String(state).replaceAll('_', ' '));
+  set('v186-bid', q?.bid == null ? null : Number(q.bid).toFixed(2));
+  set('v186-ask', q?.ask == null ? null : Number(q.ask).toFixed(2));
+  set('v186-mid', q?.mid == null ? null : Number(q.mid).toFixed(2));
+  set('v186-spread', q?.spread_usd == null ? null : `${Number(q.spread_usd).toFixed(3)} USD · ${q?.spread_ticks ?? 'n/a'} ticks`);
+  set('v186-age', q?.age_seconds == null ? null : `${Number(q.age_seconds).toFixed(1)}s`);
+  set('v186-mode', q?.trade_mode ?? 'WAITING');
+  set('v186-tick-rate', quality?.tick_count_60s == null ? null : `${quality.tick_count_60s}/60s`);
+  set('v186-range', quality?.range_5m == null ? null : Number(quality.range_5m).toFixed(2));
+  set('v186-source', source?.connected ? `${source.source_code || 'MT5'} · ${source.provider_symbol || 'XAUUSD'}` : 'NOT CONNECTED');
+  set('v186-detail', data?.state === 'BROKER_LIVE'
+    ? `Read-only broker tick · ${q?.real_account_quote ? 'REAL account quote' : 'DEMO account quote'} · machine orders OFF · capital 0R.`
+    : 'Waiting for the V186 read-only MT5 live-market bridge. Delayed public context remains available separately.');
+
+  if (data?.state === 'BROKER_LIVE' && q?.mid != null && Number(q?.age_seconds) < 3) {
+    set('gold-price', Number(q.mid).toFixed(2));
+    set('gold-market', 'BROKER LIVE · XAUUSD');
+    set('v121-broker-age', `${Number(q.age_seconds).toFixed(1)}s · LIVE`);
+    set('v117-broker-feed', q?.real_account_quote ? 'REAL · LIVE' : 'DEMO · LIVE');
+  }
+}
+
+async function pollV186LiveGoldTicker() {
+  if (liveGoldTickerBusy || document.hidden) return;
+  liveGoldTickerBusy = true;
+  try {
+    renderV186LiveGoldTicker(await readLocal('/api/gold-live-price', 4000));
+  } finally {
+    liveGoldTickerBusy = false;
+    if (liveGoldTickerTimer) window.clearTimeout(liveGoldTickerTimer);
+    if (!document.hidden) liveGoldTickerTimer = window.setTimeout(() => void pollV186LiveGoldTicker(), 2000);
+  }
+}
+
+function startV186LiveGoldTicker() {
+  if (liveGoldTickerTimer) return;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (liveGoldTickerTimer) window.clearTimeout(liveGoldTickerTimer);
+      liveGoldTickerTimer = undefined;
+      set('v186-live-state', 'PAUSED · TAB HIDDEN');
+    } else {
+      void pollV186LiveGoldTicker();
+    }
+  });
+  void pollV186LiveGoldTicker();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3375,12 +3434,13 @@ function startMarketPulse() {
 function startGoldPulse() {
   if (goldPulseStarted) return;
   goldPulseStarted = true;
+  startV186LiveGoldTicker();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
     set('v121-pulse-state', state.busy ? 'REFRESHING' : state.available ? 'DATA UPDATED · 60s' : 'DATA UNAVAILABLE');
     if (!state.busy) set('v121-pulse-copy', state.available
-      ? 'Gold structure refreshes every 60 seconds while active. Quotes may be delayed. Background engine checks run every five minutes with three requests at a time; capital stays independently governed.'
+      ? 'Gold structure refreshes every 60 seconds; V186 checks the read-only broker XAUUSD tick every 2 seconds while visible. Capital stays independently governed.'
       : 'The Gold feed is unavailable. The pulse will check again in 60 seconds; no successful data update is claimed.');
     const button = byId('v121-refresh-now') as HTMLButtonElement | null;
     if (button) button.disabled = state.busy;
