@@ -39,6 +39,8 @@ let feedQualityBusy = false;
 let feedQualityTimer: number | undefined;
 let liveAnchorGuardBusy = false;
 let liveAnchorGuardTimer: number | undefined;
+let sessionIntelligenceBusy = false;
+let sessionIntelligenceTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3909,6 +3911,67 @@ function startV197LiveAnchorGuard(){
   void pollV197LiveAnchorGuard();
 }
 
+function renderV198SessionIntelligence(data: AnyJson){
+  const ctx=data?.context??{}, cons=data?.consensus??{}, blockers=Array.isArray(data?.blockers)?data.blockers:[];
+  set('v198-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
+  set('v198-score',data?.deterministic_review_score==null?null:`${data.deterministic_review_score}/100`);
+  set('v198-direction',String(ctx?.direction_candidate||'NEUTRAL').replaceAll('_',' '));
+  set('v198-ready',data?.review_ready===true?'HUMAN REVIEW CANDIDATE':'NO');
+  set('v198-signal-day',ctx?.signal_day_score==null
+    ? String(ctx?.signal_day||'UNKNOWN').replaceAll('_',' ')
+    : `${String(ctx?.signal_day||'UNKNOWN').replaceAll('_',' ')} · ${ctx.signal_day_score}/100`);
+  set('v198-signal-time',String(ctx?.signal_time||'UNKNOWN').replaceAll('_',' '));
+  set('v198-zone-bias',String(ctx?.zone_bias||'UNKNOWN').replaceAll('_',' '));
+  set('v198-breakout',String(ctx?.breakout_state||'UNKNOWN').replaceAll('_',' '));
+
+  const liq=cons?.liquidity_transition??{};
+  set('v198-liquidity',liq?.consensus===true
+    ? (liq?.resolved===true?'CONSENSUS · RESOLVED':'CONSENSUS · NOT RESOLVED')
+    : 'CONSENSUS FAILED');
+  set('v198-liquidity-copy',`V188 lifecycle: ${liq?.lifecycle===true?'resolved':'not resolved'} · V189 trigger watch: ${liq?.trigger_watch===true?'resolved':'not resolved'}.`);
+
+  const active=Array.isArray(ctx?.active_sessions)?ctx.active_sessions:[];
+  set('v198-session',active.length?active.map((x:AnyJson)=>x?.label||x?.key||'SESSION').join(' · '):'NO ACTIVE SIGNAL SESSION');
+  const near=ctx?.nearest_session_liquidity??{};
+  const bits=[];
+  if(near?.above?.price!=null)bits.push(`above ${near.above.session||''} ${near.above.kind||''} ${Number(near.above.price).toFixed(2)}`);
+  if(near?.below?.price!=null)bits.push(`below ${near.below.session||''} ${near.below.kind||''} ${Number(near.below.price).toFixed(2)}`);
+  set('v198-session-copy',bits.length?bits.join(' · '):'No certified live session-liquidity distance is available.');
+
+  set('v198-blockers',blockers.length?`${blockers.length} ACTIVE`:'NONE');
+  set('v198-blocker-copy',blockers.length?blockers.map((x:string)=>String(x).replaceAll('_',' ')).join(' · '):'All V198 review requirements are satisfied.');
+
+  const next=data?.next_signal_window;
+  set('v198-next-window',next?.label ? `${next.label} · ${next.phase??'UNKNOWN'}` : 'NONE');
+  set('v198-next-copy',next?.minutes_to_start==null
+    ? 'No upcoming timing window is currently published.'
+    : `Starts in about ${next.minutes_to_start} minutes · ${next.start_at??'time withheld'}.`);
+
+  set('v198-permission',`${data?.decision_compression?.action_permitted??'WAIT'} · ${data?.decision_compression?.capital_permission??'0R'}`);
+  set('v198-detail',`${data?.decision_compression?.what_changed??'No material session transition.'} · ${data?.decision_compression?.what_matters??'Preserve review gates.'}`);
+}
+async function pollV198SessionIntelligence(){
+  if(sessionIntelligenceBusy||document.hidden)return;
+  sessionIntelligenceBusy=true;
+  try{renderV198SessionIntelligence(await readLocal('/api/gold-live-session-intelligence-v198',12000));}
+  finally{
+    sessionIntelligenceBusy=false;
+    if(sessionIntelligenceTimer)window.clearTimeout(sessionIntelligenceTimer);
+    if(!document.hidden)sessionIntelligenceTimer=window.setTimeout(()=>void pollV198SessionIntelligence(),10_000);
+  }
+}
+function startV198SessionIntelligence(){
+  if(sessionIntelligenceTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(sessionIntelligenceTimer)window.clearTimeout(sessionIntelligenceTimer);
+      sessionIntelligenceTimer=undefined;
+      set('v198-state','PAUSED · TAB HIDDEN');
+    }else void pollV198SessionIntelligence();
+  });
+  void pollV198SessionIntelligence();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3954,6 +4017,7 @@ function startGoldPulse() {
   startV195BridgeReadiness();
   startV196FeedQuality();
   startV197LiveAnchorGuard();
+  startV198SessionIntelligence();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
