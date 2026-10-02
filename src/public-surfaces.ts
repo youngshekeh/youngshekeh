@@ -35,6 +35,8 @@ let goldCommandBusy = false;
 let goldCommandTimer: number | undefined;
 let bridgeReadinessBusy = false;
 let bridgeReadinessTimer: number | undefined;
+let feedQualityBusy = false;
+let feedQualityTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3818,6 +3820,57 @@ function startV195BridgeReadiness(){
   void pollV195BridgeReadiness();
 }
 
+function renderV196FeedQuality(data: AnyJson){
+  const g=data?.gates??{};
+  const label=(v:boolean)=>v===true?'PASS':'WAITING';
+  set('v196-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
+  set('v196-score',data?.deterministic_quality_score==null?null:`${data.deterministic_quality_score}/100`);
+  set('v196-ticks',g?.cadence?.ticks_60s??0);
+  set('v196-age',g?.freshness?.latest_tick_age_seconds==null?null:`${g.freshness.latest_tick_age_seconds}s`);
+  set('v196-fresh',label(g?.freshness?.pass));
+  set('v196-cadence',label(g?.cadence?.pass));
+  set('v196-sequence',label(g?.sequence_integrity?.pass));
+  set('v196-contract',label(g?.relay_contract?.pass));
+  set('v196-lag',g?.transport_lag?.latest_lag_seconds==null
+    ? label(g?.transport_lag?.pass)
+    : `${label(g?.transport_lag?.pass)} · ${g.transport_lag.latest_lag_seconds}s`);
+  set('v196-quote',g?.quote_integrity?.spread_usd==null
+    ? label(g?.quote_integrity?.pass)
+    : `${label(g?.quote_integrity?.pass)} · spread ${Number(g.quote_integrity.spread_usd).toFixed(3)}`);
+  const passed=data?.state==='LIVE_FEED_QUALITY_PASS';
+  set('v196-decision',passed?'FEED CERTIFIED · WAIT · 0R':'PROBATION · WAIT · 0R');
+  set('v196-detail',passed
+    ? 'The read-only MT5 stream passed V196 market-data quality probation. Execution authority remains locked.'
+    : data?.state==='NO_TICKS'
+      ? 'No authenticated MT5 ticks exist yet. V195 commissioning must reach first-tick receipt before V196 can evaluate stream quality.'
+      : data?.state==='FEED_STALE'
+        ? 'The last MT5 tick is stale. Freshness failed and the stream is not certified.'
+        : data?.state==='PROBATION_WARMING'
+          ? 'Fresh ticks are arriving, but the stream has not yet accumulated enough cadence/span evidence.'
+          : 'One or more feed-quality gates failed. The stream remains uncertified and capital stays 0R.');
+}
+async function pollV196FeedQuality(){
+  if(feedQualityBusy||document.hidden)return;
+  feedQualityBusy=true;
+  try{renderV196FeedQuality(await readLocal('/api/gold-feed-quality-v196',9000));}
+  finally{
+    feedQualityBusy=false;
+    if(feedQualityTimer)window.clearTimeout(feedQualityTimer);
+    if(!document.hidden)feedQualityTimer=window.setTimeout(()=>void pollV196FeedQuality(),5_000);
+  }
+}
+function startV196FeedQuality(){
+  if(feedQualityTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(feedQualityTimer)window.clearTimeout(feedQualityTimer);
+      feedQualityTimer=undefined;
+      set('v196-state','PAUSED · TAB HIDDEN');
+    }else void pollV196FeedQuality();
+  });
+  void pollV196FeedQuality();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3861,6 +3914,7 @@ function startGoldPulse() {
   startV192AlertRouter();
   startV194GoldCommand();
   startV195BridgeReadiness();
+  startV196FeedQuality();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
