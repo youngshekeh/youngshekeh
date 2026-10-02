@@ -11,3 +11,15 @@ test('install snippet accepts only V186 one-time live key',()=>{
  assert.match(s,/TFA_LIVE_BRIDGE_ID="3"/);assert.match(s,/mt5-live-market-bridge\.py/);
  assert.equal(liveMarketBridgeInstallSnippet({ok:true,bridge_id:3,bridge_key:'tfa_demo_'+'a'.repeat(43),provider_symbol:'XAUUSD'}),'');
 });
+
+test('V200 install snippet smoke-tests first tick before continuous relay',()=>{
+ const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:7,bridge_key:'tfa_live_'+'b'.repeat(43),provider_symbol:'XAUUSD'});
+ const once=s.indexOf('mt5-live-market-bridge.py --once');
+ const verify=s.indexOf('gold-relay-observability-v199');
+ const continuous=s.lastIndexOf('python .\\\\mt5-live-market-bridge.py');
+ assert.ok(once>=0);
+ assert.ok(verify>once);
+ assert.ok(continuous>verify);
+ assert.match(s,/continuous mode was not started/i);
+ assert.match(s,/first_tick_seen/);
+});
