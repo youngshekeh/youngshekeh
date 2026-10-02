@@ -145,6 +145,16 @@
           <div class="card"><div class="label">SPREAD</div><div id="liveMarketOwnerSpread" class="value">WITHHELD</div></div>
           <div class="card"><div class="label">ACCOUNT MODE</div><div id="liveMarketOwnerMode" class="value">WAITING</div></div>
         </div>
+        <div class="card" style="margin-top: 12px">
+          <div class="label">V199 · RELAY DIAGNOSTIC</div>
+          <div class="row" style="margin-top: 10px; flex-wrap: wrap">
+            <div class="card"><div class="label">RELAY STATE</div><div id="liveRelayState" class="value wait">CHECKING</div></div>
+            <div class="card"><div class="label">AUTH REQUESTS</div><div id="liveRelayAuth" class="value">0</div></div>
+            <div class="card"><div class="label">ACCEPTED TICKS</div><div id="liveRelayTicks" class="value">0</div></div>
+            <div class="card"><div class="label">NEXT STEP</div><div id="liveRelayNext" class="value wait">CHECKING</div></div>
+          </div>
+          <p id="liveRelayDetail" class="muted" style="margin-top: 10px">Waiting for relay observability.</p>
+        </div>
         <button id="liveMarketBridgeRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh live XAUUSD status</button>
         <div id="liveMarketBridgeList" style="margin-top: 12px"></div>
         <p class="muted">Market-data only. Orders OFF. Machine execution OFF. Capital permission 0R.</p>
