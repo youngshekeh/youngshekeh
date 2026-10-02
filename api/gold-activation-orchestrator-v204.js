@@ -18,8 +18,13 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Gold-Activation-Orchestrator','V204');
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'});}
-  const keys=Object.keys(FEEDS),values=await Promise.all(keys.map(k=>read(FEEDS[k])));
-  const input=Object.fromEntries(keys.map((k,i)=>[k,values[i]]));
+  const coreKeys=['readiness','quality','relay','ledger'];
+  const coreValues=await Promise.all(coreKeys.map(k=>read(FEEDS[k])));
+  const input=Object.fromEntries(coreKeys.map((k,i)=>[k,coreValues[i]]));
+  const qualityCanReachAnchor=input.quality?.state==='LIVE_FEED_QUALITY_PASS';
+  input.anchor=qualityCanReachAnchor
+    ? await read(FEEDS.anchor)
+    : {ok:true,state:'NOT_YET_REQUIRED',anchor:{certified:false},deferred:true,defer_reason:'ANCHOR_DEFERRED_UNTIL_FEED_QUALITY'};
   const body=buildGoldActivationOrchestrator({now:new Date(),...input});
   return res.status(body.ok?200:503).json(body);
 }

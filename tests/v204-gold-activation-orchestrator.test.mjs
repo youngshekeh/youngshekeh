@@ -56,3 +56,10 @@ test('V204 API is fixed-source GET only',async()=>{
   assert.match(api,/req\.method!=='GET'/);
   assert.doesNotMatch(api,/req\.query|req\.body/);
 });
+
+test('V204 API stages V197 until feed quality can reach anchor certification',async()=>{
+  const api=await readFile(new URL('../api/gold-activation-orchestrator-v204.js',import.meta.url),'utf8');
+  assert.match(api,/qualityCanReachAnchor/);
+  assert.match(api,/ANCHOR_DEFERRED_UNTIL_FEED_QUALITY/);
+  assert.match(api,/LIVE_FEED_QUALITY_PASS/);
+});
