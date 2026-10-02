@@ -33,6 +33,8 @@ let alertRouterBusy = false;
 let alertRouterTimer: number | undefined;
 let goldCommandBusy = false;
 let goldCommandTimer: number | undefined;
+let bridgeReadinessBusy = false;
+let bridgeReadinessTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3770,6 +3772,52 @@ function startV194GoldCommand(){
   void pollV194GoldCommand();
 }
 
+function renderV195BridgeReadiness(data: AnyJson){
+  const gates=data?.gates??{}, counts=data?.public_counts??{};
+  const pass=(value:boolean)=>value===true?'PASS':'WAITING';
+  const state=String(data?.state||'UNAVAILABLE');
+  const next=String(data?.next_step_code||'UNKNOWN');
+  const instructions:Record<string,string>={
+    ENROLL_OWNER_AAL2_BRIDGE:'Owner Command → verify MFA → create the read-only MT5 Live XAUUSD bridge.',
+    RUN_MT5_RELAY_ON_WINDOWS:'On the logged-in Windows MT5 machine, run the one-time relay command issued by Owner Command.',
+    RESTORE_FRESH_MT5_TICKS:'The bridge has prior activity but no fresh quote. Check MT5 connectivity and restart the read-only relay.',
+    NONE:'Broker market data is live. V194 may consume the fresh XAUUSD anchor; execution authority remains locked.'
+  };
+  set('v195-state',state.replaceAll('_',' '));
+  set('v195-active',counts?.active_bridges??0);
+  set('v195-active-used',counts?.bridges_with_activity??0);
+  set('v195-next',next.replaceAll('_',' '));
+  set('v195-g1',pass(gates?.bridge_enrolled?.pass));
+  set('v195-g2',gates?.first_tick_received?.pass===true
+    ? `PASS · ${gates?.first_tick_received?.activity_age_seconds==null?'activity seen':gates.first_tick_received.activity_age_seconds+'s ago'}`
+    : 'WAITING');
+  set('v195-g3',pass(gates?.quote_fresh?.pass));
+  set('v195-g4',pass(gates?.broker_live?.pass));
+  set('v195-instruction',next==='NONE'?'BROKER DATA LIVE':'NEXT CONNECTION ACTION');
+  set('v195-detail',instructions[next]??'Commissioning evidence is unavailable. Keep WAIT · 0R.');
+}
+async function pollV195BridgeReadiness(){
+  if(bridgeReadinessBusy||document.hidden)return;
+  bridgeReadinessBusy=true;
+  try{renderV195BridgeReadiness(await readLocal('/api/gold-bridge-readiness-v195',9000));}
+  finally{
+    bridgeReadinessBusy=false;
+    if(bridgeReadinessTimer)window.clearTimeout(bridgeReadinessTimer);
+    if(!document.hidden)bridgeReadinessTimer=window.setTimeout(()=>void pollV195BridgeReadiness(),10_000);
+  }
+}
+function startV195BridgeReadiness(){
+  if(bridgeReadinessTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(bridgeReadinessTimer)window.clearTimeout(bridgeReadinessTimer);
+      bridgeReadinessTimer=undefined;
+      set('v195-state','PAUSED · TAB HIDDEN');
+    }else void pollV195BridgeReadiness();
+  });
+  void pollV195BridgeReadiness();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3812,6 +3860,7 @@ function startGoldPulse() {
   startV191EventLedger();
   startV192AlertRouter();
   startV194GoldCommand();
+  startV195BridgeReadiness();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
