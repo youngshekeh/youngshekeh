@@ -1,0 +1,22 @@
+name: Verify V205 MT5 Activation Launcher
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  v205-launcher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V205 launcher regressions
+        run: node --test tests/v205-*.test.mjs tests/v186-owner-live-market-control.test.mjs

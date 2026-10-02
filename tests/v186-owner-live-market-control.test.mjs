@@ -12,31 +12,12 @@ test('install snippet accepts only V186 one-time live key',()=>{
  assert.equal(liveMarketBridgeInstallSnippet({ok:true,bridge_id:3,bridge_key:'tfa_demo_'+'a'.repeat(43),provider_symbol:'XAUUSD'}),'');
 });
 
-test('V200 install snippet smoke-tests first tick before continuous relay',()=>{
- const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:7,bridge_key:'tfa_live_'+'b'.repeat(43),provider_symbol:'XAUUSD'});
- const lines=s.split('\n');
- const once=lines.findIndex(line=>line.includes('mt5-live-market-bridge.py --once'));
- const verify=lines.findIndex(line=>line.includes('gold-relay-observability-v199'));
- const continuous=lines.findLastIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-bridge.py')&&!line.includes('--once'));
- assert.ok(once>=0);
- assert.ok(verify>once);
- assert.ok(continuous>verify);
- assert.match(s,/continuous mode was not started/i);
- assert.match(s,/first_tick_seen/);
-});
 
-test('V201 doctor runs before V200 one-shot and continuous modes',()=>{
- const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:9,bridge_key:'tfa_live_'+'c'.repeat(43),provider_symbol:'XAUUSD'});
- const lines=s.split('\n');
- const doctorDownload=lines.findIndex(line=>line.includes('mt5-live-market-doctor.py')&&line.includes('-OutFile'));
- const doctorRun=lines.findIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-doctor.py'));
- const once=lines.findIndex(line=>line.includes('mt5-live-market-bridge.py --once'));
- const verify=lines.findIndex(line=>line.includes('gold-relay-observability-v199'));
- const continuous=lines.findLastIndex(line=>line.startsWith('python ')&&line.endsWith('mt5-live-market-bridge.py')&&!line.includes('--once'));
- assert.ok(doctorDownload>=0);
- assert.ok(doctorRun>doctorDownload);
- assert.ok(once>doctorRun);
- assert.ok(verify>once);
- assert.ok(continuous>verify);
- assert.match(s,/V201 relay doctor found a failed prerequisite/);
+test('V205 install snippet delegates the local sequence to the hardened launcher',()=>{
+ const s=liveMarketBridgeInstallSnippet({ok:true,bridge_id:7,bridge_key:'tfa_live_'+'b'.repeat(43),provider_symbol:'XAUUSD'});
+ assert.match(s,/TFA_LIVE_BRIDGE_ID="7"/);
+ assert.match(s,/TFA_LIVE_BRIDGE_KEY="tfa_live_/);
+ assert.match(s,/TFA_MT5_SYMBOL="XAUUSD"/);
+ assert.match(s,/mt5-live-market-launcher-v205\.ps1/);
+ assert.doesNotMatch(s,/gold-relay-observability-v199/);
 });

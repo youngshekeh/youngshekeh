@@ -26,7 +26,7 @@ async function tfaPrivateAuthorized(req:Request){
   }catch{return false}
 }
 
-const VERSION='v204.0-gold-activation-orchestrator-certification-v68';
+const VERSION='v205.0-one-command-relay-activation-certification-v69';
 const BASE='https://thefatheranalytics.com';
 const PRIVATE_LOCK_PROBE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v75-day-state';
 
@@ -39,7 +39,7 @@ async function legacyHandler(req:any,res:any,transport:any){
   const tfaRetry=(task:()=>Promise<any>,delay=250)=>transport.retry(task,delay);
   async function tfaBoundedAll(tasks:Array<()=>Promise<any>>,concurrency=3){return transport.all(tasks,concurrency);}
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
-  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,ownerAlertAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router,v194command,v195bridge,v196quality,v197guard,v198session,v199relay,v201doctor,v202ledger,v204activation]=await tfaBoundedAll([
+  const [home,capitalSurface,gold,ownerSurface,ownerReviewAnon,ownerAlertAnon,privateAnon,paperFeedAnon,paperFeed,mission,productionClosure,opportunityGovernor,capitalCalendar,earningsCalendar,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router,v194command,v195bridge,v196quality,v197guard,v198session,v199relay,v201doctor,v202ledger,v204activation,v205launcher]=await tfaBoundedAll([
     ()=>fetchAny('/'),
     ()=>fetchAny('/capital-os/'),
     ()=>fetchAny('/gold-live/'),
@@ -96,7 +96,8 @@ async function legacyHandler(req:any,res:any,transport:any){
     ()=>fetchAny('/api/gold-relay-observability-v199',10000),
     ()=>fetchAny('/downloads/mt5-live-market-doctor.py',7000),
     ()=>fetchAny('/api/gold-relay-event-ledger-v202',10000),
-    ()=>fetchAny('/api/gold-activation-orchestrator-v204',12000)
+    ()=>fetchAny('/api/gold-activation-orchestrator-v204',12000),
+    ()=>fetchAny('/downloads/mt5-live-market-launcher-v205.ps1',7000)
   ],3);
   const tests=[];
 
@@ -1191,11 +1192,33 @@ async function legacyHandler(req:any,res:any,transport:any){
       &&gold.body.includes('id="v204-operator"'),
     `status=${gold.status}, surface=${typeof gold.body==='string'&&gold.body.includes('V204 · GOLD ACTIVATION ORCHESTRATOR')?'present':'missing'}`,
     gold.latency_ms));
+  tests.push(result('v205_mt5_activation_launcher_static_contract',
+    v205launcher.status===200
+      &&typeof v205launcher.body==='string'
+      &&v205launcher.body.includes('THE FATHER ANALYTICS V205')
+      &&v205launcher.body.includes('mt5-live-market-doctor.py')
+      &&v205launcher.body.includes('mt5-live-market-bridge.py')
+      &&v205launcher.body.includes('gold-activation-orchestrator-v204')
+      &&v205launcher.body.includes('first_tick_accepted')
+      &&v205launcher.body.includes('MetaTrader5==5.0.6231')
+      &&!v205launcher.body.match(/order_send|OrderSend|mt5\.login/i),
+    `status=${v205launcher.status}, launcher=${typeof v205launcher.body==='string'&&v205launcher.body.includes('THE FATHER ANALYTICS V205')?'present':'missing'}`,
+    v205launcher.latency_ms));
+
+  tests.push(result('v205_owner_activation_surface_contract',
+    ownerSurface.status===200
+      &&typeof ownerSurface.body==='string'
+      &&ownerSurface.body.includes('/downloads/mt5-live-market-launcher-v205.ps1')
+      &&ownerSurface.body.includes('V204 · ACTIVATION ORCHESTRATOR')
+      &&ownerSurface.body.includes('id="liveActivationState"')
+      &&ownerSurface.body.includes('id="liveActivationStall"'),
+    `status=${ownerSurface.status}, launcher_link=${typeof ownerSurface.body==='string'&&ownerSurface.body.includes('mt5-live-market-launcher-v205.ps1')?'present':'missing'}`,
+    ownerSurface.latency_ms));
 
   const passed=tests.filter(x=>x.pass).length;
   const failed=tests.length-passed;
-  const transportStatus=transport.summary([home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router,v194command,v195bridge,v196quality,v197guard,v198session,v199relay,v201doctor,v202ledger,v204activation,mission,paperFeed,paperFeedAnon,productionClosure,ownerSurface]);
-  transportStatus.probes=[['home',home],['capitalSurface',capitalSurface],['gold',gold],['ownerSurface',ownerSurface],['ownerReviewAnon',ownerReviewAnon],['privateAnon',privateAnon],['paperFeedAnon',paperFeedAnon],['paperFeed',paperFeed],['mission',mission],['productionClosure',productionClosure],['opportunityGovernor',opportunityGovernor],['capitalCalendar',capitalCalendar],['earningsCalendar',earningsCalendar],['desk',desk],['learning',learning],['outcome',outcome],['transition',transition],['trigger',trigger],['reputation',reputation],['reviewIntel',reviewIntel],['disagreementIntel',disagreementIntel],['contextIntel',contextIntel],['priorityIntel',priorityIntel],['freshnessIntel',freshnessIntel],['shadowTrader',shadowTrader],['shadowPortfolio',shadowPortfolio],['executionReality',executionReality],['brokerLab',brokerLab],['auto',auto],['day',day],['quality',quality],['selftest',selftest],['tournament',tournament],['shadow',shadow],['quota',quota],['v79',v79],['v81',v81],['v82',v82],['v83',v83],['v83self',v83self],['v186live',v186live],['v187signal',v187signal],['v188session',v188session],['v188lifecycle',v188lifecycle],['v189watch',v189watch],['v191ledger',v191ledger],['v192router',v192router],['v194command',v194command],['v195bridge',v195bridge],['v196quality',v196quality],['v197guard',v197guard],['v198session',v198session],['v199relay',v199relay],['v201doctor',v201doctor],['v202ledger',v202ledger],['v204activation',v204activation]].map(([name,probe]:any)=>({name,status:probe.status,started:probe.started,latency_ms:probe.latency_ms,error:probe.error,deadline_exceeded:probe.deadline_exceeded===true}));
+  const transportStatus=transport.summary([home,capitalSurface,capitalCalendar,earningsCalendar,gold,desk,learning,outcome,transition,trigger,reputation,reviewIntel,disagreementIntel,contextIntel,priorityIntel,freshnessIntel,shadowTrader,shadowPortfolio,executionReality,brokerLab,opportunityGovernor,ownerReviewAnon,privateAnon,auto,day,quality,selftest,tournament,shadow,quota,v79,v81,v82,v83,v83self,v186live,v187signal,v188session,v188lifecycle,v189watch,v191ledger,v192router,v194command,v195bridge,v196quality,v197guard,v198session,v199relay,v201doctor,v202ledger,v204activation,v205launcher,mission,paperFeed,paperFeedAnon,productionClosure,ownerSurface]);
+  transportStatus.probes=[['home',home],['capitalSurface',capitalSurface],['gold',gold],['ownerSurface',ownerSurface],['ownerReviewAnon',ownerReviewAnon],['privateAnon',privateAnon],['paperFeedAnon',paperFeedAnon],['paperFeed',paperFeed],['mission',mission],['productionClosure',productionClosure],['opportunityGovernor',opportunityGovernor],['capitalCalendar',capitalCalendar],['earningsCalendar',earningsCalendar],['desk',desk],['learning',learning],['outcome',outcome],['transition',transition],['trigger',trigger],['reputation',reputation],['reviewIntel',reviewIntel],['disagreementIntel',disagreementIntel],['contextIntel',contextIntel],['priorityIntel',priorityIntel],['freshnessIntel',freshnessIntel],['shadowTrader',shadowTrader],['shadowPortfolio',shadowPortfolio],['executionReality',executionReality],['brokerLab',brokerLab],['auto',auto],['day',day],['quality',quality],['selftest',selftest],['tournament',tournament],['shadow',shadow],['quota',quota],['v79',v79],['v81',v81],['v82',v82],['v83',v83],['v83self',v83self],['v186live',v186live],['v187signal',v187signal],['v188session',v188session],['v188lifecycle',v188lifecycle],['v189watch',v189watch],['v191ledger',v191ledger],['v192router',v192router],['v194command',v194command],['v195bridge',v195bridge],['v196quality',v196quality],['v197guard',v197guard],['v198session',v198session],['v199relay',v199relay],['v201doctor',v201doctor],['v202ledger',v202ledger],['v204activation',v204activation],['v205launcher',v205launcher]].map(([name,probe]:any)=>({name,status:probe.status,started:probe.started,latency_ms:probe.latency_ms,error:probe.error,deadline_exceeded:probe.deadline_exceeded===true}));
   const state=transportStatus.incomplete?'INCOMPLETE':failed===0?'PASS':failed<=2?'DEGRADED':'FAIL';
   const maxLatency=Math.max(...tests.map(x=>Number(x.latency_ms)||0));
   res.setHeader('Cache-Control','no-store');

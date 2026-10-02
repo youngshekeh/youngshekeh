@@ -28,6 +28,7 @@
       let liveMarketBridgeStatus = null;
       let liveMarketQuoteStatus = null;
       let liveRelayObservability = null;
+      let liveActivationOrchestrator = null;
       let alertInboxBusy = false;
       let alertInboxData = null;
 
@@ -52,6 +53,7 @@
         liveMarketBridgeStatus = null;
         liveMarketQuoteStatus = null;
         liveRelayObservability = null;
+        liveActivationOrchestrator = null;
         $('liveMarketBridgeControl').classList.add('hidden');
         $('liveMarketBridgeCreate').disabled = true;
         $('liveMarketBridgeConfig').textContent = 'No live-market key has been issued in this session.';
@@ -394,18 +396,29 @@
           RELAY_STALE:'The relay previously delivered ticks but is currently stale.'
         };
         $('liveRelayDetail').textContent = `${relayMessages[relay?.state] || 'Relay observability unavailable.'} · market data only · orders OFF · capital 0R.`;
+
+        const activation = liveActivationOrchestrator || {};
+        $('liveActivationState').textContent = String(activation?.state || 'UNAVAILABLE').replaceAll('_', ' ');
+        $('liveActivationProgress').textContent = `${activation?.phase?.passed_gates ?? 0}/${activation?.phase?.total ?? 6} · ${activation?.commissioning_progress_pct ?? 0}%`;
+        $('liveActivationStall').textContent = activation?.stall?.active === true
+          ? String(activation?.stall?.code || 'STALL').replaceAll('_', ' ')
+          : 'CLEAR';
+        $('liveActivationNext').textContent = String(activation?.next_step_code || 'UNKNOWN').replaceAll('_', ' ');
+        $('liveActivationDetail').textContent = `${activation?.operator_next_action || 'Activation action unavailable.'} · machine: ${activation?.machine_next_action || 'WAIT'} · orders OFF · capital 0R.`;
       }
 
       async function loadLiveMarketBridgeStatus() {
         if (!ownerVerified || !ownerMfaReady) return;
         try {
           liveMarketBridgeStatus = await functionPost('broker-live-market-control', {action:'status'}, 10000);
-          const [quoteResponse, relayResponse] = await Promise.all([
+          const [quoteResponse, relayResponse, activationResponse] = await Promise.all([
             fetch(`${FUNCTIONS}/broker-live-market-intake`, {headers:{apikey:KEY,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(5000)}),
-            fetch('/api/gold-relay-observability-v199', {headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(7000)})
+            fetch('/api/gold-relay-observability-v199', {headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(7000)}),
+            fetch('/api/gold-activation-orchestrator-v204', {headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(9000)})
           ]);
           liveMarketQuoteStatus = quoteResponse.ok ? await quoteResponse.json().catch(() => null) : null;
           liveRelayObservability = relayResponse.ok ? await relayResponse.json().catch(() => null) : null;
+          liveActivationOrchestrator = activationResponse.ok ? await activationResponse.json().catch(() => null) : null;
           renderLiveMarketBridgeStatus();
         } catch (error) {
           $('liveMarketBridgeResult').textContent = liveMarketBridgeMessage(error?.data?.error || 'live_bridge_status_unavailable');

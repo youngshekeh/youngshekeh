@@ -24,25 +24,12 @@ export function liveMarketBridgeInstallSnippet(result){
     ||typeof result.bridge_key!=='string'||!/^tfa_live_[A-Za-z0-9_-]{40,80}$/.test(result.bridge_key)
     ||typeof result.provider_symbol!=='string'||!SYMBOL.test(result.provider_symbol))return'';
   return[
-    '# V200 · PowerShell · read-only live XAUUSD market data',
+    '# V205 · PowerShell · one-command read-only XAUUSD activation',
     '# Keep MetaTrader 5 open and logged in on this Windows machine.',
-    'Invoke-WebRequest https://thefatheranalytics.com/downloads/mt5-live-market-bridge.py -OutFile .\\mt5-live-market-bridge.py',
-    'Invoke-WebRequest https://thefatheranalytics.com/downloads/mt5-live-market-doctor.py -OutFile .\\mt5-live-market-doctor.py',
-    'python -m pip install MetaTrader5==5.0.6231',
     '$env:TFA_LIVE_BRIDGE_ID="'+result.bridge_id+'"',
     '$env:TFA_LIVE_BRIDGE_KEY="'+result.bridge_key+'"',
     '$env:TFA_MT5_SYMBOL="'+result.provider_symbol+'"',
-    'Write-Host "STEP 0/2 · Running V201 read-only relay doctor..."',
-    'python .\\mt5-live-market-doctor.py',
-    'if ($LASTEXITCODE -ne 0) { throw "V201 relay doctor found a failed prerequisite. Fix the failed check above; no tick was sent." }',
-    'Write-Host "STEP 1/2 · Sending one read-only XAUUSD smoke-test tick..."',
-    'python .\\mt5-live-market-bridge.py --once',
-    'if ($LASTEXITCODE -ne 0) { throw "V200 relay smoke test failed. Read the error above; continuous mode was not started." }',
-    'Start-Sleep -Seconds 2',
-    '$relay = Invoke-RestMethod https://thefatheranalytics.com/api/gold-relay-observability-v199',
-    'Write-Host ("V199 relay state: " + $relay.state + " · accepted ticks: " + $relay.relay.accepted_ticks_examined)',
-    'if (-not $relay.relay.first_tick_seen) { throw "V200 first-tick verification failed. Continuous mode was not started." }',
-    'Write-Host "STEP 2/2 · First tick verified. Starting continuous read-only market-data streaming..."',
-    'python .\\mt5-live-market-bridge.py'
+    'Invoke-WebRequest https://thefatheranalytics.com/downloads/mt5-live-market-launcher-v205.ps1 -OutFile .\\mt5-live-market-launcher-v205.ps1',
+    '& .\\mt5-live-market-launcher-v205.ps1'
   ].join('\n');
 }

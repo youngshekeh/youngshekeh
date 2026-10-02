@@ -140,6 +140,7 @@
           <pre id="liveMarketBridgeConfig" style="white-space: pre-wrap; overflow-wrap: anywhere">No live-market key has been issued in this session. After creation, the command runs V201 diagnostics, one test tick, then continuous streaming only after verification.</pre>
           <p class="muted" style="margin-top: 10px">Already have the bridge environment variables in PowerShell? Run the V201 doctor independently before retrying the relay.</p>
           <a class="secondary" href="/downloads/mt5-live-market-doctor.py" download>Download V201 relay doctor</a>
+          <a class="secondary" href="/downloads/mt5-live-market-launcher-v205.ps1" download>Download V205 one-command launcher</a>
         </div>
         <div class="row" style="margin-top: 12px; flex-wrap: wrap">
           <div class="card"><div class="label">FEED STATE</div><div id="liveMarketOwnerState" class="value wait">WAITING</div></div>
@@ -156,6 +157,16 @@
             <div class="card"><div class="label">NEXT STEP</div><div id="liveRelayNext" class="value wait">CHECKING</div></div>
           </div>
           <p id="liveRelayDetail" class="muted" style="margin-top: 10px">Waiting for relay observability.</p>
+        </div>
+        <div class="card" style="margin-top: 12px">
+          <div class="label">V204 · ACTIVATION ORCHESTRATOR</div>
+          <div class="row" style="margin-top: 10px; flex-wrap: wrap">
+            <div class="card"><div class="label">PHASE</div><div id="liveActivationState" class="value wait">CHECKING</div></div>
+            <div class="card"><div class="label">PROGRESS</div><div id="liveActivationProgress" class="value">CHECKING</div></div>
+            <div class="card"><div class="label">STALL</div><div id="liveActivationStall" class="value wait">CHECKING</div></div>
+            <div class="card"><div class="label">NEXT STEP</div><div id="liveActivationNext" class="value wait">CHECKING</div></div>
+          </div>
+          <p id="liveActivationDetail" class="muted" style="margin-top: 10px">Waiting for activation orchestration.</p>
         </div>
         <button id="liveMarketBridgeRefresh" type="button" class="secondary" style="margin-top: 12px">Refresh live XAUUSD status</button>
         <div id="liveMarketBridgeList" style="margin-top: 12px"></div>
