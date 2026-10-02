@@ -1,7 +1,7 @@
 {
   "ok": true,
   "version": "v111-external-anchor-proof-v1",
-  "generated_at": "2026-10-02T20:44:12.737Z",
+  "generated_at": "2026-10-02T20:53:31.212Z",
   "source": "THE_FATHER_ANALYTICS_PRODUCTION",
   "source_mode": "POSTGREST_RPC",
   "observed_at": null,
@@ -43,8 +43,8 @@
     "branch": "the-father-analytics-audit",
     "workflow": "tfa-provenance-anchor",
     "anchored_at": "2026-10-02T20:35:52.131Z",
-    "last_verified_at": "2026-10-02T20:44:12.992Z",
-    "verification_count": 4,
-    "source_proof_sha256": "6d6ff6a50579067ba07f575fbcfed5b42d26c20ab7920944a52e30f225183391"
+    "last_verified_at": "2026-10-02T20:53:31.410Z",
+    "verification_count": 5,
+    "source_proof_sha256": "ae8f125158ef5cbf3b3d845ec33caa2ad24f395d3b70e027361d04535910f6d0"
   }
 }
