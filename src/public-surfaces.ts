@@ -45,6 +45,8 @@ let relayObservabilityBusy = false;
 let relayObservabilityTimer: number | undefined;
 let relayLedgerBusy = false;
 let relayLedgerTimer: number | undefined;
+let activationOrchestratorBusy = false;
+let activationOrchestratorTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -4083,6 +4085,57 @@ function startV202RelayLedger(){
   void pollV202RelayLedger();
 }
 
+function renderV204ActivationOrchestrator(data: AnyJson){
+  const state=String(data?.state||'UNAVAILABLE');
+  const phase=data?.phase??{},stall=data?.stall??{},gates=data?.gates??{};
+  set('v204-state',state.replaceAll('_',' '));
+  set('v204-progress',String(phase?.passed_gates??0)+'/'+String(phase?.total??6)+' · '+String(data?.commissioning_progress_pct??0)+'%');
+  set('v204-stall',stall?.active===true?String(stall?.code||'STALL').replaceAll('_',' '):'CLEAR');
+  set('v204-next',String(data?.next_step_code||'UNKNOWN').replaceAll('_',' '));
+  set('v204-operator',data?.operator_next_action??'Operator action unavailable.');
+  set('v204-machine',data?.machine_next_action??'Machine action unavailable.');
+  set('v204-permission',String(data?.decision_compression?.action_permitted||'WAIT')+' · '+String(data?.decision_compression?.capital_permission||'0R'));
+  set('v204-detail',
+    (stall?.active===true?String(stall?.detail||'Activation stall detected.'):'No activation stall detected.')+
+    ' · ledger '+String(data?.audit?.ledger_state||'UNAVAILABLE').replaceAll('_',' ')+
+    ' · events '+String(data?.audit?.event_count??0)+
+    ' · live orders OFF.'
+  );
+  const host=byId('v204-gate-grid');
+  if(host){
+    host.replaceChildren();
+    for(const [key,gate] of Object.entries(gates)){
+      const g=gate as AnyJson;
+      const card=document.createElement('article');card.className='command-card';
+      const k=document.createElement('span');k.className='kicker';k.textContent=String(g?.label||key).toUpperCase();
+      const h=document.createElement('h3');h.textContent=g?.pass===true?'PASS':'WAITING';
+      const p=document.createElement('p');p.textContent=g?.pass===true?'Verified commissioning evidence.':'Required before the read-only live-data path can advance.';
+      card.append(k,h,p);host.appendChild(card);
+    }
+  }
+}
+async function pollV204ActivationOrchestrator(){
+  if(activationOrchestratorBusy||document.hidden)return;
+  activationOrchestratorBusy=true;
+  try{renderV204ActivationOrchestrator(await readLocal('/api/gold-activation-orchestrator-v204',12000));}
+  finally{
+    activationOrchestratorBusy=false;
+    if(activationOrchestratorTimer)window.clearTimeout(activationOrchestratorTimer);
+    if(!document.hidden)activationOrchestratorTimer=window.setTimeout(()=>void pollV204ActivationOrchestrator(),10_000);
+  }
+}
+function startV204ActivationOrchestrator(){
+  if(activationOrchestratorTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(activationOrchestratorTimer)window.clearTimeout(activationOrchestratorTimer);
+      activationOrchestratorTimer=undefined;
+      set('v204-state','PAUSED · TAB HIDDEN');
+    }else void pollV204ActivationOrchestrator();
+  });
+  void pollV204ActivationOrchestrator();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -4131,6 +4184,7 @@ function startGoldPulse() {
   startV198SessionIntelligence();
   startV199RelayObservability();
   startV202RelayLedger();
+  startV204ActivationOrchestrator();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
