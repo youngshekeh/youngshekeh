@@ -24,7 +24,8 @@ async function read(path: string, timeout = 6500): Promise<AnyJson> {
     const response = await fetch(`/api/market-feed?feed=${encodeURIComponent(path)}`, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
-      signal: AbortSignal.timeout(timeout),
+      // The same-origin bridge has a 10s upstream deadline; include transport margin.
+      signal: AbortSignal.timeout(Math.max(timeout, 12_000)),
     });
     const data = await response.json().catch(() => null);
     return response.ok && data && typeof data === 'object' && !Array.isArray(data)
