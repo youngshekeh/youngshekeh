@@ -1,0 +1,19 @@
+name: Verify V196 Gold Feed Quality
+on:
+  push:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+  pull_request:
+    branches: [the-father-analytics-deploy, the-father-analytics-staging]
+permissions:
+  contents: read
+jobs:
+  v196-gold-feed-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V196 feed-quality regressions
+        run: node --test tests/v196-*.test.mjs
