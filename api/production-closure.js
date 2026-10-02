@@ -10,7 +10,8 @@ const PUBLIC_ENDPOINTS={
   reality:'public-gold-execution-reality',
   brokerLab:'public-gold-broker-adapter-lab',
   sandbox:'broker-sandbox-receipt-intake',
-  sandboxBridge:'broker-sandbox-bridge-intake'
+  sandboxBridge:'broker-sandbox-bridge-intake',
+  sandboxBridgeHealth:'broker-sandbox-bridge-health'
 };
 
 const PRIVATE_ENDPOINTS={
@@ -53,6 +54,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('X-TFA-Engine','V166');
   res.setHeader('X-TFA-Pressure-Control','V176.1');
   res.setHeader('X-TFA-Bridge','V184');
+  res.setHeader('X-TFA-Bridge-Health','V185');
   res.setHeader('X-TFA-Sandbox','V183');
   return res.status(status).json({
     ok:false,
@@ -91,13 +93,14 @@ export default async function handler(req,res){
 
   const privateHeaders={Authorization:`Bearer ${oidcToken}`};
 
-  const [deskR,governorR,realityR,brokerLabR,sandboxR,sandboxBridgeR,admissionR,handoffR]=await Promise.all([
+  const [deskR,governorR,realityR,brokerLabR,sandboxR,sandboxBridgeR,sandboxBridgeHealthR,admissionR,handoffR]=await Promise.all([
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.desk}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.governor}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.reality}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.brokerLab}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.sandbox}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.sandboxBridge}`),
+    fetchJson(`${SUPABASE_FUNCTIONS}/${PUBLIC_ENDPOINTS.sandboxBridgeHealth}`),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PRIVATE_ENDPOINTS.admission}`,privateHeaders),
     fetchJson(`${SUPABASE_FUNCTIONS}/${PRIVATE_ENDPOINTS.handoff}`,privateHeaders)
   ]);
@@ -108,6 +111,7 @@ export default async function handler(req,res){
   const brokerLab=brokerLabR.body||{};
   const sandbox=sandboxR.body||{};
   const sandboxBridge=sandboxBridgeR.body||{};
+  const sandboxBridgeHealth=sandboxBridgeHealthR.body||{};
   const admission=admissionR.body||{};
   const handoff=handoffR.body||{};
 
@@ -265,6 +269,22 @@ export default async function handler(req,res){
         live_order_submission_enabled:false,
         production_capable:false,
         bridge_can_unlock_capital:false
+      }
+    },
+    sandbox_bridge_health:{
+      available:sandboxBridgeHealthR.ok,
+      state:sandboxBridgeHealth?.state??'UNAVAILABLE',
+      counts:sandboxBridgeHealth?.counts??null,
+      expected:sandboxBridgeHealth?.expected??null,
+      last_heartbeat_at:sandboxBridgeHealth?.last_heartbeat_at??null,
+      clients:Array.isArray(sandboxBridgeHealth?.clients)?sandboxBridgeHealth.clients:[],
+      production_boundary:sandboxBridgeHealth?.production_boundary??null,
+      governance:{
+        action_permitted:'WAIT',
+        capital_permission:'0R',
+        live_order_submission_enabled:false,
+        production_capable:false,
+        health_can_unlock_capital:false
       }
     },
     scheduler:{

@@ -21,6 +21,8 @@
       let sandboxLast = null;
       let bridgeBusy = false;
       let bridgeStatus = null;
+      let bridgeHealthBusy = false;
+      let bridgeHealth = null;
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
@@ -37,6 +39,9 @@
         $('bridgeCreate').disabled = true;
         $('bridgeConfig').textContent = 'No bridge key has been issued in this session.';
         $('bridgeList').replaceChildren();
+        bridgeHealth = null;
+        $('bridgeHealthState').textContent = 'CHECKING';
+        $('bridgeHealthDetail').textContent = 'No demo client heartbeat confirmed.';
         $('paperQuoteSubmit').disabled = true;
         $('paperQuoteReceipt').textContent = 'No receipt confirmed.';
         $('paperQuoteFeedState').textContent = 'CHECKING';
@@ -93,6 +98,7 @@
         $('bridgeCreate').disabled = bridgeBusy;
         $('bridgeResult').textContent = 'Owner and MFA verified. Create or inspect sandbox-only bridge credentials.';
         void loadBridgeStatus();
+        void loadBridgeHealth();
       }
 
       const paperSubmitter = createPaperQuoteSubmitter({
@@ -234,6 +240,43 @@
         }
       }
 
+      function renderBridgeHealth() {
+        if (!ownerVerified || !ownerMfaReady) return;
+        const h = bridgeHealth || {};
+        const counts = h.counts || {};
+        const clients = Array.isArray(h.clients) ? h.clients : [];
+        const client = clients[0] || null;
+        $('bridgeHealthState').textContent = String(h.state || 'UNAVAILABLE').replaceAll('_', ' ');
+        $('bridgeHealthDemo').textContent = client?.trade_mode === 'DEMO' ? 'DEMO VERIFIED' : 'WAITING';
+        $('bridgeHealthHeartbeat').textContent = client?.heartbeat_age_seconds == null
+          ? 'WAITING'
+          : `${client.heartbeat_age_seconds}s`;
+        $('bridgeHealthVersion').textContent = client?.relay_version && client?.mt5_package_version
+          ? `${client.relay_version} · MT5 ${client.mt5_package_version}`
+          : 'WAITING';
+        $('bridgeHealthDetail').textContent = h?.ok === true
+          ? `Active ${counts.active_bridges || 0} · healthy ${counts.healthy_bridges || 0} · stale ${counts.stale_bridges || 0} · degraded ${counts.degraded_bridges || 0}. Health is operational evidence only; production capital remains 0R.`
+          : 'Bridge health is unavailable. Sandbox evidence remains fail-closed.';
+      }
+
+      async function loadBridgeHealth() {
+        if (bridgeHealthBusy || !ownerVerified || !ownerMfaReady) return;
+        bridgeHealthBusy = true;
+        try {
+          const response = await fetch(`${FUNCTIONS}/broker-sandbox-bridge-health`, {
+            headers: {apikey: KEY, Accept: 'application/json'},
+            cache: 'no-store',
+            signal: AbortSignal.timeout(8000),
+          });
+          bridgeHealth = response.ok ? await response.json().catch(() => null) : null;
+        } catch {
+          bridgeHealth = null;
+        } finally {
+          bridgeHealthBusy = false;
+          renderBridgeHealth();
+        }
+      }
+
       async function loadBridgeStatus() {
         if (!ownerVerified || !ownerMfaReady) return;
         try {
@@ -268,6 +311,7 @@
           $('bridgeConfig').textContent = snippet;
           $('bridgeResult').textContent = 'Demo bridge created. Copy the one-time key now; the server stores only its hash. Production routing remains OFF.';
           await loadBridgeStatus();
+          await loadBridgeHealth();
         } catch (error) {
           $('bridgeConfig').textContent = 'No bridge key was confirmed.';
           $('bridgeResult').textContent = bridgeControlMessage(error?.data?.error || 'transport_unavailable');
@@ -593,5 +637,5 @@
       $('sandboxReceiptForm').addEventListener('submit', submitSandboxReceipt);
       $('sandboxRefresh').onclick = () => void loadSandboxStatus();
       $('bridgeCreateForm').addEventListener('submit', createBridge);
-      $('bridgeRefresh').onclick = () => void loadBridgeStatus();
+      $('bridgeRefresh').onclick = () => { void loadBridgeStatus(); void loadBridgeHealth(); };
       window.setInterval(() => { if (!document.hidden) renderPaperQuoteStatus(); }, 1000);

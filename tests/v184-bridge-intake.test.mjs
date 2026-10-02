@@ -6,6 +6,7 @@ function setup({method='POST',headers={},body={sequence:1,observed_at:'2026-10-0
  const calls=[];const fetchImpl=async(url,init)=>{calls.push({url,init});
   if(url.endsWith('/get_v184_gold_sandbox_bridge_transport_status'))return Response.json({ok:true,state:'NO_ACTIVE_SANDBOX_BRIDGE',governance:{capital_permission:'0R'}});
   if(url.endsWith('/authenticate_v184_gold_sandbox_bridge'))return Response.json(authOk?{ok:true,bridge_id:3,owner_user_id:'12345678-1234-1234-1234-123456789012',source_code:'MT5_DEMO',provider_symbol:'XAUUSDm',production_capable:false,live_order_submission_enabled:false,capital_permission:'0R'}:{ok:false,error:'invalid_bridge_credential'});
+  if(url.endsWith('/get_v185_gold_sandbox_bridge_health_status'))return Response.json({ok:true,state:'SANDBOX_BRIDGE_HEALTHY',clients:[{bridge_id:3,healthy:true,fresh:true}]});
   if(url.endsWith('/ingest_v183_gold_sandbox_receipt'))return Response.json({ok:true,sandbox_only:true,capital_permission:'0R',execution_grade:false,production_broker_verified:false,live_order_submission_enabled:false,state:'SANDBOX_RECEIPT_RECORDED',receipt_id:12,inserted:true});
   return Response.json({ok:false},{status:500});
  };
