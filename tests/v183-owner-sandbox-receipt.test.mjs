@@ -15,7 +15,7 @@ test('accepts quote, ack, fill and kill switch contracts',()=>{
 for(const [name,change,error] of [
  ['live mode',{mode:'LIVE'},'sandbox_boundary_required'],['credential',{api_key:'never'},'unexpected_fields'],
  ['stale',{observed_at:'2026-10-02T16:59:30Z'},'stale_receipt'],['crossed',{event_type:'QUOTE',bid:4200,ask:4199},'invalid_bid_ask'],
- ['bad fill',{event_type:'FILL',client_order_id:'TFA-1',broker_order_id:'B-1',side:'LONG',requested_r:.1,requested_price:4200,fill_price:0},'invalid_fill']
+ ['bad fill',{bid:undefined,ask:undefined,event_type:'FILL',client_order_id:'TFA-1',broker_order_id:'B-1',side:'LONG',requested_r:.1,requested_price:4200,fill_price:0},'invalid_fill']
 ])test(name,()=>assert.equal(prepareSandboxReceipt(JSON.stringify({...base,event_type:'QUOTE',bid:4200,ask:4200.2,...change}),now).error,error));
 test('verified submission cannot promote capital',async()=>{
  const receipt={ok:true,sandbox_only:true,capital_permission:'0R',execution_grade:false,production_broker_verified:false,live_order_submission_enabled:false,state:'SANDBOX_RECEIPT_RECORDED',inserted:true,receipt_id:7,
