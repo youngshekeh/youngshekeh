@@ -27,6 +27,8 @@ let signalLifecycleBusy = false;
 let signalLifecycleTimer: number | undefined;
 let triggerWatchBusy = false;
 let triggerWatchTimer: number | undefined;
+let eventLedgerBusy = false;
+let eventLedgerTimer: number | undefined;
 
 async function read(path: string, timeout = 6500): Promise<AnyJson> {
   try {
@@ -3595,6 +3597,57 @@ function startV189TriggerWatch(){
   void pollV189TriggerWatch();
 }
 
+function renderV191EventLedger(data: AnyJson) {
+  set('v191-chain', data?.state ? String(data.state).replaceAll('_',' ') : null);
+  set('v191-count', data?.counts?.events ?? 0);
+  set('v191-failures', data?.counts?.chain_failures ?? null);
+  const latestAt=Date.parse(String(data?.latest_event_at||''));
+  set('v191-latest', Number.isFinite(latestAt)?new Date(latestAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}):null);
+  const grid=byId('v191-event-grid');
+  if(!grid)return;
+  grid.replaceChildren();
+  const events=Array.isArray(data?.events)?data.events.slice(0,10):[];
+  if(!events.length){
+    const card=document.createElement('article');card.className='command-card';
+    const h=document.createElement('h3');h.textContent='NO MATERIAL EVENTS YET';
+    const p=document.createElement('p');p.textContent='The ledger writes only when a tracked state changes.';
+    card.append(h,p);grid.appendChild(card);return;
+  }
+  for(const e of events){
+    const card=document.createElement('article');card.className='command-card';
+    const k=document.createElement('span');k.className='kicker';
+    const at=Date.parse(String(e?.event_at||''));
+    k.textContent=`${e?.event_key??'EVENT'} · ${Number.isFinite(at)?new Date(at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}):'TIME N/A'}`;
+    const h=document.createElement('h3');
+    h.textContent=`${String(e?.previous_state??'GENESIS').replaceAll('_',' ')} → ${String(e?.event_state??'UNKNOWN').replaceAll('_',' ')}`;
+    const p=document.createElement('p');
+    const hash=String(e?.event_sha256||'');
+    p.textContent=`${e?.condition||'No condition detail.'} · ${e?.direction_candidate||'NEUTRAL'} · hash ${hash?hash.slice(0,12):'withheld'}…`;
+    card.append(k,h,p);grid.appendChild(card);
+  }
+}
+async function pollV191EventLedger(){
+  if(eventLedgerBusy||document.hidden)return;
+  eventLedgerBusy=true;
+  try{renderV191EventLedger(await readLocal('/api/gold-event-ledger-v191',9000));}
+  finally{
+    eventLedgerBusy=false;
+    if(eventLedgerTimer)window.clearTimeout(eventLedgerTimer);
+    if(!document.hidden)eventLedgerTimer=window.setTimeout(()=>void pollV191EventLedger(),30_000);
+  }
+}
+function startV191EventLedger(){
+  if(eventLedgerTimer)return;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){
+      if(eventLedgerTimer)window.clearTimeout(eventLedgerTimer);
+      eventLedgerTimer=undefined;
+      set('v191-chain','PAUSED · TAB HIDDEN');
+    }else void pollV191EventLedger();
+  });
+  void pollV191EventLedger();
+}
+
 async function refreshGoldSurface(reason: 'initial' | 'timer' | 'manual' | 'visibility' = 'timer') {
   set('v121-pulse-copy', reason === 'manual' ? 'Manual Gold refresh in progress.' : 'Refreshing Gold market structure.');
   const observation = await loadGold();
@@ -3634,6 +3687,7 @@ function startGoldPulse() {
   startV187SignalMap();
   startV188Lifecycle();
   startV189TriggerWatch();
+  startV191EventLedger();
   goldMonitor = createLiveMonitor({refresh:refreshGoldSurface, isVisible:() => !document.hidden, onState:(state: AnyJson) => {
     goldLastRefreshAt = state.lastSuccessAt;
     goldNextRefreshAt = state.nextAt;
