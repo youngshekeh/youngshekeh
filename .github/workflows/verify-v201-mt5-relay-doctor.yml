@@ -4,6 +4,9 @@ on:
     branches: [the-father-analytics-deploy, the-father-analytics-staging]
   pull_request:
     branches: [the-father-analytics-deploy, the-father-analytics-staging]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

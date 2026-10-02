@@ -12,7 +12,9 @@ const tick=(s,obs,extra={})=>({
 test('V196 does not certify an empty feed',()=>{
   const out=buildGoldFeedQuality({now,ticks:[]});
   assert.equal(out.state,'NO_TICKS');
-  assert.equal(out.gates.freshness.pass,false);\n  assert.equal(out.gates.sequence_integrity.pass,false);\n  assert.equal(out.deterministic_quality_score,0);
+  assert.equal(out.gates.freshness.pass,false);
+  assert.equal(out.gates.sequence_integrity.pass,false);
+  assert.equal(out.deterministic_quality_score,0);
   assert.equal(out.governance.capital_permission,'0R');
 });
 

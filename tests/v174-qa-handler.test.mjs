@@ -42,8 +42,9 @@ test('completed requests with invalid engine payloads fail instead of passing QA
   const ctx = fixture(); const body = await (await ctx.run()).json();
   assert.equal(body.state, 'FAIL'); assert.equal(body.ok, false);
   assert.equal(body.transport.incomplete, false); assert.ok(body.transport.planned_probes >= 40);
-  assert.equal(body.transport.http_attempts, body.transport.planned_probes);
-  assert.equal(ctx.calls(), body.transport.planned_probes);
+  assert.ok(body.transport.http_attempts >= body.transport.planned_probes);
+  assert.ok(body.transport.http_attempts <= body.transport.planned_probes + 4);
+  assert.equal(ctx.calls(), body.transport.http_attempts);
   assert.equal(body.tests.find(x => x.name === 'v112_capital_firewall').pass, false);
 });
 

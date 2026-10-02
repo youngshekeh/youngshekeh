@@ -4,6 +4,9 @@ on:
     branches: [tfa-v174-qa-deadline, the-father-analytics-staging, the-father-analytics-deploy]
   pull_request:
     branches: [the-father-analytics-staging, the-father-analytics-deploy]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:

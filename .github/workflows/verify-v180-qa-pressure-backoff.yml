@@ -11,6 +11,10 @@ on:
       - the-father-analytics-staging
       - the-father-analytics-deploy
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
