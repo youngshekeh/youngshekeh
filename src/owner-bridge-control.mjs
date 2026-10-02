@@ -28,9 +28,11 @@ export function bridgeInstallSnippet(result){
     ||typeof result.provider_symbol!=='string'||!SYMBOL.test(result.provider_symbol))return'';
   return[
     '# PowerShell · keep this key private',
+    'Invoke-WebRequest https://thefatheranalytics.com/downloads/mt5-demo-bridge.py -OutFile .\\mt5-demo-bridge.py',
+    'python -m pip install MetaTrader5==5.0.6231',
     '$env:TFA_BRIDGE_ID="'+result.bridge_id+'"',
     '$env:TFA_BRIDGE_KEY="'+result.bridge_key+'"',
     '$env:TFA_MT5_SYMBOL="'+result.provider_symbol+'"',
-    'python scripts/mt5-demo-bridge.py'
+    'python .\\mt5-demo-bridge.py'
   ].join('\n');
 }

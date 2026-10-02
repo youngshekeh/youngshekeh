@@ -19,3 +19,6 @@ V184 connects an already logged-in MetaTrader 5 **demo account** to the V183 san
 The bridge publishes fresh bid/ask observations and watches new demo deal history. A broker-history order record is relayed as ORDER_ACK before its matching FILL receipt. TFA_SANDBOX_REQUESTED_R is a research annotation used by the sandbox receipt schema and is not a broker-measured value.
 
 Run with --kill-switch to emit a sandbox bridge kill-switch acknowledgement and terminate the relay.
+
+## Direct download
+The production site publishes the same audited relay at /downloads/mt5-demo-bridge.py and a pinned requirements file at /downloads/requirements-mt5-bridge.txt. The Owner Command one-time configuration uses MetaTrader5==5.0.6231.
