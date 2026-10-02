@@ -26,6 +26,17 @@
       <article><span>CAPITAL</span><strong id="gold-capital">0R</strong></article>
     </section>
 
+    <section class="command-card live-pulse-card" aria-label="Live market monitoring">
+      <div><span class="kicker">V182 · LIVE MARKET PULSE</span><h3 id="v182-pulse-state" role="status">CONNECTING</h3><p>Updates every 60 seconds while this page is active. Source quotes are indicative and may be delayed. Market observation keeps trading permission separate.</p></div>
+      <section class="command-strip">
+        <article><span>LAST SUCCESSFUL REFRESH</span><strong id="v182-last-refresh">NOT YET</strong></article>
+        <article><span>NEXT REFRESH</span><strong id="v182-next-refresh">CONNECTING</strong></article>
+        <article><span>SOURCE SNAPSHOT</span><strong id="v182-source-time">WITHHELD</strong></article>
+        <article><span>PULSE MODE</span><strong id="v182-pulse-mode">ACTIVE</strong></article>
+      </section>
+      <div class="pulse-actions"><button id="v182-refresh-now" type="button">REFRESH MARKETS NOW</button></div>
+    </section>
+
     <section class="section-block compact">
       <div class="section-heading"><div><span class="kicker">CROSS-ASSET MATRIX</span><h2>Observed state by asset.</h2></div><p>Non-Gold assets remain observation-only. Missing live quotes do not become neutral 50% signals.</p></div>
       <div id="asset-grid" class="asset-grid"><div class="empty-state">Loading governed market spine…</div></div>
