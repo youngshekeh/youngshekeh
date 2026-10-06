@@ -10,7 +10,9 @@ const FEEDS=new Set([
   'public-gold-review-freshness','public-gold-review-priority','public-gold-contextual-disagreement',
   'public-gold-disagreement-intelligence','public-gold-review-intelligence','public-gold-signal-reputation',
   'public-gold-trigger-watch','public-gold-transition-state','public-gold-outcome-learning',
-  'public-gold-learning-state','paper-broker-quote-intake'
+  'public-gold-learning-state','public-cross-asset-regime','public-regime-change-history',
+  'public-forecast-governance','public-forecast-accountability','public-forecast-error-attribution',
+  'paper-broker-quote-intake'
 ]);
 const pending=new Map(), cached=new Map();
 const TTL=15_000;
