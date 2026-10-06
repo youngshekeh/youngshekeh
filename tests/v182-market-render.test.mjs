@@ -16,8 +16,8 @@ function fixture() {
   const grid=new Element(), values=new Map(); let data;
   const document={createElement:() => new Element()};
   const first=(...values) => values.find(value => value!=null && value!=='');
-  const load=new Function('read','set','first','assetList','marketStatus','marketAssetView','byId','document',`${source}\nreturn loadLiveMarkets;`)(
-    async path => path==='public-live-markets-api'?data:{},(id,text)=>values.set(id,text),first,
+  const load=new Function('read','readLocal','set','first','assetList','marketStatus','marketAssetView','byId','document',`${source}\nreturn loadLiveMarkets;`)(
+    async path => path==='public-live-markets-api'?data:{},async () => ({}),(id,text)=>values.set(id,text),first,
     data=>Array.isArray(data?.assets)?data.assets:[],data=>data?.market_status||'UNKNOWN',marketAssetView,()=>grid,document);
   return {grid,values,run:async value=>{data=value;return load();}};
 }
