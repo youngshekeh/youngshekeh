@@ -111,10 +111,7 @@ export default async function handler(req,res){
   const passed=gates.filter(g=>g.passed).length;
   const readiness=Math.round((passed/gates.length)*100);
   const authority = (
-    tradeEligible>=5 &&
-    canonicalEligible>=5 &&
-    marketSample>=5 &&
-    reputationMax>=30 &&
+    passed===gates.length &&
     probabilityPct!==null
   ) ? 'PROBABILITY_PUBLICATION_ELIGIBLE' : 'PROBABILITY_AUTHORITY_WITHHELD';
 
