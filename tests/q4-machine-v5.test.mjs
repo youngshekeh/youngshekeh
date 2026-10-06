@@ -67,3 +67,21 @@ test('V5 keeps calibration authority available when V4 context is unavailable',a
   assert.equal(res.body.calibration_authority.state,'PROBABILITY_AUTHORITY_WITHHELD');
   assert.equal(res.body.learning_permission.capital_permission,'0R');
 });
+
+
+test('V5 labels unavailable evidence as unknown instead of zero',async()=>{
+  const fixtures={...base,
+    'public-gold-outcome-learning':{ok:false},
+    'public-gold-signal-reputation':{ok:false}
+  };
+  const res=await run(fixtures);
+  const structural=res.body.calibration_authority.gates.find(g=>g.key==='structural_outcome_volume');
+  const reputation=res.body.calibration_authority.gates.find(g=>g.key==='mature_signal_reputation');
+  assert.equal(structural.state,'SOURCE_UNAVAILABLE');
+  assert.equal(structural.current,null);
+  assert.equal(reputation.state,'SOURCE_UNAVAILABLE');
+  assert.equal(reputation.current,null);
+  assert.ok(res.body.calibration_authority.unknown_gate_count>=2);
+  assert.equal(res.body.evidence_inventory.resolved_structural_outcomes,null);
+  assert.equal(res.body.evidence_inventory.signal_reputation_state,'SOURCE_UNAVAILABLE');
+});
