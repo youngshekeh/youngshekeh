@@ -4240,11 +4240,12 @@ function startGoldPulse() {
 }
 
 async function loadVisualLab() {
-  const [core, integrity, mission, q4Bundle] = await Promise.all([
+  const [core, integrity, mission, q4Bundle, q4Machine] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v54-resilient-mission-control', 5000),
     readLocal('/api/q4-visual-data', 14000),
+    readLocal('/api/q4-machine-state', 14000),
   ]);
   const day = q4Bundle?.day ?? {};
   const zones = q4Bundle?.zones ?? {};
@@ -4375,6 +4376,106 @@ async function loadVisualLab() {
     });
   }
   set('q4-stair-state', String(first(zones?.composite?.state, 'WITHHELD')).replaceAll('_',' '));
+
+  const machineTransmutation = q4Machine?.transmutation ?? {};
+  set('machine-transmutation-score', machineTransmutation?.rule_score != null ? String(machineTransmutation.rule_score) : null);
+  set('machine-transmutation-state', String(first(machineTransmutation?.state, 'WITHHELD')).replaceAll('_',' '));
+  set('machine-transmutation-tension', machineTransmutation?.tension
+    ? String(machineTransmutation.tension).replaceAll('_',' ')
+    : 'Transition tension unavailable.');
+
+  const machineOrb = byId('machine-transmutation-orb');
+  if (machineOrb) {
+    const score = Number(machineTransmutation?.rule_score);
+    machineOrb.style.setProperty('--brain-score', Number.isFinite(score) ? String(Math.max(0, Math.min(100, score))) : '0');
+  }
+
+  const evidenceBox = byId('machine-transmutation-evidence');
+  if (evidenceBox) {
+    evidenceBox.replaceChildren();
+    const evidence = Array.isArray(machineTransmutation?.evidence) ? machineTransmutation.evidence : [];
+    if (!evidence.length) {
+      const span = document.createElement('span');
+      span.textContent = 'Evidence withheld.';
+      evidenceBox.appendChild(span);
+    } else {
+      evidence.forEach((item: unknown) => {
+        const span = document.createElement('span');
+        span.textContent = String(item).replaceAll('_',' ');
+        evidenceBox.appendChild(span);
+      });
+    }
+  }
+
+  const signalTime = q4Machine?.signal_time ?? {};
+  set('machine-active-window', String(first(signalTime?.active_window, 'NONE')).replaceAll('_',' '));
+  set('machine-next-window', String(first(signalTime?.next_window, 'WITHHELD')).replaceAll('_',' '));
+  set('machine-next-countdown', signalTime?.minutes_until_next != null
+    ? (Number(signalTime.minutes_until_next) === 0 ? 'ACTIVE NOW' : `${signalTime.minutes_until_next} MIN`)
+    : null);
+
+  const windowGrid = byId('machine-session-windows');
+  if (windowGrid) {
+    windowGrid.replaceChildren();
+    const windows = Array.isArray(signalTime?.windows) ? signalTime.windows : [];
+    windows.forEach((windowState: AnyJson) => {
+      const cell = document.createElement('div');
+      cell.className = 'session-window-cell';
+      cell.dataset.active = windowState?.active ? 'true' : 'false';
+      const label = document.createElement('span');
+      label.textContent = String(windowState?.key || 'SESSION').replaceAll('_',' ');
+      const value = document.createElement('strong');
+      value.textContent = windowState?.active
+        ? 'ACTIVE'
+        : windowState?.minutes_until != null
+          ? `${windowState.minutes_until}m`
+          : 'WITHHELD';
+      cell.append(label,value);
+      windowGrid.appendChild(cell);
+    });
+  }
+
+  const tree = q4Machine?.scenario_tree ?? {};
+  set('machine-current-path', String(first(tree?.current_path, 'WITHHELD')).replaceAll('_',' '));
+
+  const renderScenario = (id: string, rows: AnyJson[], direction: 'up' | 'down') => {
+    const box = byId(id);
+    if (!box) return;
+    box.replaceChildren();
+    if (!Array.isArray(rows) || !rows.length) {
+      const empty = document.createElement('div');
+      empty.className = 'scenario-level';
+      empty.textContent = 'WITHHELD';
+      box.appendChild(empty);
+      return;
+    }
+    rows.forEach((row: AnyJson, index: number) => {
+      const level = document.createElement('div');
+      level.className = 'scenario-level';
+      level.dataset.direction = direction;
+      const n = document.createElement('span');
+      n.textContent = String(index + 1).padStart(2,'0');
+      const label = document.createElement('strong');
+      label.textContent = String(row?.label || 'LIQUIDITY').replaceAll('_',' ');
+      const priceEl = document.createElement('em');
+      priceEl.textContent = Number.isFinite(Number(row?.price)) ? Number(row.price).toFixed(1) : 'WITHHELD';
+      level.append(n,label,priceEl);
+      box.appendChild(level);
+    });
+  };
+  renderScenario('machine-upside-path', tree?.upside, 'up');
+  renderScenario('machine-downside-path', tree?.downside, 'down');
+
+  const heartbeat = q4Machine?.heartbeat ?? {};
+  set('machine-heartbeat-state', String(first(heartbeat?.state, 'WITHHELD')).replaceAll('_',' '));
+  set('machine-heartbeat-sources', heartbeat?.usable_sources != null ? `${heartbeat.usable_sources}/3` : null);
+  set('machine-heartbeat-age', heartbeat?.source_age_seconds != null ? `${heartbeat.source_age_seconds}s` : null);
+  set('machine-heartbeat-orders', first(heartbeat?.order_route, 'OFF'));
+  set('machine-heartbeat-capital', first(heartbeat?.capital_permission, '0R'));
+  const compression = q4Machine?.decision_compression ?? {};
+  set('machine-decision-compression', compression?.what_matters_now
+    ? `${String(compression.what_changed || 'STATE').replaceAll('_',' ')} · ${String(compression.what_matters_now).replaceAll('_',' ')} · ACTION ${String(compression.action_permitted || 'WAIT')}`
+    : 'Machine state unavailable. WAIT · 0R remains authoritative.');
 
   set('lab-adventure', market === 'MARKET_CLOSED'
     ? 'The journey is frozen at the last valid session state. No new battle or breakout animation is inferred while the market is closed.'
