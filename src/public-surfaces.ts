@@ -4240,12 +4240,13 @@ function startGoldPulse() {
 }
 
 async function loadVisualLab() {
-  const [core, integrity, mission, q4Bundle, q4Machine] = await Promise.all([
+  const [core, integrity, mission, q4Bundle, q4Machine, q4Memory] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v54-resilient-mission-control', 5000),
     readLocal('/api/q4-visual-data', 14000),
     readLocal('/api/q4-machine-state', 14000),
+    readLocal('/api/q4-machine-memory', 18000),
   ]);
   const day = q4Bundle?.day ?? {};
   const zones = q4Bundle?.zones ?? {};
@@ -4476,6 +4477,163 @@ async function loadVisualLab() {
   set('machine-decision-compression', compression?.what_matters_now
     ? `${String(compression.what_changed || 'STATE').replaceAll('_',' ')} · ${String(compression.what_matters_now).replaceAll('_',' ')} · ACTION ${String(compression.action_permitted || 'WAIT')}`
     : 'Machine state unavailable. WAIT · 0R remains authoritative.');
+
+  const regime = q4Memory?.regime_matrix ?? {};
+  const breadth = regime?.breadth ?? {};
+  set('memory-risk-tone', String(first(regime?.risk_tone, 'WITHHELD')).replaceAll('_',' '));
+  set('memory-breadth', breadth?.total != null
+    ? `${String(first(breadth?.state, 'WITHHELD')).replaceAll('_',' ')} · ↑${breadth?.up ?? 0} ↓${breadth?.down ?? 0} =${breadth?.neutral ?? 0}`
+    : 'BREADTH WITHHELD');
+  set('memory-regime-copy', `Gold macro alignment: ${String(first(regime?.gold_macro_alignment, 'WITHHELD')).replaceAll('_',' ')}. Regime fingerprint is observational, not trade permission.`);
+
+  const matrix = byId('memory-regime-matrix');
+  if (matrix) {
+    matrix.replaceChildren();
+    const assets = Array.isArray(regime?.assets) ? regime.assets : [];
+    assets.forEach((asset: AnyJson) => {
+      const cell = document.createElement('div');
+      cell.className = 'regime-cell';
+      cell.dataset.direction = String(asset?.direction || 'UNKNOWN').toLowerCase();
+      const label = document.createElement('span');
+      label.textContent = String(asset?.label || asset?.key || 'ASSET');
+      const dir = document.createElement('strong');
+      dir.textContent = String(first(asset?.direction, 'WITHHELD')).replaceAll('_',' ');
+      const phase = document.createElement('small');
+      phase.textContent = String(first(asset?.phase, asset?.structural_state, 'WITHHELD')).replaceAll('_',' ');
+      cell.append(label, dir, phase);
+      matrix.appendChild(cell);
+    });
+  }
+
+  const causality = q4Memory?.causality_radar ?? {};
+  set('memory-gold-direction', `${String(first(causality?.gold_direction, 'WITHHELD')).replaceAll('_',' ')} · ${String(first(causality?.gold_phase, 'WITHHELD')).replaceAll('_',' ')}`);
+  set('memory-causality-note', `${String(first(causality?.macro_alignment, 'WITHHELD')).replaceAll('_',' ')} · ${String(first(causality?.risk_tone, 'WITHHELD')).replaceAll('_',' ')}. Descriptive alignment only, not causal proof.`);
+
+  const radar = byId('memory-causality-radar');
+  if (radar) {
+    radar.replaceChildren();
+    const drivers = Array.isArray(causality?.drivers) ? causality.drivers : [];
+    drivers.forEach((driver: AnyJson, index: number) => {
+      const node = document.createElement('div');
+      node.className = 'causality-node';
+      node.dataset.direction = String(driver?.direction || 'UNKNOWN').toLowerCase();
+      node.style.setProperty('--node-index', String(index));
+      const label = document.createElement('span');
+      label.textContent = String(driver?.label || driver?.key || 'DRIVER');
+      const directionEl = document.createElement('strong');
+      directionEl.textContent = String(first(driver?.direction, 'WITHHELD')).replaceAll('_',' ');
+      const phaseEl = document.createElement('small');
+      phaseEl.textContent = String(first(driver?.phase, driver?.structural_state, 'WITHHELD')).replaceAll('_',' ');
+      node.append(label,directionEl,phaseEl);
+      radar.appendChild(node);
+    });
+  }
+
+  const forecast = q4Memory?.forecast_memory ?? {};
+  const ledger = forecast?.ledger ?? {};
+  set('memory-forecast-state', String(first(forecast?.state, 'WITHHELD')).replaceAll('_',' '));
+  set('memory-forecast-total', first(ledger?.total, ledger?.total_forecasts, '--'));
+  set('memory-forecast-open', first(ledger?.open, ledger?.open_forecasts, '--'));
+  set('memory-forecast-resolved', first(ledger?.resolved, ledger?.resolved_forecasts, '--'));
+  set('memory-forecast-accuracy', ledger?.directional_accuracy_pct != null ? `${ledger.directional_accuracy_pct}%` : 'WITHHELD');
+  set('memory-forecast-brier', ledger?.avg_brier_score != null ? String(ledger.avg_brier_score) : 'WITHHELD');
+  set('memory-forecast-calibration', ledger?.avg_calibration_error != null ? String(ledger.avg_calibration_error) : 'WITHHELD');
+  set('memory-forecast-copy', ledger?.verified_accuracy_available === true
+    ? 'Verified forecast-ledger accuracy is available from resolved publication forecasts.'
+    : 'Accuracy, Brier, calibration and MFE/MAE remain withheld until their source ledger supports them.');
+
+  const history = q4Memory?.regime_history ?? {};
+  const historyAvailable = history?.state === 'AVAILABLE';
+  set('memory-history-state', historyAvailable ? 'CANONICAL HISTORY' : 'EVIDENCE STORE UNAVAILABLE');
+  set('memory-history-count', historyAvailable
+    ? `${history?.transition_count ?? 0} TRANSITIONS`
+    : 'LOCAL FALLBACK');
+  set('memory-history-copy', historyAvailable
+    ? 'Canonical regime-history ledger is available. Recent transitions below come from stored machine pulses.'
+    : String(first(history?.withholding, 'Canonical regime history unavailable. Local browser memory is shown separately and is not canonical.')));
+
+  const changeList = byId('memory-change-list');
+  if (changeList) {
+    changeList.replaceChildren();
+    const canonical = historyAvailable && Array.isArray(history?.recent_transitions)
+      ? history.recent_transitions.slice(0,6)
+      : [];
+    if (canonical.length) {
+      canonical.forEach((entry: AnyJson) => {
+        const row = document.createElement('div');
+        row.className = 'memory-change-row';
+        const when = document.createElement('span');
+        when.textContent = entry?.completed_at ? new Date(entry.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'LEDGER';
+        const detail = document.createElement('strong');
+        detail.textContent = `${String(first(entry?.asset, entry?.key, 'STATE')).toUpperCase()} · ${String(first(entry?.from_phase, entry?.from, '—')).replaceAll('_',' ')} → ${String(first(entry?.to_phase, entry?.to, entry?.phase, 'CHANGED')).replaceAll('_',' ')}`;
+        row.append(when,detail);
+        changeList.appendChild(row);
+      });
+    } else {
+      const key = 'tfa_q4_v3_local_memory';
+      const current = {
+        captured_at: new Date().toISOString(),
+        fingerprint: regime?.fingerprint ?? null,
+        risk_tone: regime?.risk_tone ?? null,
+        breadth_state: breadth?.state ?? null,
+        gold_macro_alignment: regime?.gold_macro_alignment ?? null,
+        transmutation: q4Machine?.transmutation?.state ?? null,
+        path: q4Machine?.scenario_tree?.current_path ?? null,
+        active_window: q4Machine?.signal_time?.active_window ?? null,
+        forecast_state: forecast?.state ?? null,
+        forecast_open: first(ledger?.open, ledger?.open_forecasts, null),
+        forecast_resolved: first(ledger?.resolved, ledger?.resolved_forecasts, null)
+      };
+      let previous: AnyJson | null = null;
+      try {
+        const raw = localStorage.getItem(key);
+        previous = raw ? JSON.parse(raw) : null;
+      } catch {}
+      const tracked = [
+        ['REGIME', 'fingerprint'],
+        ['RISK TONE', 'risk_tone'],
+        ['BREADTH', 'breadth_state'],
+        ['GOLD MACRO', 'gold_macro_alignment'],
+        ['TRANSMUTATION', 'transmutation'],
+        ['SCENARIO', 'path'],
+        ['SESSION', 'active_window'],
+        ['FORECAST STATE', 'forecast_state'],
+        ['OPEN FORECASTS', 'forecast_open'],
+        ['RESOLVED FORECASTS', 'forecast_resolved']
+      ] as const;
+      const changes: Array<{label:string,from:unknown,to:unknown}> = [];
+      if (previous) {
+        tracked.forEach(([label, field]) => {
+          const from = previous?.[field];
+          const to = current?.[field];
+          if (String(from ?? '') !== String(to ?? '')) changes.push({label,from,to});
+        });
+      }
+      const rows = changes.slice(0,6);
+      if (!rows.length) {
+        const row = document.createElement('div');
+        row.className = 'memory-change-row';
+        const when = document.createElement('span');
+        when.textContent = previous ? 'NOW' : 'BASELINE';
+        const detail = document.createElement('strong');
+        detail.textContent = previous ? 'NO LOCAL STATE CHANGE SINCE LAST CAPTURE' : 'LOCAL BASELINE CAPTURED';
+        row.append(when,detail);
+        changeList.appendChild(row);
+      } else {
+        rows.forEach((item) => {
+          const row = document.createElement('div');
+          row.className = 'memory-change-row';
+          const when = document.createElement('span');
+          when.textContent = 'LOCAL';
+          const detail = document.createElement('strong');
+          detail.textContent = `${item.label} · ${String(item.from ?? '—').replaceAll('_',' ')} → ${String(item.to ?? '—').replaceAll('_',' ')}`;
+          row.append(when,detail);
+          changeList.appendChild(row);
+        });
+      }
+      try { localStorage.setItem(key, JSON.stringify(current)); } catch {}
+    }
+  }
 
   set('lab-adventure', market === 'MARKET_CLOSED'
     ? 'The journey is frozen at the last valid session state. No new battle or breakout animation is inferred while the market is closed.'
