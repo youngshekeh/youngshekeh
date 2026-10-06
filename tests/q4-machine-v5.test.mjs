@@ -25,12 +25,12 @@ async function run(fixtures){
 
 const base={
   'q4-machine-v4':{ok:true,conflict_resolution:{state:'HIGH_CONFLICT',rule_score:100},regime_transition_pressure:{state:'HIGH_TRANSITION_PRESSURE',rule_score:100},frozen_snapshot:{snapshot_id:'TEST'}},
-  'public-v47-probability-lab':{gold:{probability_estimate_pct:null},ai_probability:{probability_pct:null}},
-  'public-market-calibration':{sample_size:0},
-  'public-gold-benchmark-calibration':{canonical:{eligible_n:0,paired_resolutions:1},policy:{adaptive_weighting_enabled:false}},
-  'public-setup-calibration':{resolved_120m_count:0},
-  'public-gold-outcome-learning':{resolved_outcome_count:500,trade_eligible_source_count:0,horizons:[],calibration:{}},
-  'public-gold-signal-reputation':{state:'EARLY_REPUTATION',pipeline:{max_sample_count:13}}
+  'public-v47-probability-lab':{ok:true,gold:{probability_estimate_pct:null},ai_probability:{probability_pct:null}},
+  'public-market-calibration':{ok:true,sample_size:0},
+  'public-gold-benchmark-calibration':{ok:true,canonical:{eligible_n:0,paired_resolutions:1},policy:{adaptive_weighting_enabled:false}},
+  'public-setup-calibration':{ok:true,resolved_120m_count:0},
+  'public-gold-outcome-learning':{ok:true,resolved_outcome_count:500,trade_eligible_source_count:0,horizons:[],calibration:{}},
+  'public-gold-signal-reputation':{ok:true,state:'EARLY_REPUTATION',pipeline:{max_sample_count:13}}
 };
 
 test('V5 withholds probability when evidence is missing instead of coercing null to zero evidence',async()=>{
