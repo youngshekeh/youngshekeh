@@ -294,11 +294,14 @@ function marketStatus(markets: AnyJson) {
 }
 
 async function loadLiveMarkets() {
-  const [markets, core, integrity, evidence] = await Promise.all([
+  const [markets, core, integrity, evidence, q4Zones, q4Liquidity, q4Day] = await Promise.all([
     read('public-live-markets-api', 4500),
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v65-model-evidence-fabric', 5000),
+    readLocal('/api/gold-mtf-zones', 9000),
+    readLocal('/api/gold-liquidity-state-machine', 9000),
+    readLocal('/api/gold-day-state', 7000),
   ]);
   set('market-status', marketStatus(markets));
   set('market-regime', first(markets?.regime?.state, typeof markets?.regime === 'string' ? markets.regime : null, markets?.market_regime, markets?.state, 'UNKNOWN'));
@@ -311,6 +314,18 @@ async function loadLiveMarkets() {
   set('integrity-state', first(goldIntegrity?.false_breakout?.state, goldIntegrity?.lifecycle_stage, integrity?.state, 'UNKNOWN'));
   set('integrity-copy', first(goldIntegrity?.false_breakout?.reason, integrity?.decision_compression?.what_matters_now, 'Signal integrity is evidence-gated.'));
   set('market-evidence', first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN'));
+  const marketQ4Quarter = Array.isArray(q4Zones?.zones)
+    ? q4Zones.zones.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly')
+    : null;
+  const marketQ4Price = first(q4Day?.current?.price, q4Zones?.price, q4Liquidity?.price, null);
+  set('market-q4-price', Number.isFinite(Number(marketQ4Price)) ? Number(marketQ4Price).toFixed(1) : null);
+  set('market-q4-day', first(q4Day?.day_state?.day_state, 'WITHHELD'));
+  set('market-q4-flow', q4Liquidity?.state
+    ? `${first(q4Liquidity.state.direction, 'WITHHELD')} · ${first(q4Liquidity.state.phase, 'WITHHELD')}`
+    : 'WITHHELD');
+  set('market-q4-quarter', marketQ4Quarter?.location
+    ? `${String(marketQ4Quarter.location.zone || 'WITHHELD').replaceAll('_',' ')} · ${marketQ4Quarter.location.position_pct ?? 'n/a'}%`
+    : 'WITHHELD');
 
   const assets = assetList(markets);
   const status = String(marketStatus(markets));
@@ -403,6 +418,23 @@ async function loadGold() {
   set('gold-price', price);
   set('gold-evidence', evidenceState);
   set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.engine?.confidence_pct, gold?.confidence, evidence?.gold?.confidence, null)));
+
+  const q4GoldQuarter = Array.isArray(v81?.zones)
+    ? v81.zones.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly')
+    : null;
+  const q4GoldPrice = first(day?.current?.price, v81?.price, v79?.price, price, null);
+  set('q4-gold-price', Number.isFinite(Number(q4GoldPrice)) ? Number(q4GoldPrice).toFixed(1) : null);
+  set('q4-gold-day', first(day?.day_state?.day_state, 'WITHHELD'));
+  set('q4-gold-flow', v79?.state
+    ? `${first(v79.state.direction, 'WITHHELD')} · ${first(v79.state.phase, 'WITHHELD')}`
+    : 'WITHHELD');
+  set('q4-gold-quarter', q4GoldQuarter?.location
+    ? `${String(q4GoldQuarter.location.zone || 'WITHHELD').replaceAll('_',' ')} · ${q4GoldQuarter.location.position_pct ?? 'n/a'}%`
+    : 'WITHHELD');
+  const q4Up = first(v79?.liquidity_map?.nearest_above, day?.liquidity?.nearest_above, null) as AnyJson | null;
+  const q4Down = first(v79?.liquidity_map?.nearest_below, day?.liquidity?.nearest_below, null) as AnyJson | null;
+  set('q4-gold-draw-up', q4Up?.price != null ? `${q4Up.label ?? 'LIQUIDITY'} · ${Number(q4Up.price).toFixed(1)}` : null);
+  set('q4-gold-draw-down', q4Down?.price != null ? `${q4Down.label ?? 'LIQUIDITY'} · ${Number(q4Down.price).toFixed(1)}` : null);
 
   if (useShadow) {
     set('gold-structure', first(day?.day_state?.day_state, 'SHADOW_DAY_STATE'));
@@ -4203,26 +4235,149 @@ function startGoldPulse() {
 }
 
 async function loadVisualLab() {
-  const [core, integrity, mission] = await Promise.all([
+  const [core, integrity, mission, day, zones, liquidity] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v54-resilient-mission-control', 5000),
+    readLocal('/api/gold-day-state', 7000),
+    readLocal('/api/gold-mtf-zones', 9000),
+    readLocal('/api/gold-liquidity-state-machine', 9000),
   ]);
-  const market = first(core?.structure_signals?.market_status, core?.market_status, mission?.market_status, 'UNKNOWN');
-  const gold = mission?.assets?.find?.((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.label || ''))) || mission?.gold || {};
+
+  const market = first(core?.structure_signals?.market_status, core?.market_status, mission?.market_status, day?.market_session, 'UNKNOWN');
   const goldIntegrity = integrity?.signal_integrity_board?.assets?.find?.((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.label || '')));
+  const qPrice = first(day?.current?.price, zones?.price, liquidity?.price, null);
+  const qPriceN = Number(qPrice);
+  const zoneRows = Array.isArray(zones?.zones) ? zones.zones : [];
+  const quarter = zoneRows.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly');
+  const flowDirection = first(liquidity?.state?.direction, 'WITHHELD');
+  const flowPhase = first(liquidity?.state?.phase, day?.day_state?.day_state, 'WITHHELD');
+
   set('lab-status', market);
-  set('lab-session', first(core?.session?.overlap_state, core?.session_state?.overlap_state, market === 'MARKET_CLOSED' ? 'MARKET_CLOSED' : 'UNKNOWN'));
-  set('lab-structure', market);
-  set('lab-integrity', first(goldIntegrity?.lifecycle_stage, goldIntegrity?.false_breakout?.state, 'UNKNOWN'));
+  set('lab-session', first(core?.session?.overlap_state, core?.session_state?.overlap_state, market === 'MARKET_CLOSED' ? 'MARKET_CLOSED' : day?.market_session, 'UNKNOWN'));
+  set('lab-structure', first(core?.structure_signals?.market_status, core?.market_status, day?.day_state?.day_state, market));
+  set('lab-integrity', first(goldIntegrity?.lifecycle_stage, goldIntegrity?.false_breakout?.state, liquidity?.quality_state, 'UNKNOWN'));
   set('lab-permission', 'WAIT · 0R');
+  set('q4-permission', 'WAIT · 0R');
+  set('q4-price', Number.isFinite(qPriceN) ? qPriceN.toFixed(1) : null);
+  set('q4-day-state', first(day?.day_state?.day_state, 'WITHHELD'));
+  set('q4-flow', `${flowDirection} · ${flowPhase}`);
+  set('q4-quarter', quarter?.location
+    ? `${String(quarter.location.zone || 'WITHHELD').replaceAll('_',' ')} · ${quarter.location.position_pct ?? 'n/a'}%`
+    : 'WITHHELD');
+  set('q4-updated', new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}));
+  set('q4-transmutation', String(flowPhase).replaceAll('_',' '));
+  set('q4-transmutation-copy', liquidity?.state
+    ? `${String(liquidity.state.acceptance || 'WITHHELD').replaceAll('_',' ')} · pressure ${liquidity.state.pressure_score ?? 'n/a'} · extension ${String(liquidity.state.extension_state || 'WITHHELD').replaceAll('_',' ')}.`
+    : 'Regime transition evidence unavailable.');
+
+  const nearestAbove = first(liquidity?.liquidity_map?.nearest_above, day?.liquidity?.nearest_above, null) as AnyJson | null;
+  const nearestBelow = first(liquidity?.liquidity_map?.nearest_below, day?.liquidity?.nearest_below, null) as AnyJson | null;
+  const preferredDraw = /UP/i.test(String(flowDirection)) ? nearestAbove : /DOWN/i.test(String(flowDirection)) ? nearestBelow : nearestAbove;
+  set('q4-nearest-gate', preferredDraw?.price != null ? `${preferredDraw.label ?? 'LIQUIDITY'} · ${Number(preferredDraw.price).toFixed(1)}` : null);
+  set('q4-nearest-gate-copy', preferredDraw?.price != null && Number.isFinite(qPriceN)
+    ? `${Math.abs(Number(preferredDraw.price) - qPriceN).toFixed(1)} points from the current research price. Structural reference, not guaranteed target.`
+    : 'Waiting for live Q4 geometry.');
+  set('q4-current-draw', preferredDraw?.price != null ? `${preferredDraw.label ?? 'LIQUIDITY'} · ${Number(preferredDraw.price).toFixed(1)}` : null);
+  set('q4-river-state', String(flowDirection).replaceAll('_',' '));
+  set('q4-river-copy', liquidity?.state
+    ? `${String(flowPhase).replaceAll('_',' ')} · ${String(liquidity.state.acceptance || 'WITHHELD').replaceAll('_',' ')}. River nodes are observed structural pools.`
+    : 'Liquidity state unavailable.');
+
+  const pyramid = byId('q4-crown-pyramid');
+  if (pyramid) {
+    pyramid.replaceChildren();
+    const pivots = zones?.daily_pivots ?? {};
+    const upper = Array.isArray(zones?.liquidity_ladder?.above) ? zones.liquidity_ladder.above : [];
+    const crownPool = upper.find((x: AnyJson) => /PRIOR_WEEK_HIGH|MONTH_HIGH/i.test(String(x?.label))) || upper.at(-1);
+    const levels = [
+      {label:'CROWN LIQUIDITY', value:first(crownPool?.price, quarter?.high, null)},
+      {label:'ROYAL GATE · R3', value:pivots?.r3},
+      {label:'EXPANSION STEP · R2', value:pivots?.r2},
+      {label:'LIVE THRONE', value:qPrice, live:true},
+      {label:'Q4 EQUILIBRIUM', value:quarter?.mid},
+    ].filter((row: AnyJson) => Number.isFinite(Number(row.value)));
+    const widths = [48,60,72,84,96];
+    let unclaimed = 0;
+    levels.forEach((row: AnyJson, index: number) => {
+      const tier = document.createElement('div');
+      tier.className = 'crown-tier';
+      const value = Number(row.value);
+      const relation = row.live ? 'live' : Number.isFinite(qPriceN) && qPriceN >= value ? 'cleared' : 'unclaimed';
+      if (relation === 'unclaimed') unclaimed += 1;
+      tier.dataset.relation = relation;
+      tier.style.setProperty('--tier-width', `${widths[index] ?? 96}%`);
+      const label = document.createElement('span');
+      label.textContent = row.label;
+      const priceEl = document.createElement('strong');
+      priceEl.textContent = value.toFixed(1);
+      const stateEl = document.createElement('small');
+      stateEl.textContent = relation === 'live' ? 'CURRENT' : relation === 'cleared' ? 'BELOW PRICE' : 'ABOVE PRICE';
+      tier.append(label,priceEl,stateEl);
+      pyramid.appendChild(tier);
+    });
+    set('q4-crown-state', levels.length ? `${unclaimed} GATES ABOVE` : 'WITHHELD');
+  }
+
+  const river = byId('q4-river-pools');
+  if (river) {
+    river.replaceChildren();
+    const below = Array.isArray(zones?.liquidity_ladder?.below) ? zones.liquidity_ladder.below.slice(0,3) : [];
+    const above = Array.isArray(zones?.liquidity_ladder?.above) ? zones.liquidity_ladder.above.slice(0,4) : [];
+    const nodes = [
+      ...below.map((x: AnyJson) => ({...x, kind:'below'})),
+      ...(Number.isFinite(qPriceN) ? [{label:'YOU ARE HERE', price:qPriceN, kind:'current'}] : []),
+      ...above.map((x: AnyJson) => ({...x, kind:'above'})),
+    ].filter((x: AnyJson) => Number.isFinite(Number(x.price))).sort((a: AnyJson,b: AnyJson) => Number(a.price)-Number(b.price));
+    nodes.forEach((node: AnyJson) => {
+      const el = document.createElement('div');
+      el.className = 'river-pool';
+      el.dataset.kind = node.kind;
+      const dot = document.createElement('i');
+      const label = document.createElement('span');
+      label.textContent = String(node.label || 'LIQUIDITY').replaceAll('_',' ');
+      const value = document.createElement('strong');
+      value.textContent = Number(node.price).toFixed(1);
+      el.append(dot,label,value);
+      river.appendChild(el);
+    });
+  }
+
+  const staircase = byId('q4-royal-staircase');
+  if (staircase) {
+    staircase.replaceChildren();
+    const order = ['daily','weekly','monthly','quarterly','yearly'];
+    order.forEach((tf, index) => {
+      const zone = zoneRows.find((x: AnyJson) => String(x?.timeframe).toLowerCase() === tf);
+      if (!zone) return;
+      const step = document.createElement('div');
+      step.className = 'royal-step';
+      step.style.setProperty('--step-index', String(index));
+      step.dataset.zone = String(zone?.location?.zone || 'WITHHELD');
+      const no = document.createElement('span');
+      no.textContent = String(index + 1).padStart(2,'0');
+      const copy = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = tf.toUpperCase();
+      const sub = document.createElement('small');
+      sub.textContent = `${String(zone?.location?.zone || 'WITHHELD').replaceAll('_',' ')} · ${zone?.location?.position_pct ?? 'n/a'}%`;
+      copy.append(title,sub);
+      const range = document.createElement('em');
+      range.textContent = `${Number(zone.low).toFixed(1)} → ${Number(zone.high).toFixed(1)}`;
+      step.append(no,copy,range);
+      staircase.appendChild(step);
+    });
+  }
+  set('q4-stair-state', String(first(zones?.composite?.state, 'WITHHELD')).replaceAll('_',' '));
+
   set('lab-adventure', market === 'MARKET_CLOSED'
-    ? 'The journey is frozen at the last valid session state. No new “battle” or “breakout” animation is inferred while the market is closed.'
+    ? 'The journey is frozen at the last valid session state. No new battle or breakout animation is inferred while the market is closed.'
     : 'Base Camp → Structure → Liquidity → Confirmation → Permission.');
-  set('lab-institutional', first(core?.decision_compression?.what_matters_now, 'Market state, structural context and evidence maturity resolve from the same governed core.'));
+  set('lab-institutional', first(core?.decision_compression?.what_matters_now, liquidity?.liquidity_map?.note, 'Market state, structural context and evidence maturity resolve from the same governed core.'));
 
   const stage = byId('lab-stage');
-  if (stage && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (stage && stage.dataset.q4Bound !== 'true' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    stage.dataset.q4Bound = 'true';
     stage.addEventListener('pointermove', (event) => {
       const e = event as PointerEvent;
       const rect = stage.getBoundingClientRect();
@@ -4238,8 +4393,18 @@ async function loadVisualLab() {
   }
 }
 
+function startVisualLabPulse() {
+  void loadVisualLab();
+  window.setInterval(() => {
+    if (!document.hidden) void loadVisualLab();
+  }, 30_000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void loadVisualLab();
+  });
+}
+
 const surface = document.body.dataset.surface;
 if (surface === 'intelligence') void loadIntelligence();
 if (surface === 'live-markets') startMarketPulse();
 if (surface === 'gold-live') startGoldPulse();
-if (surface === 'visual-lab') void loadVisualLab();
+if (surface === 'visual-lab') startVisualLabPulse();
