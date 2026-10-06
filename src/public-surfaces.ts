@@ -294,15 +294,16 @@ function marketStatus(markets: AnyJson) {
 }
 
 async function loadLiveMarkets() {
-  const [markets, core, integrity, evidence, q4Zones, q4Liquidity, q4Day] = await Promise.all([
+  const [markets, core, integrity, evidence, q4Bundle] = await Promise.all([
     read('public-live-markets-api', 4500),
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v65-model-evidence-fabric', 5000),
-    readLocal('/api/gold-mtf-zones', 9000),
-    readLocal('/api/gold-liquidity-state-machine', 9000),
-    readLocal('/api/gold-day-state', 7000),
+    readLocal('/api/q4-visual-data', 14000),
   ]);
+  const q4Zones = q4Bundle?.zones ?? {};
+  const q4Liquidity = q4Bundle?.liquidity ?? {};
+  const q4Day = q4Bundle?.day ?? {};
   set('market-status', marketStatus(markets));
   set('market-regime', first(markets?.regime?.state, typeof markets?.regime === 'string' ? markets.regime : null, markets?.market_regime, markets?.state, 'UNKNOWN'));
   // Indicative feed allowances cannot authorize real capital on this public research monitor.
@@ -365,7 +366,7 @@ async function loadLiveMarkets() {
 }
 
 async function loadGold() {
-  const [gold, core, evidence, desk, day, v79, v81, v82, v83] = await Promise.all([
+  const [gold, core, evidence, desk, day, v79, v81, v82, v83, q4Bundle] = await Promise.all([
     read('public-gold-live-xauusd', 10500),
     read('public-v63-structural-core-fabric', 6000),
     read('public-v65-model-evidence-fabric', 6000),
@@ -375,7 +376,11 @@ async function loadGold() {
     readLocal('/api/gold-mtf-zones', 9000),
     readLocal('/api/gold-mtf-confluence', 10000),
     readLocal('/api/gold-breakout-acceptance', 10000),
+    readLocal('/api/q4-visual-data', 14000),
   ]);
+  const q4DaySource = day?.ok === true ? day : (q4Bundle?.day ?? day);
+  const q4LiquiditySource = v79?.ok === true ? v79 : (q4Bundle?.liquidity ?? v79);
+  const q4ZoneSource = v81?.ok === true ? v81 : (q4Bundle?.zones ?? v81);
 
   const canonicalMarket = first(gold?.market_status, gold?.state, 'UNKNOWN');
   const canonicalPrice = first(
@@ -419,20 +424,20 @@ async function loadGold() {
   set('gold-evidence', evidenceState);
   set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.engine?.confidence_pct, gold?.confidence, evidence?.gold?.confidence, null)));
 
-  const q4GoldQuarter = Array.isArray(v81?.zones)
-    ? v81.zones.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly')
+  const q4GoldQuarter = Array.isArray(q4ZoneSource?.zones)
+    ? q4ZoneSource.zones.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly')
     : null;
-  const q4GoldPrice = first(day?.current?.price, v81?.price, v79?.price, price, null);
+  const q4GoldPrice = first(q4DaySource?.current?.price, q4ZoneSource?.price, q4LiquiditySource?.price, price, null);
   set('q4-gold-price', Number.isFinite(Number(q4GoldPrice)) ? Number(q4GoldPrice).toFixed(1) : null);
-  set('q4-gold-day', first(day?.day_state?.day_state, 'WITHHELD'));
-  set('q4-gold-flow', v79?.state
-    ? `${first(v79.state.direction, 'WITHHELD')} · ${first(v79.state.phase, 'WITHHELD')}`
+  set('q4-gold-day', first(q4DaySource?.day_state?.day_state, 'WITHHELD'));
+  set('q4-gold-flow', q4LiquiditySource?.state
+    ? `${first(q4LiquiditySource.state.direction, 'WITHHELD')} · ${first(q4LiquiditySource.state.phase, 'WITHHELD')}`
     : 'WITHHELD');
   set('q4-gold-quarter', q4GoldQuarter?.location
     ? `${String(q4GoldQuarter.location.zone || 'WITHHELD').replaceAll('_',' ')} · ${q4GoldQuarter.location.position_pct ?? 'n/a'}%`
     : 'WITHHELD');
-  const q4Up = first(v79?.liquidity_map?.nearest_above, day?.liquidity?.nearest_above, null) as AnyJson | null;
-  const q4Down = first(v79?.liquidity_map?.nearest_below, day?.liquidity?.nearest_below, null) as AnyJson | null;
+  const q4Up = first(q4LiquiditySource?.liquidity_map?.nearest_above, q4DaySource?.liquidity?.nearest_above, null) as AnyJson | null;
+  const q4Down = first(q4LiquiditySource?.liquidity_map?.nearest_below, q4DaySource?.liquidity?.nearest_below, null) as AnyJson | null;
   set('q4-gold-draw-up', q4Up?.price != null ? `${q4Up.label ?? 'LIQUIDITY'} · ${Number(q4Up.price).toFixed(1)}` : null);
   set('q4-gold-draw-down', q4Down?.price != null ? `${q4Down.label ?? 'LIQUIDITY'} · ${Number(q4Down.price).toFixed(1)}` : null);
 
@@ -4235,14 +4240,15 @@ function startGoldPulse() {
 }
 
 async function loadVisualLab() {
-  const [core, integrity, mission, day, zones, liquidity] = await Promise.all([
+  const [core, integrity, mission, q4Bundle] = await Promise.all([
     read('public-v63-structural-core-fabric', 5000),
     read('public-v56-signal-integrity-shield', 5000),
     read('public-v54-resilient-mission-control', 5000),
-    readLocal('/api/gold-day-state', 7000),
-    readLocal('/api/gold-mtf-zones', 9000),
-    readLocal('/api/gold-liquidity-state-machine', 9000),
+    readLocal('/api/q4-visual-data', 14000),
   ]);
+  const day = q4Bundle?.day ?? {};
+  const zones = q4Bundle?.zones ?? {};
+  const liquidity = q4Bundle?.liquidity ?? {};
 
   const market = first(core?.structure_signals?.market_status, core?.market_status, mission?.market_status, day?.market_session, 'UNKNOWN');
   const goldIntegrity = integrity?.signal_integrity_board?.assets?.find?.((x: AnyJson) => /gold|xau/i.test(String(x?.key || x?.label || '')));
