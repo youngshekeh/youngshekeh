@@ -56,3 +56,14 @@ test('V5 requires every authority gate even when an empirical probability is pre
   assert.equal(res.body.calibration_authority.state,'PROBABILITY_AUTHORITY_WITHHELD');
   assert.equal(res.body.calibration_authority.probability_estimate_pct,null);
 });
+
+
+test('V5 keeps calibration authority available when V4 context is unavailable',async()=>{
+  const fixtures={...base,'q4-machine-v4':{ok:false}};
+  const res=await run(fixtures);
+  assert.equal(res.statusCode,200);
+  assert.equal(res.body.ok,true);
+  assert.equal(res.body.v4_state.available,false);
+  assert.equal(res.body.calibration_authority.state,'PROBABILITY_AUTHORITY_WITHHELD');
+  assert.equal(res.body.learning_permission.capital_permission,'0R');
+});
