@@ -1,0 +1,35 @@
+name: Verify V206 Nebius Advisory Sidecar
+
+on:
+  push:
+    branches:
+      - tfa-nebius-sidecar-v206
+      - the-father-analytics-deploy
+  pull_request:
+    branches:
+      - the-father-analytics-deploy
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify Nebius advisory core
+        run: node --test tests/v206-nebius-advisory.test.mjs
+      - name: Verify execution stays locked
+        run: |
+          grep -q "mode: 'ADVISORY_ONLY'" src/nebius-advisory-v206.mjs
+          grep -q "automatic_execution: false" src/nebius-advisory-v206.mjs
+          grep -q "live_order_submission_enabled: false" src/nebius-advisory-v206.mjs
+          grep -q "capital_permission: '0R'" src/nebius-advisory-v206.mjs
+          grep -q "NEBIUS_API_KEY" api/nebius-advisory-v206.js
+          grep -q "NEBIUS_MODEL" api/nebius-advisory-v206.js
