@@ -29,7 +29,7 @@ export default async function handler(req,res){
   }
 
   const [v4,probLab,marketCal,benchmark,setupCal,outcomes,reputation]=await Promise.all([
-    read(ORIGIN+'/api/q4-machine-v4'),
+    read(ORIGIN+'/api/q4-machine-v4',8000),
     read(SUPA+'/public-v47-probability-lab'),
     read(SUPA+'/public-market-calibration'),
     read(SUPA+'/public-gold-benchmark-calibration'),
@@ -37,15 +37,6 @@ export default async function handler(req,res){
     read(SUPA+'/public-gold-outcome-learning'),
     read(SUPA+'/public-gold-signal-reputation')
   ]);
-
-  if(!v4?.ok){
-    return res.status(503).json({
-      ok:false,
-      version:'q4-machine-v5',
-      state:'V4_UNAVAILABLE',
-      governance:{action_permitted:'WAIT',capital_permission:'0R',automatic_execution:false}
-    });
-  }
 
   const marketSample=n(marketCal?.sample_size)??0;
   const canonicalEligible=n(benchmark?.canonical?.eligible_n)??0;
@@ -137,11 +128,13 @@ export default async function handler(req,res){
     version:'q4-machine-v5',
     generated_at:new Date().toISOString(),
     v4_state:{
+      available:v4?.ok===true,
       conflict_state:v4?.conflict_resolution?.state??'WITHHELD',
       conflict_score:v4?.conflict_resolution?.rule_score??null,
       transition_pressure_state:v4?.regime_transition_pressure?.state??'WITHHELD',
       transition_pressure_score:v4?.regime_transition_pressure?.rule_score??null,
-      snapshot_id:v4?.frozen_snapshot?.snapshot_id??null
+      snapshot_id:v4?.frozen_snapshot?.snapshot_id??null,
+      note:v4?.ok===true?'V4 context available.':'V4 context unavailable; calibration authority remains fail-closed and independent.'
     },
     calibration_authority:{
       state:authority,
