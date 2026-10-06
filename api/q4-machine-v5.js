@@ -16,7 +16,7 @@ async function read(url,timeout=16000){
   }catch{return null}finally{clearTimeout(t)}
 }
 
-function n(v){const x=Number(v);return Number.isFinite(x)?x:null}
+function n(v){if(v===null||v===undefined||v==='')return null;const x=Number(v);return Number.isFinite(x)?x:null}
 function s(v,f='WITHHELD'){return String(v??f)}
 function clamp(v,min=0,max=100){return Math.max(min,Math.min(max,v))}
 
