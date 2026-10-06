@@ -38,68 +38,89 @@ export default async function handler(req,res){
     read(SUPA+'/public-gold-signal-reputation')
   ]);
 
-  const marketSample=n(marketCal?.sample_size)??0;
-  const canonicalEligible=n(benchmark?.canonical?.eligible_n)??0;
-  const pairedResolutions=n(benchmark?.canonical?.paired_resolutions)??0;
-  const setupResolved=n(setupCal?.resolved_120m_count)??0;
-  const resolvedOutcomes=n(outcomes?.resolved_outcome_count)??0;
-  const tradeEligible=n(outcomes?.trade_eligible_source_count)??0;
-  const reputationMax=n(reputation?.pipeline?.max_sample_count)??0;
+  const sourceHealth={
+    v4:v4?.ok===true,
+    probability_lab:probLab?.ok===true,
+    market_calibration:marketCal?.ok===true,
+    benchmark_calibration:benchmark?.ok===true,
+    setup_calibration:setupCal?.ok===true,
+    outcome_learning:outcomes?.ok===true,
+    signal_reputation:reputation?.ok===true
+  };
+  const marketSample=sourceHealth.market_calibration?n(marketCal?.sample_size):null;
+  const canonicalEligible=sourceHealth.benchmark_calibration?n(benchmark?.canonical?.eligible_n):null;
+  const pairedResolutions=sourceHealth.benchmark_calibration?n(benchmark?.canonical?.paired_resolutions):null;
+  const setupResolved=sourceHealth.setup_calibration?n(setupCal?.resolved_120m_count):null;
+  const resolvedOutcomes=sourceHealth.outcome_learning?n(outcomes?.resolved_outcome_count):null;
+  const tradeEligible=sourceHealth.outcome_learning?n(outcomes?.trade_eligible_source_count):null;
+  const reputationMax=sourceHealth.signal_reputation?n(reputation?.pipeline?.max_sample_count):null;
   const probabilityPct=n(probLab?.gold?.probability_estimate_pct);
   const aiProbability=n(probLab?.ai_probability?.probability_pct);
 
+  const gate=(key,label,available,current,required,note)=>({
+    key,label,
+    available,
+    passed:available&&current!==null&&current>=required,
+    state:!available?'SOURCE_UNAVAILABLE':current!==null&&current>=required?'PASS':'FAIL',
+    current:available?current:null,
+    required,
+    note
+  });
+
   const gates=[
-    {
-      key:'structural_outcome_volume',
-      label:'Structural outcome sample',
-      passed:resolvedOutcomes>=30,
-      current:resolvedOutcomes,
-      required:30,
-      note:'Forward structural observations exist, but they are not executed-trade PnL.'
-    },
-    {
-      key:'trade_eligible_sources',
-      label:'Trade-eligible source sample',
-      passed:tradeEligible>=5,
-      current:tradeEligible,
-      required:5,
-      note:'At least a small governed trade-eligible cohort is required before performance can inform capital.'
-    },
-    {
-      key:'canonical_calibration_sample',
-      label:'Canonical calibration sample',
-      passed:canonicalEligible>=5,
-      current:canonicalEligible,
-      required:5,
-      note:'Canonical benchmark policy requires eligible resolved observations.'
-    },
-    {
-      key:'market_calibration_sample',
-      label:'Market calibration sample',
-      passed:marketSample>=5,
-      current:marketSample,
-      required:5,
-      note:'Accuracy remains withheld below the evidence threshold.'
-    },
-    {
-      key:'mature_signal_reputation',
-      label:'Mature signal reputation',
-      passed:reputationMax>=30,
-      current:reputationMax,
-      required:30,
-      note:'Early reputation samples are informative but not mature enough for adaptive weighting.'
-    },
-    {
-      key:'independent_oos_probability_model',
-      label:'Independent OOS probabilistic model',
-      passed:aiProbability!==null,
-      current:aiProbability===null?0:1,
-      required:1,
-      note:'AI probability remains withheld until an independently validated out-of-sample model is connected.'
-    }
+    gate(
+      'structural_outcome_volume',
+      'Structural outcome sample',
+      sourceHealth.outcome_learning,
+      resolvedOutcomes,
+      30,
+      'Forward structural observations exist, but they are not executed-trade PnL.'
+    ),
+    gate(
+      'trade_eligible_sources',
+      'Trade-eligible source sample',
+      sourceHealth.outcome_learning,
+      tradeEligible,
+      5,
+      'At least a small governed trade-eligible cohort is required before performance can inform capital.'
+    ),
+    gate(
+      'canonical_calibration_sample',
+      'Canonical calibration sample',
+      sourceHealth.benchmark_calibration,
+      canonicalEligible,
+      5,
+      'Canonical benchmark policy requires eligible resolved observations.'
+    ),
+    gate(
+      'market_calibration_sample',
+      'Market calibration sample',
+      sourceHealth.market_calibration,
+      marketSample,
+      5,
+      'Accuracy remains withheld below the evidence threshold.'
+    ),
+    gate(
+      'mature_signal_reputation',
+      'Mature signal reputation',
+      sourceHealth.signal_reputation,
+      reputationMax,
+      30,
+      'Early reputation samples are informative but not mature enough for adaptive weighting.'
+    ),
+    gate(
+      'independent_oos_probability_model',
+      'Independent OOS probabilistic model',
+      sourceHealth.probability_lab,
+      aiProbability===null?0:1,
+      1,
+      'AI probability remains withheld until an independently validated out-of-sample model is connected.'
+    )
   ];
 
   const passed=gates.filter(g=>g.passed).length;
+  const unknown=gates.filter(g=>!g.available).length;
+  const evaluated=gates.length-unknown;
   const readiness=Math.round((passed/gates.length)*100);
   const authority = (
     passed===gates.length &&
@@ -136,9 +157,16 @@ export default async function handler(req,res){
       snapshot_id:v4?.frozen_snapshot?.snapshot_id??null,
       note:v4?.ok===true?'V4 context available.':'V4 context unavailable; calibration authority remains fail-closed and independent.'
     },
+    source_health:{
+      available_count:Object.values(sourceHealth).filter(Boolean).length,
+      total_count:Object.keys(sourceHealth).length,
+      sources:sourceHealth
+    },
     calibration_authority:{
       state:authority,
       readiness_index_pct:readiness,
+      evaluated_gate_count:evaluated,
+      unknown_gate_count:unknown,
       readiness_label:'EVIDENCE_READINESS_NOT_MARKET_PROBABILITY',
       passed_gates:passed,
       total_gates:gates.length,
@@ -156,11 +184,11 @@ export default async function handler(req,res){
       setup_resolved_120m_count:setupResolved,
       canonical_paired_resolutions:pairedResolutions,
       canonical_eligible_n:canonicalEligible,
-      signal_reputation_state:reputation?.state??'WITHHELD',
+      signal_reputation_state:sourceHealth.signal_reputation?(reputation?.state??'WITHHELD'):'SOURCE_UNAVAILABLE',
       max_signal_sample_count:reputationMax
     },
     horizon_observation_profile:{
-      state:resolvedOutcomes>0?'STRUCTURAL_OBSERVATION_SAMPLE_AVAILABLE':'WITHHELD',
+      state:!sourceHealth.outcome_learning?'SOURCE_UNAVAILABLE':resolvedOutcomes>0?'STRUCTURAL_OBSERVATION_SAMPLE_AVAILABLE':'WITHHELD',
       horizons,
       performance_claims:outcomes?.calibration?.performance_claims??'WITHHELD',
       edge_claims:outcomes?.calibration?.edge_claims??'WITHHELD',
@@ -197,13 +225,14 @@ export default async function handler(req,res){
       capital_permission:'0R',
       next_evidence_needed:gates.filter(g=>!g.passed).map(g=>({
         key:g.key,
+        state:g.state,
         current:g.current,
         required:g.required
       }))
     },
     decision_compression:{
-      what_changed:`V5 calibration authority evaluated ${passed}/${gates.length} evidence gates.`,
-      what_matters_now:`${resolvedOutcomes} structural outcomes exist, but only ${tradeEligible} are trade-eligible and canonical eligible n=${canonicalEligible}.`,
+      what_changed:`V5 calibration authority passed ${passed}/${gates.length} gates with ${unknown} source-unknown gates.`,
+      what_matters_now:`Structural outcomes=${resolvedOutcomes??'UNKNOWN'} · trade-eligible=${tradeEligible??'UNKNOWN'} · canonical eligible n=${canonicalEligible??'UNKNOWN'}.`,
       action_permitted:'WAIT',
       capital_permission:'0R'
     },
