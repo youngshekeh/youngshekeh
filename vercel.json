@@ -5,7 +5,7 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
-  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in tfa-q4-visuals|tfa-machine-q4-v2) exit 1;; the-father-analytics-deploy) case \"$VERCEL_GIT_COMMIT_MESSAGE\" in *\"[deploy]\"*) exit 1;; *) exit 0;; esac;; *) exit 0;; esac",
+  "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in tfa-q4-visuals|tfa-machine-q4-v2|tfa-machine-q4-v3) exit 1;; the-father-analytics-deploy) case \"$VERCEL_GIT_COMMIT_MESSAGE\" in *\"[deploy]\"*) exit 1;; *) exit 0;; esac;; *) exit 0;; esac",
   "headers": [
     {
       "source": "/(.*)",
