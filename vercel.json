@@ -51,8 +51,8 @@
   ],
   "crons": [
     {
-      "path": "/api/executive-cycle",
-      "schedule": "0 6 * * *"
+      "path": "/api/ops-heartbeat",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
