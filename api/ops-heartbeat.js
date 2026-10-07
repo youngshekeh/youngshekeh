@@ -1,13 +1,13 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
-const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-operations';
+const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v179-resource-governor';
 
 function failClosed(res,status,error,detail){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Engine','V180');
   return res.status(status).json({
     ok:false,
-    version:'v180-continuous-operations-heartbeat-v1',
+    version:'v180.0-heartbeat-shell-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -44,7 +44,7 @@ export default async function handler(req,res){
       headers:{
         Authorization:`Bearer ${oidc}`,
         Accept:'application/json',
-        'User-Agent':'TFA-V180-CONTINUOUS-OPS-HEARTBEAT/1.0',
+        'User-Agent':'TFA-V180.0-HEARTBEAT-SHELL/1.0',
         'X-TFA-Trigger':'CRON',
         'X-TFA-Cron-Schedule':String(req.headers['x-vercel-cron-schedule']||'*/5 * * * *')
       },
@@ -63,7 +63,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V180');
     return res.status(200).json({
       ok:true,
-      version:'v180-continuous-operations-heartbeat-v1',
+      version:'v180.0-heartbeat-shell-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       owners_skipped:body.owners_skipped||0,
