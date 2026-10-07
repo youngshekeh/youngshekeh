@@ -9,7 +9,7 @@ const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],agents:[],agentAssignments:[],agentEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},agentCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],agents:[],agentAssignments:[],agentEvents:[],plans:[],planTasks:[],planDependencies:[],plannerEscalations:[],plannerEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},agentCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},plannerCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -921,10 +921,10 @@ function setupInterventions(){
 }
 async function runHeadlessExecutiveCycle(){
   const btn=byId('run-executive-cycle');
-  if(btn){btn.disabled=true;btn.textContent='RUNNING V176'}
+  if(btn){btn.disabled=true;btn.textContent='RUNNING V177'}
   try{
     await fetchJson('/api/executive-cycle',65000);
-    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole()]);
+    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole()]);
     await runExecutiveCycle(true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='RUN EXECUTIVE CYCLE'}
@@ -996,7 +996,7 @@ async function approveRunbook(id){
     if(!response.ok)throw new Error(data?.message||data?.hint||'runbook_approval_failed');
     await syncRunbooksConsole();
     await fetchJson('/api/executive-cycle',60000);
-    await Promise.allSettled([syncRunbooksConsole(),syncInterventions(),syncAgentWorkforceConsole()]);
+    await Promise.allSettled([syncRunbooksConsole(),syncInterventions(),syncAgentWorkforceConsole(),syncPlannerConsole()]);
   }catch(error){
     state.runbookCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.runbookCloud.lastSync};
     renderRunbookCloudState();alert('Runbook approval failed. No external action was performed.');
@@ -1102,6 +1102,117 @@ function renderAgents(){
 }
 function setupAgents(){
   byId('sync-agents')?.addEventListener('click',()=>void syncAgentWorkforceConsole());
+}
+
+
+function renderPlannerCloudState(){
+  const badge=byId('planner-cloud-state');if(!badge)return;
+  const mode=state.plannerCloud.state;
+  badge.className='cmd-badge '+(mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='CLOUD_ERROR'?'bad':'warn');
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':mode==='CLOUD_ERROR'?'CLOUD ERROR':'SIGN IN REQUIRED';
+}
+async function fetchPlannerTable(path){
+  const response=await fetch(SUPABASE+'/rest/v1/'+path,{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(12000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'planner_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function syncPlannerConsole(){
+  state.plannerCloud.state='SYNCING';renderPlannerCloudState();
+  if(!await verifyCloudSession()){
+    state.plannerCloud.state='LOCAL_ONLY';renderPlannerCloudState();renderPlanner();return;
+  }
+  try{
+    const [plans,tasks,deps,escalations,events]=await Promise.all([
+      fetchPlannerTable('command_plans?select=*&order=priority.desc,updated_at.desc'),
+      fetchPlannerTable('command_plan_tasks?select=*&order=plan_id.asc,position.asc'),
+      fetchPlannerTable('command_plan_dependencies?select=*&order=created_at.asc'),
+      fetchPlannerTable('command_planner_escalations?select=*&order=priority.desc,updated_at.desc'),
+      fetchPlannerTable('command_planner_events?select=*&order=created_at.desc&limit=100')
+    ]);
+    state.plans=plans;state.planTasks=tasks;state.planDependencies=deps;state.plannerEscalations=escalations;state.plannerEvents=events;
+    state.plannerCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.plannerCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.plannerCloud.lastSync};
+  }
+  renderPlannerCloudState();renderPlanner();
+}
+function plannerStatusBadge(status){
+  if(status==='READY'||status==='COMPLETE')return'good';
+  if(status==='WAITING_HUMAN'||status==='ESCALATED'||status==='BLOCKED')return'warn';
+  if(status==='STALE'||status==='FAILED')return'bad';
+  return'warn';
+}
+async function resolvePlannerEscalation(id){
+  if(!await verifyCloudSession())return;
+  const row=state.plannerEscalations.find(x=>x.id===id);
+  if(!row||row.signal_active===false||row.status==='RESOLVED')return;
+  const response=prompt('Architect decision. State the bounded decision, condition, or instruction that clears this planner gate. This does not grant capital or external execution authority.','');
+  if(response===null)return;
+  if(!response.trim()){alert('A concrete owner response is required to clear the gate.');return}
+  state.plannerCloud.state='SYNCING';renderPlannerCloudState();
+  try{
+    const r=await fetch(SUPABASE+'/rest/v1/rpc/command_resolve_planner_escalation',{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({p_escalation_id:id,p_response:response.trim()}),
+      cache:'no-store',signal:AbortSignal.timeout(12000)
+    });
+    const data=await r.json().catch(()=>null);
+    if(!r.ok)throw new Error(data?.message||data?.hint||'planner_escalation_resolution_failed');
+    await fetchJson('/api/executive-cycle',65000);
+    await Promise.allSettled([syncPlannerConsole(),syncAgentWorkforceConsole(),syncRunbooksConsole(),syncInterventions()]);
+  }catch(error){
+    state.plannerCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.plannerCloud.lastSync};
+    renderPlannerCloudState();alert('Planner decision could not be committed. The gate remains closed.');
+  }
+}
+function renderPlanner(){
+  const plans=state.plans||[],tasks=state.planTasks||[],escalations=state.plannerEscalations||[],events=state.plannerEvents||[],agents=state.agents||[];
+  const activePlans=plans.filter(x=>!['STALE','ARCHIVED'].includes(x.status));
+  const activeEsc=escalations.filter(x=>x.signal_active!==false&&x.status!=='RESOLVED');
+  set('planner-ready-kpi',String(activePlans.filter(x=>x.status==='READY').length));
+  set('planner-human-kpi',String(activePlans.filter(x=>x.status==='WAITING_HUMAN').length));
+  set('planner-escalation-kpi',String(activeEsc.length));
+  set('planner-blocked-kpi',String(tasks.filter(x=>x.status==='BLOCKED'||x.status==='ESCALATED').length));
+
+  const agentById=new Map(agents.map(a=>[a.id,a]));
+  const list=byId('planner-list');
+  if(list){
+    list.innerHTML=activePlans.length?activePlans.map(p=>{
+      const child=tasks.filter(t=>t.plan_id===p.id).sort((a,b)=>num(a.position)-num(b.position));
+      const chain=child.map(t=>{
+        const a=t.assigned_agent_id?agentById.get(t.assigned_agent_id):null;
+        const owner=t.capability_class==='HUMAN_DECISION'?'ARCHITECT-STEWARD':(a?.name||t.domain);
+        return '<div class="planner-node"><div class="step-num">'+esc(String(t.position).padStart(2,'0'))+'</div><div><strong>'+esc(t.title)+'</strong><small>'+esc(owner)+' · '+esc(capabilityClassName(t.capability_class))+' · '+esc(String(t.action_kind||'').replaceAll('_',' '))+'</small></div><span class="cmd-badge '+plannerStatusBadge(t.status)+'">'+esc(t.status)+'</span></div>';
+      }).join('');
+      const bottleneck=p.bottleneck?'<div class="planner-bottleneck"><strong>BOTTLENECK</strong><br>'+esc(p.bottleneck)+'</div>':'';
+      return '<article class="runbook-item"><div class="runbook-top"><div><div class="runbook-title">'+esc(p.title)+'</div><div class="runbook-meta">'+esc(p.source_type)+' · '+esc(p.domain)+' · PRIORITY '+esc(p.priority)+' · VERSION '+esc(p.version)+'</div></div><span class="cmd-badge '+plannerStatusBadge(p.status)+'">'+esc(p.status)+'</span></div><div class="intervention-action">'+esc(p.objective||'Governed internal plan.')+'</div><div class="planner-path">'+chain+'</div>'+bottleneck+'<div class="planner-source">SOURCE '+esc(p.source_client_id)+' · FINGERPRINT '+esc(p.source_fingerprint)+'</div></article>';
+    }).join(''):'<div class="route-item"><small>No active plans yet. V177 only compiles from real active projects or active Executive Inbox interventions.</small></div>';
+  }
+
+  const escBox=byId('planner-escalations');
+  if(escBox){
+    escBox.innerHTML=activeEsc.length?activeEsc.map(e=>{
+      const plan=plans.find(p=>p.id===e.plan_id);
+      return '<div class="planner-escalation"><strong>'+esc(e.status)+' · '+esc(plan?.title||'Planner Gate')+'</strong>'+esc(e.question)+'<br><span class="planner-source">'+esc(e.reason)+'</span><div class="intervention-actions"><button class="cmd-btn primary" data-resolve-planner="'+esc(e.id)+'">ARCHITECT DECISION</button></div></div>';
+    }).join(''):'<div class="action-receipt">No active Architect decision gate.</div>';
+    escBox.querySelectorAll('[data-resolve-planner]').forEach(btn=>btn.addEventListener('click',()=>void resolvePlannerEscalation(btn.dataset.resolvePlanner)));
+  }
+
+  const eventBox=byId('planner-events');
+  if(eventBox){
+    eventBox.innerHTML=events.length?events.slice(0,14).map(e=>{
+      const plan=plans.find(p=>p.id===e.plan_id);
+      return '<div class="action-receipt"><strong>'+esc(String(e.event_type||'').replaceAll('_',' '))+'</strong>'+esc(plan?.title||'Plan')+'<br>'+esc(e.note||'')+'<br>'+esc(new Date(e.created_at).toLocaleString())+'</div>';
+    }).join(''):'<div class="action-receipt">No planner events yet.</div>';
+  }
+}
+function setupPlanner(){
+  byId('sync-planner')?.addEventListener('click',()=>void syncPlannerConsole());
 }
 
 function textState(data,fallback='UNKNOWN'){
@@ -1254,7 +1365,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -1275,6 +1386,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();setupPlanner();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);setInterval(()=>void syncPlannerConsole(),300000);
 }
 boot();
