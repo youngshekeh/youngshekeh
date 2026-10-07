@@ -493,7 +493,7 @@ const AGENT_SPECS=[
 async function ensureAgents(userId:string){
   const now=new Date().toISOString();
   await bulkUpsert('command_agents','user_id,agent_key',AGENT_SPECS.map((x:any)=>({
-    id:crypto.randomUUID(),user_id:userId,...x,status:'ACTIVE',created_at:now,updated_at:now
+    user_id:userId,...x,status:'ACTIVE',created_at:now,updated_at:now
   })));
   return dbRows('command_agents?user_id=eq.'+encodeURIComponent(userId)+'&select=*');
 }
@@ -557,7 +557,7 @@ async function syncAgentWorkforce(userId:string,cycle:any){
     const status=isDone?'COMPLETE':step.status==='BLOCKED'?'BLOCKED':'QUEUED';
     const now=new Date().toISOString();
     const row={
-      id:crypto.randomUUID(),user_id:userId,agent_id:agent.id,runbook_id:runbook.id,step_id:step.id,
+      user_id:userId,agent_id:agent.id,runbook_id:runbook.id,step_id:step.id,
       action_run_id:actionRun?.id||null,assignment_key:key,capability_class:step.capability_class,
       action_kind:step.action_kind,status,
       work_order:{title:step.title,description:step.description,objective:runbook.objective,runbook_version:runbook.version},
@@ -570,8 +570,8 @@ async function syncAgentWorkforce(userId:string,cycle:any){
     assignments.push(row);
     if(!existingKeys.has(key)){
       routed++;
-      events.push({user_id:userId,agent_id:agent.id,assignment_id:row.id,event_type:'ASSIGNMENT_ROUTED',note:'V176 routed a governed runbook step within the agent capability budget.',evidence:{assignment_key:key,capability_class:step.capability_class,action_kind:step.action_kind,source_fingerprint:fingerprint},created_at:now});
-      if(isDone)events.push({user_id:userId,agent_id:agent.id,assignment_id:row.id,event_type:'ASSIGNMENT_COMPLETE',note:'Agent produced an internal governed work product with zero external side effects.',evidence:{assignment_key:key,external_effects:false},created_at:now});
+      events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_type:'ASSIGNMENT_ROUTED',note:'V176 routed a governed runbook step within the agent capability budget.',evidence:{assignment_key:key,capability_class:step.capability_class,action_kind:step.action_kind,source_fingerprint:fingerprint},created_at:now});
+      if(isDone)events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_type:'ASSIGNMENT_COMPLETE',note:'Agent produced an internal governed work product with zero external side effects.',evidence:{assignment_key:key,external_effects:false},created_at:now});
     }
     if(status==='COMPLETE')completed++;else if(status==='BLOCKED')blocked++;else queued++;
   }
@@ -619,9 +619,9 @@ Deno.serve(async(req:Request)=>{
       const agent_workforce=await syncAgentWorkforce(owner.user_id,cycle);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce});
     }
-    return Response.json({ok:true,version:'v176-capability-router-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
+    return Response.json({ok:true,version:'v176.1-capability-router-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
   }catch(error){
     console.error('V176_CAPABILITY_ROUTER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v176-capability-router-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
+    return Response.json({ok:false,version:'v176.1-capability-router-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
   }
 });
