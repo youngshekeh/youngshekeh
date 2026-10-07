@@ -1,13 +1,13 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
-const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v178-adaptive-scheduler';
+const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v179-resource-governor';
 
 function failClosed(res,status,error,detail){
   res.setHeader('Cache-Control','no-store');
-  res.setHeader('X-TFA-Engine','V178');
+  res.setHeader('X-TFA-Engine','V179');
   return res.status(status).json({
     ok:false,
-    version:'v178.2-adaptive-scheduler-bridge-v1',
+    version:'v179-resource-governor-bridge-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -26,7 +26,7 @@ export default async function handler(req,res){
 
   try{
     const response=await fetch(RUNTIME,{
-      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V178.2-ADAPTIVE-SCHEDULER-BRIDGE/1.0'},
+      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V179-RESOURCE-GOVERNOR-BRIDGE/1.0'},
       cache:'no-store',
       signal:AbortSignal.timeout(60000)
     });
@@ -37,10 +37,10 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PUBLIC-SHELL-PRIVATE-BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
-    res.setHeader('X-TFA-Engine','V178');
+    res.setHeader('X-TFA-Engine','V179');
     return res.status(200).json({
       ok:true,
-      version:'v178.2-adaptive-scheduler-bridge-v1',
+      version:'v179-resource-governor-bridge-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       results,
