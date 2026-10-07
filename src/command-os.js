@@ -1,7 +1,10 @@
 import './styles.css';
 
 const LEDGER_KEY='tfa.v168.command.decisions.v1';
-const state={ledger:loadLedger(),sources:{},lastSync:null};
+const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
+const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+const SESSION_KEY='tfa_session';
+const state={ledger:loadLedger(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -20,6 +23,125 @@ function uid(){return Date.now().toString(36)+'-'+Math.random().toString(36).sli
 function loadLedger(){try{const v=JSON.parse(localStorage.getItem(LEDGER_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
 function saveLedger(){localStorage.setItem(LEDGER_KEY,JSON.stringify(state.ledger))}
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
+function sessionToken(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')?.access_token||null}catch{return null}}
+function cloudTimestamp(x){const value=x?.updatedAt||x?.resolvedAt||x?.createdAt||'';const n=Date.parse(value);return Number.isFinite(n)?n:0}
+function toCloudRow(x){
+  return{
+    user_id:state.cloud.userId,
+    client_decision_id:x.id,
+    title:String(x.title||'').slice(0,240),
+    domain:String(x.domain||'RESEARCH'),
+    confidence:Math.max(0,Math.min(100,Math.round(num(x.confidence)))),
+    thesis:String(x.thesis||''),
+    invalidation:String(x.invalidation||''),
+    next_action:String(x.nextAction||''),
+    expected_value:String(x.expectedValue||''),
+    status:String(x.status||'OPEN'),
+    outcome:x.outcome||null,
+    lesson:String(x.lesson||''),
+    client_created_at:x.createdAt||new Date().toISOString(),
+    resolved_at:x.resolvedAt||null,
+    updated_at:x.updatedAt||x.resolvedAt||x.createdAt||new Date().toISOString()
+  };
+}
+function fromCloudRow(row){
+  return{
+    id:row.client_decision_id,
+    title:row.title,
+    domain:row.domain,
+    confidence:String(row.confidence),
+    thesis:row.thesis||'',
+    invalidation:row.invalidation||'',
+    nextAction:row.next_action||'',
+    expectedValue:row.expected_value||'',
+    status:row.status,
+    outcome:row.outcome||null,
+    lesson:row.lesson||'',
+    createdAt:row.client_created_at||row.created_at,
+    resolvedAt:row.resolved_at||null,
+    updatedAt:row.updated_at||row.created_at
+  };
+}
+function renderCloudState(){
+  const badge=byId('cloud-memory-state'),hero=byId('memory-mode-badge'),copy=byId('cloud-memory-copy');
+  const mode=state.cloud.state;
+  const cls=mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='LOCAL_ONLY'?'warn':'bad';
+  if(badge){badge.className='cmd-badge '+cls;badge.textContent=mode.replaceAll('_',' ')}
+  if(hero){hero.className='cmd-badge '+cls;hero.textContent=mode==='CLOUD_SYNCED'?'MEMORY · CLOUD SYNCED':'MEMORY · LOCAL FALLBACK'}
+  if(copy){
+    if(mode==='CLOUD_SYNCED')copy.textContent='Durable Command Memory is synchronized to your authenticated account with Row Level Security. Device cache remains available offline.';
+    else if(mode==='SYNCING')copy.textContent='Merging device memory with your authenticated cloud ledger.';
+    else if(mode==='CLOUD_ERROR')copy.textContent='Cloud memory is temporarily unavailable. The device ledger remains active and will retry without losing local decisions.';
+    else copy.innerHTML='Local fallback is active. <a href="../member/">Sign in as a member</a> to unlock cross-device Command Memory.';
+  }
+}
+async function verifyCloudSession(){
+  const token=sessionToken();
+  if(!token){state.cloud={token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null};renderCloudState();return false}
+  try{
+    const response=await fetch(SUPABASE+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(8000)});
+    const user=await response.json().catch(()=>null);
+    if(!response.ok||!user?.id)throw new Error('session_invalid');
+    state.cloud.token=token;state.cloud.userId=user.id;return true;
+  }catch(error){
+    state.cloud={token:null,userId:null,state:'LOCAL_ONLY',lastError:String(error),lastSync:null};renderCloudState();return false;
+  }
+}
+async function cloudRows(){
+  const response=await fetch(SUPABASE+'/rest/v1/command_decisions?select=*&order=client_created_at.desc',{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'cloud_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function upsertCloud(items){
+  if(!state.cloud.token||!state.cloud.userId||!items.length)return;
+  const response=await fetch(SUPABASE+'/rest/v1/command_decisions?on_conflict=user_id,client_decision_id',{
+    method:'POST',
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify(items.map(toCloudRow)),
+    cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+  if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data?.message||'cloud_write_failed')}
+}
+async function syncItemToCloud(item){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{await upsertCloud([item]);state.cloud.state='CLOUD_SYNCED';state.cloud.lastSync=new Date().toISOString();renderCloudState()}
+  catch(error){state.cloud.state='CLOUD_ERROR';state.cloud.lastError=String(error);renderCloudState()}
+}
+async function deleteCloudItem(id){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{
+    const response=await fetch(SUPABASE+'/rest/v1/command_decisions?client_decision_id=eq.'+encodeURIComponent(id),{
+      method:'DELETE',
+      headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Prefer:'return=minimal'},
+      cache:'no-store',signal:AbortSignal.timeout(10000)
+    });
+    if(!response.ok)throw new Error('cloud_delete_failed');
+  }catch(error){state.cloud.state='CLOUD_ERROR';state.cloud.lastError=String(error);renderCloudState()}
+}
+async function syncCloudMemory(){
+  state.cloud.state='SYNCING';renderCloudState();
+  if(!await verifyCloudSession())return;
+  try{
+    const remote=(await cloudRows()).map(fromCloudRow);
+    const merged=new Map();
+    for(const item of state.ledger)merged.set(item.id,item);
+    for(const item of remote){
+      const local=merged.get(item.id);
+      if(!local||cloudTimestamp(item)>=cloudTimestamp(local))merged.set(item.id,item);
+    }
+    state.ledger=[...merged.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+    saveLedger();
+    await upsertCloud(state.ledger);
+    state.cloud.state='CLOUD_SYNCED';state.cloud.lastError=null;state.cloud.lastSync=new Date().toISOString();
+    renderAll();renderCloudState();
+  }catch(error){
+    state.cloud.state='CLOUD_ERROR';state.cloud.lastError=String(error);renderCloudState();renderAll();
+  }
+}
 function textState(data,fallback='UNKNOWN'){
   const candidates=[data?.state,data?.status,data?.health?.state,data?.machine_state,data?.decision?.state,data?.watch?.state,data?.desk_state];
   return String(candidates.find(v=>v!==undefined&&v!==null&&String(v).trim())??fallback).toUpperCase();
@@ -145,9 +267,9 @@ function renderLedger(){
   host.querySelectorAll('[data-resolve]').forEach(btn=>btn.addEventListener('click',()=>{
     const item=state.ledger.find(x=>x.id===btn.dataset.resolve);if(!item)return;
     const lesson=prompt('What did this decision teach the machine?')||'';
-    item.status='RESOLVED';item.outcome=btn.dataset.outcome;item.lesson=lesson.trim();item.resolvedAt=new Date().toISOString();saveLedger();renderAll();
+    item.status='RESOLVED';item.outcome=btn.dataset.outcome;item.lesson=lesson.trim();item.resolvedAt=new Date().toISOString();item.updatedAt=new Date().toISOString();saveLedger();renderAll();void syncItemToCloud(item);
   }));
-  host.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{state.ledger=state.ledger.filter(x=>x.id!==btn.dataset.delete);saveLedger();renderAll()}));
+  host.querySelectorAll('[data-delete]').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.dataset.delete;state.ledger=state.ledger.filter(x=>x.id!==id);saveLedger();renderAll();void deleteCloudItem(id)}));
 }
 
 function renderScenario(){
@@ -166,11 +288,11 @@ function setupLedger(){
   const form=byId('decision-form');
   form?.addEventListener('submit',e=>{
     e.preventDefault();const row=Object.fromEntries(new FormData(form).entries());
-    state.ledger.push({...row,id:uid(),outcome:null,lesson:'',createdAt:new Date().toISOString()});saveLedger();form.reset();
+    const now=new Date().toISOString();const item={...row,id:uid(),outcome:null,lesson:'',createdAt:now,updatedAt:now};state.ledger.push(item);saveLedger();form.reset();void syncItemToCloud(item);
     const confidence=form.querySelector('[name=confidence]');if(confidence)confidence.value='50';renderAll();
   });
   byId('export-ledger')?.addEventListener('click',()=>download('tfa-command-ledger-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify({version:'v168',exportedAt:new Date().toISOString(),governance:governedPermission(),decisions:state.ledger},null,2)));
-  byId('clear-ledger')?.addEventListener('click',()=>{if(confirm('Clear the browser-local Command OS decision ledger? Export first if you need a backup.')){state.ledger=[];saveLedger();renderAll()}});
+  byId('clear-ledger')?.addEventListener('click',()=>{if(confirm('Clear this device cache only? Cloud memory, if synced, will remain and can restore on the next sync.')){state.ledger=[];saveLedger();renderAll()}});byId('sync-cloud')?.addEventListener('click',()=>void syncCloudMemory());
 }
 
 async function syncMachine(){
@@ -181,6 +303,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();renderLedger();byId('refresh-command')?.addEventListener('click',syncMachine);void syncMachine();setInterval(()=>void syncMachine(),60000);
+  setupLedger();renderLedger();renderCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);
 }
 boot();
