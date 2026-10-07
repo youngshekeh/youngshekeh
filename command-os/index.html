@@ -33,8 +33,8 @@
     .scenario{padding:19px;border-radius:18px;border:1px solid rgba(165,140,255,.18);background:radial-gradient(circle at 80% 0,rgba(165,140,255,.1),transparent 42%),rgba(165,140,255,.025);font-size:12px;line-height:1.7;color:#d7d2df}
     .section-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.empty{padding:26px;text-align:center;color:#77717e;border:1px dashed rgba(255,255,255,.08);border-radius:15px}
     .org-brief{padding:18px;border:1px solid rgba(114,240,173,.14);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(114,240,173,.08),transparent 36%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#d9d5df}.route-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.route-lane{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.13);min-height:120px}.route-lane strong{font-size:9px;letter-spacing:.11em}.route-item{margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.05);font-size:9px;line-height:1.5;color:#cfcad5}.route-item small{display:block;color:#77717e;margin-top:3px}
-    .org-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.org-list{display:grid;gap:9px}.org-item{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.14)}.org-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.org-title{font-size:11px;font-weight:950}.org-score{font-size:18px;font-weight:1000;color:var(--cmd-gold)}.org-meta{font-size:8px;color:#7d7782;line-height:1.5;margin-top:6px}.org-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.org-form-title{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#99929f;margin-top:14px}
-    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid,.org-board{grid-template-columns:1fr}.route-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
+    .org-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.biz-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.biz-brief{padding:18px;border:1px solid rgba(243,200,107,.16);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(243,200,107,.08),transparent 38%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#ddd7ca}.org-list{display:grid;gap:9px}.org-item{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.14)}.org-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.org-title{font-size:11px;font-weight:950}.org-score{font-size:18px;font-weight:1000;color:var(--cmd-gold)}.org-meta{font-size:8px;color:#7d7782;line-height:1.5;margin-top:6px}.org-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.org-form-title{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#99929f;margin-top:14px}
+    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid,.org-board,.biz-board{grid-template-columns:1fr}.route-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
     @media(max-width:620px){.health-grid,.constitution,.route-grid{grid-template-columns:1fr}.cmd-form label,.cmd-form label.wide{grid-column:span 12}.cmd-hero-main{padding:23px}.priority-item{grid-template-columns:46px minmax(0,1fr)}.priority-type{grid-column:2}}
   </style>
 </head>
@@ -48,7 +48,7 @@
   <main class="wrap command-shell">
     <section class="cmd-hero">
       <article class="cmd-hero-main">
-        <div class="cmd-label">V169 · ARCHITECT-STEWARD + ORGANIZATION BRAIN</div>
+        <div class="cmd-label">V170 · ARCHITECT-STEWARD + INSTITUTIONAL OPERATING BRAIN</div>
         <h1>See everything.<br><span>Decide little.</span></h1>
         <p>THE FATHER COMMAND OS compresses the machine into the few decisions worthy of human judgment. Intelligence flows upward. Permission flows downward. Every decision leaves evidence for the next version of the system.</p>
         <div class="cmd-badges">
@@ -158,6 +158,82 @@
         <div class="org-board">
           <section><div class="cmd-label">OBJECTIVE MAP</div><div id="objective-list" class="org-list"></div></section>
           <section><div class="cmd-label">PROJECT PRIORITY STACK</div><div id="project-list" class="org-list"></div></section>
+        </div>
+      </article>
+
+      <article class="cmd-card span-12">
+        <div class="section-row">
+          <div><div class="cmd-label">BUSINESS UNIT + PRODUCT & DISTRIBUTION BRAIN · V1</div><h2>Every company, product and channel must earn resources.</h2></div>
+          <div class="cmd-actions"><span id="biz-cloud-state" class="cmd-badge warn">LOCAL FALLBACK</span><button id="sync-business" class="cmd-btn">SYNC BUSINESS BRAIN</button></div>
+        </div>
+        <div class="cmd-grid" style="margin-top:12px">
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE BUSINESS UNITS</div><div id="biz-units-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE PRODUCTS</div><div id="biz-products-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE CHANNELS</div><div id="biz-channels-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">COMMERCIAL BLOCKERS</div><div id="biz-blockers-kpi" class="cmd-kpi">0</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="cmd-label">PORTFOLIO COMMAND BRIEF</div>
+          <div id="biz-brief" class="biz-brief">Commercial portfolio state is initializing. Currency totals remain separated by ISO currency.</div>
+        </div>
+
+        <div class="org-form-title">ADD BUSINESS UNIT</div>
+        <form id="business-form" class="cmd-form">
+          <label class="wide"><span>BUSINESS / UNIT</span><input name="name" required placeholder="THE FATHER INTELLIGENCE, SME, Playlist Network..." /></label>
+          <label><span>CATEGORY</span><select name="category"><option>SOFTWARE</option><option>INTELLIGENCE</option><option>MUSIC</option><option>MEDIA</option><option>DATA</option><option>SERVICES</option><option>OTHER</option></select></label>
+          <label><span>STATUS</span><select name="status"><option>ACTIVE</option><option>INCUBATING</option><option>PAUSED</option><option>EXIT_REVIEW</option></select></label>
+          <label><span>PRIORITY 1–5</span><input name="strategicPriority" type="number" min="1" max="5" value="3" required /></label>
+          <label><span>CURRENCY</span><input name="currency" value="USD" pattern="[A-Z]{3}" maxlength="3" required /></label>
+          <label><span>REVENUE 30D</span><input name="revenue30d" type="number" min="0" step="0.01" /></label>
+          <label><span>COST 30D</span><input name="cost30d" type="number" min="0" step="0.01" /></label>
+          <label><span>GROWTH %</span><input name="growthPct" type="number" step="0.01" /></label>
+          <label><span>CUSTOMERS / USERS</span><input name="customers" type="number" min="0" step="1" /></label>
+          <label><span>PRIMARY METRIC</span><input name="primaryMetric" placeholder="MRR, listeners, paid members..." /></label>
+          <label><span>METRIC VALUE</span><input name="primaryMetricValue" placeholder="Current value" /></label>
+          <label class="wide"><span>NEXT ACTION</span><input name="nextAction" placeholder="Highest-value commercial action" /></label>
+          <label class="wide"><span>BLOCKER</span><input name="blocker" placeholder="Constraint preventing growth" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">ADD BUSINESS UNIT</button></div>
+        </form>
+
+        <div class="org-form-title">ADD PRODUCT</div>
+        <form id="product-form" class="cmd-form">
+          <label class="wide"><span>PRODUCT</span><input name="name" required placeholder="Report, SaaS plan, playlist package, API..." /></label>
+          <label><span>BUSINESS UNIT</span><select id="product-business" name="businessId"><option value="">UNLINKED</option></select></label>
+          <label><span>TYPE</span><select name="productType"><option>SAAS</option><option>SUBSCRIPTION</option><option>REPORT</option><option>API</option><option>SERVICE</option><option>MEDIA</option><option>PLAYLIST</option><option>OTHER</option></select></label>
+          <label><span>STATUS</span><select name="status"><option>ACTIVE</option><option>BUILDING</option><option>IDEA</option><option>PAUSED</option><option>KILL_REVIEW</option></select></label>
+          <label><span>PRIORITY 1–5</span><input name="strategicPriority" type="number" min="1" max="5" value="3" required /></label>
+          <label><span>CURRENCY</span><input name="currency" value="USD" pattern="[A-Z]{3}" maxlength="3" required /></label>
+          <label><span>PRICE</span><input name="price" type="number" min="0" step="0.01" /></label>
+          <label><span>REVENUE 30D</span><input name="revenue30d" type="number" min="0" step="0.01" /></label>
+          <label><span>USERS 30D</span><input name="users30d" type="number" min="0" step="1" /></label>
+          <label><span>CONVERSION %</span><input name="conversionPct" type="number" min="0" max="100" step="0.01" /></label>
+          <label><span>MARGIN %</span><input name="marginPct" type="number" max="100" step="0.01" /></label>
+          <label class="wide"><span>NEXT ACTION</span><input name="nextAction" placeholder="Next product action" /></label>
+          <label class="wide"><span>BLOCKER</span><input name="blocker" placeholder="What is constraining this product?" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">ADD PRODUCT</button></div>
+        </form>
+
+        <div class="org-form-title">ADD DISTRIBUTION CHANNEL</div>
+        <form id="channel-form" class="cmd-form">
+          <label class="wide"><span>CHANNEL</span><input name="name" required placeholder="Email list, SEO, Instagram, playlist network..." /></label>
+          <label><span>BUSINESS UNIT</span><select id="channel-business" name="businessId"><option value="">UNLINKED</option></select></label>
+          <label><span>PRODUCT</span><select id="channel-product" name="productId"><option value="">UNLINKED</option></select></label>
+          <label><span>TYPE</span><select name="channelType"><option>EMAIL</option><option>SEO</option><option>PLAYLIST</option><option>SOCIAL</option><option>PARTNERSHIPS</option><option>DIRECT</option><option>PAID</option><option>OTHER</option></select></label>
+          <label><span>STATUS</span><select name="status"><option>ACTIVE</option><option>TESTING</option><option>PAUSED</option><option>STOPPED</option></select></label>
+          <label><span>CURRENCY</span><input name="currency" value="USD" pattern="[A-Z]{3}" maxlength="3" required /></label>
+          <label><span>AUDIENCE</span><input name="audience" type="number" min="0" step="1" /></label>
+          <label><span>LEADS 30D</span><input name="leads30d" type="number" min="0" step="1" /></label>
+          <label><span>CONVERSIONS 30D</span><input name="conversions30d" type="number" min="0" step="1" /></label>
+          <label><span>REVENUE 30D</span><input name="revenue30d" type="number" min="0" step="0.01" /></label>
+          <label><span>COST 30D</span><input name="cost30d" type="number" min="0" step="0.01" /></label>
+          <label class="wide"><span>NEXT ACTION</span><input name="nextAction" placeholder="Next acquisition / distribution action" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">ADD CHANNEL</button></div>
+        </form>
+
+        <div class="biz-board">
+          <section><div class="cmd-label">BUSINESS PORTFOLIO</div><div id="business-list" class="org-list"></div></section>
+          <section><div class="cmd-label">PRODUCT STACK</div><div id="product-stack" class="org-list"></div></section>
+          <section><div class="cmd-label">DISTRIBUTION STACK</div><div id="channel-stack" class="org-list"></div></section>
         </div>
       </article>
 
