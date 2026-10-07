@@ -853,7 +853,7 @@ function dateEndLagos(value:any){
   const d=new Date(s+'T23:59:59+01:00');
   return Number.isFinite(d.getTime())?d:null;
 }
-function sourceDeadlineForPlan(plan:any,interventions:any[],projects:any[],policy:any,nowMs:number){
+function sourceDeadlineForPlan(plan:any,interventions:any[],projects:any[],policy:any,nowMs:number,existingItems:any[],currentFingerprint:string){
   if(plan.source_type==='PROJECT'){
     const p=projects.find((x:any)=>x.client_project_id===plan.source_client_id);
     const d=dateEndLagos(p?.due_date);
@@ -864,6 +864,12 @@ function sourceDeadlineForPlan(plan:any,interventions:any[],projects:any[],polic
     const d=i?.due_at?new Date(i.due_at):null;
     if(d&&Number.isFinite(d.getTime()))return{origin:'INTERVENTION_DEADLINE',source:d,due:d};
   }
+  const frozen=existingItems
+    .filter((x:any)=>x.plan_id===plan.id&&x.source_fingerprint===currentFingerprint&&x.deadline_origin==='INTERNAL_SLA')
+    .map((x:any)=>new Date(x.due_at))
+    .filter((d:Date)=>Number.isFinite(d.getTime()))
+    .sort((a:Date,b:Date)=>b.getTime()-a.getTime())[0];
+  if(frozen)return{origin:'INTERNAL_SLA',source:null,due:frozen};
   const mins=policyPrioritySla(policy,n(plan.priority));
   return{origin:'INTERNAL_SLA',source:null,due:new Date(nowMs+mins*60000)};
 }
@@ -921,7 +927,8 @@ async function syncAdaptiveScheduler(userId:string,cycle:any,data:any){
   for(const plan of plans.filter((x:any)=>!['STALE','ARCHIVED'].includes(x.status))){
     const planTasks=tasks.filter((x:any)=>x.plan_id===plan.id).sort((a:any,b:any)=>n(a.position)-n(b.position));
     if(!planTasks.length)continue;
-    const deadline=sourceDeadlineForPlan(plan,interventions,projects,policy,nowMs);
+    const currentFingerprint=String(planTasks[0]?.source_fingerprint||plan.source_fingerprint||'');
+    const deadline=sourceDeadlineForPlan(plan,interventions,projects,policy,nowMs,existing,currentFingerprint);
     const remainingFrom=new Map<string,number>();
     let rem=0;
     for(let i=planTasks.length-1;i>=0;i--){
@@ -1066,9 +1073,9 @@ Deno.serve(async(req:Request)=>{
       const adaptive_scheduler=await syncAdaptiveScheduler(owner.user_id,cycle,data);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decision_count||cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner,adaptive_scheduler});
     }
-    return Response.json({ok:true,version:'v178.1-adaptive-scheduler-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
+    return Response.json({ok:true,version:'v178.2-adaptive-scheduler-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
   }catch(error){
     console.error('V178_ADAPTIVE_SCHEDULER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v178.1-adaptive-scheduler-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
+    return Response.json({ok:false,version:'v178.2-adaptive-scheduler-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
   }
 });
