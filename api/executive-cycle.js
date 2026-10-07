@@ -7,7 +7,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('X-TFA-Engine','V178');
   return res.status(status).json({
     ok:false,
-    version:'v178-adaptive-scheduler-bridge-v1',
+    version:'v178.2-adaptive-scheduler-bridge-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -26,7 +26,7 @@ export default async function handler(req,res){
 
   try{
     const response=await fetch(RUNTIME,{
-      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V178-ADAPTIVE-SCHEDULER-BRIDGE/1.0'},
+      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V178.2-ADAPTIVE-SCHEDULER-BRIDGE/1.0'},
       cache:'no-store',
       signal:AbortSignal.timeout(60000)
     });
@@ -40,7 +40,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V178');
     return res.status(200).json({
       ok:true,
-      version:'v178-adaptive-scheduler-bridge-v1',
+      version:'v178.2-adaptive-scheduler-bridge-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       results,
