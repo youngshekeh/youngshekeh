@@ -181,7 +181,7 @@ async function syncInterventionInbox(userId:string,cycle:any){
     if(!prior){
       const id=crypto.randomUUID();
       await upsert('command_interventions','user_id,intervention_key',{
-        id,user_id:userId,source:'EXECUTIVE_CYCLE',
+        id,user_id:userId,intervention_key:s.intervention_key,source:'EXECUTIVE_CYCLE',
         source_cycle_date:cycle.cycle_date,source_fingerprint:cycle.state_fingerprint,source_code:s.source_code,
         title:s.title,summary:s.summary,recommended_action:s.recommended_action,category:s.category,
         severity:s.severity,priority:s.priority,approval_required:s.approval_required,status:'NEW',
@@ -258,9 +258,9 @@ Deno.serve(async(req:Request)=>{
       const intervention_sync=await syncInterventionInbox(owner.user_id,cycle);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync});
     }
-    return Response.json({ok:true,version:'v174-executive-workflow-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
+    return Response.json({ok:true,version:'v174.1-executive-workflow-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
   }catch(error){
     console.error('V174_EXECUTIVE_WORKFLOW_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v174-executive-workflow-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
+    return Response.json({ok:false,version:'v174.1-executive-workflow-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
   }
 });
