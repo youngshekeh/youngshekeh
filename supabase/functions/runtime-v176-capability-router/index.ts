@@ -65,6 +65,16 @@ async function bulkUpsert(table:string,conflict:string,rows:any[]){
   });
   if(!r.ok)throw new Error(`bulk_upsert_${table}_${r.status}`);
 }
+async function bulkInsertIgnore(table:string,conflict:string,rows:any[]){
+  if(!rows.length)return;
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(conflict)}`,{
+    method:'POST',
+    headers:{...headers(),Prefer:'resolution=ignore-duplicates,return=minimal'},
+    body:JSON.stringify(rows),
+    signal:AbortSignal.timeout(12000)
+  });
+  if(!r.ok)throw new Error(`bulk_insert_ignore_${table}_${r.status}`);
+}
 async function source(key:string,name:string,path:string,critical:boolean){
   const started=Date.now();
   try{
@@ -501,7 +511,7 @@ function routeAgent(step:any,runbook:any){
   const kind=String(step.action_kind||''),ctx=(String(runbook.title||'')+' '+String(runbook.objective||'')+' '+String(step.title||'')+' '+String(step.description||'')).toUpperCase();
   if(kind==='SNAPSHOT_EVIDENCE'||kind==='CHECK_PRECONDITIONS')return'DATA_AGENT';
   if(/SEO|SEARCH|PLAYLIST|AUDIENCE|DISTRIBUTION|CONTENT|SOCIAL/.test(ctx))return kind==='GENERATE_PROPOSAL'?'SEO_AGENT':'SEO_AGENT';
-  if(/PRODUCT|USER|CONVERSION|MRR|CHURN|ONBOARD|MEMBER/.test(ctx))return'PRODUCT_AGENT';
+  if(/\bPRODUCT\b|\bUSERS?\b|CONVERSION|MRR|CHURN|ONBOARD|MEMBER/.test(ctx))return'PRODUCT_AGENT';
   if(/QUALITY|QA|GOVERNANCE|GATE|PERMISSION|AUDIT/.test(ctx)&&kind==='GENERATE_PROPOSAL')return'QA_AGENT';
   if(/SYSTEM|ENGINEER|TECH|HEALTH|FEED|SOURCE|RUNTIME|API|DEPLOY|DATABASE|CLOSURE/.test(ctx))return'ENGINEERING_AGENT';
   if(kind==='PREPARE_INTERNAL_WORK_PACKAGE'||kind==='INTERNAL_RECORD_UPDATE')return'OPERATIONS_AGENT';
@@ -570,8 +580,8 @@ async function syncAgentWorkforce(userId:string,cycle:any){
     assignments.push(row);
     if(!existingKeys.has(key)){
       routed++;
-      events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_type:'ASSIGNMENT_ROUTED',note:'V176 routed a governed runbook step within the agent capability budget.',evidence:{assignment_key:key,capability_class:step.capability_class,action_kind:step.action_kind,source_fingerprint:fingerprint},created_at:now});
-      if(isDone)events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_type:'ASSIGNMENT_COMPLETE',note:'Agent produced an internal governed work product with zero external side effects.',evidence:{assignment_key:key,external_effects:false},created_at:now});
+      events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_key:key+':ROUTED',event_type:'ASSIGNMENT_ROUTED',note:'V176 routed a governed runbook step within the agent capability budget.',evidence:{assignment_key:key,capability_class:step.capability_class,action_kind:step.action_kind,source_fingerprint:fingerprint},created_at:now});
+      if(isDone)events.push({user_id:userId,agent_id:agent.id,assignment_id:null,event_key:key+':COMPLETE',event_type:'ASSIGNMENT_COMPLETE',note:'Agent produced an internal governed work product with zero external side effects.',evidence:{assignment_key:key,external_effects:false},created_at:now});
     }
     if(status==='COMPLETE')completed++;else if(status==='BLOCKED')blocked++;else queued++;
   }
@@ -580,7 +590,7 @@ async function syncAgentWorkforce(userId:string,cycle:any){
   if(events.length){
     const refreshed=await dbRows('command_agent_assignments?user_id=eq.'+encodeURIComponent(userId)+'&select=id,assignment_key');
     const idByKey=new Map(refreshed.map((x:any)=>[x.assignment_key,x.id]));
-    await insertRows('command_agent_events',events.map((e:any)=>({...e,assignment_id:idByKey.get(e.evidence.assignment_key)||null})));
+    await bulkInsertIgnore('command_agent_events','user_id,event_key',events.map((e:any)=>({...e,assignment_id:idByKey.get(e.evidence.assignment_key)||null})));
   }
   return{agents:agents.length,routed,completed,queued,blocked,forbidden_routed:0,external_effects:0};
 }
@@ -619,9 +629,9 @@ Deno.serve(async(req:Request)=>{
       const agent_workforce=await syncAgentWorkforce(owner.user_id,cycle);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce});
     }
-    return Response.json({ok:true,version:'v176.1-capability-router-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
+    return Response.json({ok:true,version:'v176.2-capability-router-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
   }catch(error){
     console.error('V176_CAPABILITY_ROUTER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v176.1-capability-router-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
+    return Response.json({ok:false,version:'v176.2-capability-router-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V176'}});
   }
 });
