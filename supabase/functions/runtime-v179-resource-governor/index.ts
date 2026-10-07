@@ -1131,11 +1131,19 @@ async function syncResourceGovernor(userId:string,cycle:any){
 }
 
 async function loadOwner(userId:string){
-  const q='user_id=eq.'+encodeURIComponent(userId)+'&select=*';
-  const [decisions,objectives,projects,businesses,products,channels,allocations,outcomes,cycles]=await Promise.all([
-    dbRows('command_decisions?'+q),dbRows('command_objectives?'+q),dbRows('command_projects?'+q),dbRows('command_business_units?'+q),dbRows('command_products?'+q),dbRows('command_distribution_channels?'+q),dbRows('command_resource_allocations?'+q),dbRows('command_outcomes?'+q),dbRows('command_executive_cycles?user_id=eq.'+encodeURIComponent(userId)+'&cycle_date=eq.'+dateKey()+'&select=*&limit=1')
-  ]);
-  return{decisions,objectives,projects,businesses,products,channels,allocations,outcomes,existing:cycles[0]||null};
+  const data:any=await rpcRows('command_load_owner_state',{p_user_id:userId,p_cycle_date:dateKey()});
+  if(!data||typeof data!=='object')throw new Error('owner_state_snapshot_unavailable');
+  return{
+    decisions:Array.isArray(data.decisions)?data.decisions:[],
+    objectives:Array.isArray(data.objectives)?data.objectives:[],
+    projects:Array.isArray(data.projects)?data.projects:[],
+    businesses:Array.isArray(data.businesses)?data.businesses:[],
+    products:Array.isArray(data.products)?data.products:[],
+    channels:Array.isArray(data.channels)?data.channels:[],
+    allocations:Array.isArray(data.allocations)?data.allocations:[],
+    outcomes:Array.isArray(data.outcomes)?data.outcomes:[],
+    existing:data.existing||null
+  };
 }
 Deno.serve(async(req:Request)=>{
   let stage='AUTH';
@@ -1172,9 +1180,9 @@ Deno.serve(async(req:Request)=>{
       const post_dispatch_scheduler=resource_governor.completed_this_cycle>0?await syncAdaptiveScheduler(owner.user_id,cycle,data):adaptive_scheduler;
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decision_count||cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner,adaptive_scheduler:post_dispatch_scheduler,resource_governor});
     }
-    return Response.json({ok:true,version:'v179.2-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:true,version:'v179.3-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }catch(error){
     console.error('V179_RESOURCE_GOVERNOR_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v179.2-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:false,version:'v179.3-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }
 });
