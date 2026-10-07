@@ -3,10 +3,11 @@ import './styles.css';
 const LEDGER_KEY='tfa.v168.command.decisions.v1';
 const ORG_KEY='tfa.v169.organization.v1';
 const BIZ_KEY='tfa.v170.business.v1';
+const ALLOC_KEY='tfa.v171.allocations.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -28,6 +29,8 @@ function loadOrg(){try{const v=JSON.parse(localStorage.getItem(ORG_KEY)||'null')
 function saveOrg(){localStorage.setItem(ORG_KEY,JSON.stringify(state.org))}
 function loadBiz(){try{const v=JSON.parse(localStorage.getItem(BIZ_KEY)||'null');return v&&Array.isArray(v.units)&&Array.isArray(v.products)&&Array.isArray(v.channels)?v:{units:[],products:[],channels:[]}}catch{return{units:[],products:[],channels:[]}}}
 function saveBiz(){localStorage.setItem(BIZ_KEY,JSON.stringify(state.biz))}
+function loadAllocations(){try{const v=JSON.parse(localStorage.getItem(ALLOC_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+function saveAllocations(){localStorage.setItem(ALLOC_KEY,JSON.stringify(state.allocations))}
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 function sessionToken(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')?.access_token||null}catch{return null}}
 function cloudTimestamp(x){const value=x?.updatedAt||x?.resolvedAt||x?.createdAt||'';const n=Date.parse(value);return Number.isFinite(n)?n:0}
@@ -421,6 +424,64 @@ function setupBusinessBrain(){
   byId('sync-business')?.addEventListener('click',()=>void syncBusinessBrain());
 }
 
+
+function renderAllocCloudState(){
+  const badge=byId('allocation-cloud-state');if(!badge)return;
+  const mode=state.allocCloud.state,cls=mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='LOCAL_ONLY'?'warn':'bad';
+  badge.className='cmd-badge '+cls;badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':'LOCAL FALLBACK';
+}
+function allocationToCloud(x){
+  return{user_id:state.cloud.userId,client_allocation_id:x.id,business_client_id:x.businessId||null,product_client_id:x.productId||null,allocation_type:x.allocationType||'ATTENTION',status:x.status||'PROPOSED',weight_pct:optionalNumber(x.weightPct),currency:x.currency?String(x.currency).toUpperCase().slice(0,3):null,amount:optionalNumber(x.amount),rationale:String(x.rationale||''),human_approved:!!x.humanApproved,client_created_at:x.createdAt||new Date().toISOString(),updated_at:x.updatedAt||x.createdAt||new Date().toISOString()};
+}
+function allocationFromCloud(r){return{id:r.client_allocation_id,businessId:r.business_client_id||'',productId:r.product_client_id||'',allocationType:r.allocation_type,status:r.status,weightPct:r.weight_pct==null?'':String(r.weight_pct),currency:r.currency||'',amount:r.amount==null?'':String(r.amount),rationale:r.rationale||'',humanApproved:!!r.human_approved,createdAt:r.client_created_at||r.created_at,updatedAt:r.updated_at||r.created_at}}
+async function syncAllocationBrain(){
+  state.allocCloud.state='SYNCING';renderAllocCloudState();
+  if(!await verifyCloudSession()){state.allocCloud.state='LOCAL_ONLY';renderAllocCloudState();return}
+  try{
+    const rows=(await restRows('command_resource_allocations')).map(allocationFromCloud),map=new Map(state.allocations.map(x=>[x.id,x]));
+    for(const x of rows){const local=map.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))map.set(x.id,x)}
+    state.allocations=[...map.values()];saveAllocations();
+    await upsertOrgRows('command_resource_allocations','user_id,client_allocation_id',state.allocations.map(allocationToCloud));
+    state.allocCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderAllocCloudState();
+  }catch(error){state.allocCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.allocCloud.lastSync};renderAllocCloudState();renderAll()}
+}
+async function syncAllocationItem(item){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{await upsertOrgRows('command_resource_allocations','user_id,client_allocation_id',[allocationToCloud(item)]);state.allocCloud.state='CLOUD_SYNCED';state.allocCloud.lastSync=new Date().toISOString();renderAllocCloudState()}
+  catch(error){state.allocCloud.state='CLOUD_ERROR';state.allocCloud.lastError=String(error);renderAllocCloudState()}
+}
+async function deleteAllocationCloud(id){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{
+    const response=await fetch(SUPABASE+'/rest/v1/command_resource_allocations?client_allocation_id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Prefer:'return=minimal'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    if(!response.ok)throw new Error('allocation_delete_failed');
+  }catch(error){state.allocCloud.state='CLOUD_ERROR';state.allocCloud.lastError=String(error);renderAllocCloudState()}
+}
+function recommendedAttention(){
+  const units=state.biz.units.filter(x=>x.status==='ACTIVE'),scored=units.map(x=>({unit:x,score:Math.max(1,businessScore(x))})),sum=scored.reduce((s,x)=>s+x.score,0);
+  return scored.sort((a,b)=>b.score-a.score).map(x=>({unit:x.unit,weight:sum?x.score/sum*100:0,score:x.score}));
+}
+function renderAllocationBrain(){
+  const proposed=state.allocations.filter(x=>x.status==='PROPOSED'),approved=state.allocations.filter(x=>x.humanApproved),active=state.allocations.filter(x=>x.status==='ACTIVE'),money=state.allocations.filter(x=>x.status==='PROPOSED'&&optionalNumber(x.amount)!==null);
+  set('alloc-proposed-kpi',String(proposed.length));set('alloc-approved-kpi',String(approved.length));set('alloc-active-kpi',String(active.length));set('alloc-money-kpi',String(money.length));
+  const reco=byId('allocation-recommendations');if(reco){const rows=recommendedAttention();reco.innerHTML=rows.length?rows.map(x=>'<div class="route-item">'+esc(x.unit.name)+'<small>'+x.weight.toFixed(1)+'% suggested attention · business score '+x.score+'/100</small></div>').join(''):'<div class="empty">Add active business units to generate evidence-based attention recommendations.</div>'}
+  const g=governedPermission();set('allocation-governance','Planning authority only. Current sovereign market permission: '+g.action+' / '+g.capital+'. Human approval is required before any resource plan can become ACTIVE. Monetary amounts are records, not payments or capital release.');
+  const businessOptions='<option value="">UNLINKED</option>'+state.biz.units.filter(x=>x.status!=='ARCHIVED').map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+  const productOptions='<option value="">UNLINKED</option>'+state.biz.products.filter(x=>x.status!=='ARCHIVED').map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
+  const bs=byId('allocation-business');if(bs){const v=bs.value;bs.innerHTML=businessOptions;if([...bs.options].some(o=>o.value===v))bs.value=v}
+  const ps=byId('allocation-product');if(ps){const v=ps.value;ps.innerHTML=productOptions;if([...ps.options].some(o=>o.value===v))ps.value=v}
+  const host=byId('allocation-list');if(host){
+    const rows=state.allocations.slice().sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
+    host.innerHTML=rows.length?rows.map(x=>{const b=linkedBusiness(x.businessId),p=linkedProduct(x.productId),amount=optionalNumber(x.amount);return '<article class="org-item"><div class="org-item-top"><div><div class="org-title">'+esc(x.allocationType)+' · '+(p?esc(p.name):b?esc(b.name):'UNLINKED')+'</div><div class="org-meta">'+esc(x.status)+' · human approved '+(x.humanApproved?'YES':'NO')+(x.weightPct!==''?' · weight '+esc(x.weightPct)+'%':'')+(amount!==null?' · '+esc(x.currency||'USD')+' '+esc(amount.toLocaleString()):'')+'</div></div><div class="org-score">'+(x.humanApproved?'✓':'?')+'</div></div><div class="org-meta">'+esc(x.rationale||'No rationale recorded.')+'</div><div class="org-actions">'+(!x.humanApproved?'<button class="cmd-btn mini" data-alloc-approve="'+esc(x.id)+'">HUMAN APPROVE</button>':'')+(x.humanApproved&&x.status!=='ACTIVE'?'<button class="cmd-btn mini" data-alloc-status="'+esc(x.id)+'" data-status="ACTIVE">ACTIVATE PLAN</button>':'')+(x.status==='ACTIVE'?'<button class="cmd-btn mini" data-alloc-status="'+esc(x.id)+'" data-status="PAUSED">PAUSE</button>':'')+'<button class="cmd-btn mini" data-alloc-status="'+esc(x.id)+'" data-status="CLOSED">CLOSE</button><button class="cmd-btn mini danger" data-alloc-status="'+esc(x.id)+'" data-status="REJECTED">REJECT</button><button class="cmd-btn mini danger" data-alloc-delete="'+esc(x.id)+'">DELETE</button></div></article>'}).join(''):'<div class="empty">No resource proposals yet. Recommendations above remain advisory until you create a proposal.</div>';
+  }
+  document.querySelectorAll('[data-alloc-approve]').forEach(btn=>btn.addEventListener('click',()=>{const x=state.allocations.find(v=>v.id===btn.dataset.allocApprove);if(!x)return;x.humanApproved=true;x.status='APPROVED';x.updatedAt=new Date().toISOString();saveAllocations();renderAll();void syncAllocationItem(x)}));
+  document.querySelectorAll('[data-alloc-status]').forEach(btn=>btn.addEventListener('click',()=>{const x=state.allocations.find(v=>v.id===btn.dataset.allocStatus);if(!x)return;if(btn.dataset.status==='ACTIVE'&&!x.humanApproved){alert('Human approval is required before this plan can become ACTIVE.');return}x.status=btn.dataset.status;x.updatedAt=new Date().toISOString();saveAllocations();renderAll();void syncAllocationItem(x)}));
+  document.querySelectorAll('[data-alloc-delete]').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.dataset.allocDelete;state.allocations=state.allocations.filter(x=>x.id!==id);saveAllocations();renderAll();void deleteAllocationCloud(id)}));
+}
+function setupAllocationBrain(){
+  byId('allocation-form')?.addEventListener('submit',e=>{e.preventDefault();const row=Object.fromEntries(new FormData(e.currentTarget).entries()),now=new Date().toISOString();row.currency=row.currency?String(row.currency).toUpperCase():'';const item={...row,id:uid(),status:'PROPOSED',humanApproved:false,createdAt:now,updatedAt:now};state.allocations.push(item);saveAllocations();e.currentTarget.reset();const c=e.currentTarget.querySelector('[name=currency]');if(c)c.value='USD';renderAll();void syncAllocationItem(item)});
+}
+
 function textState(data,fallback='UNKNOWN'){
   const candidates=[data?.state,data?.status,data?.health?.state,data?.machine_state,data?.decision?.state,data?.watch?.state,data?.desk_state];
   return String(candidates.find(v=>v!==undefined&&v!==null&&String(v).trim())??fallback).toUpperCase();
@@ -483,6 +544,7 @@ function buildQueue(){
   state.biz.products.filter(x=>String(x.blocker||'').trim()).forEach(x=>add(Math.max(70,productScore(x)),x.name,x.blocker,'PRODUCT · BLOCKED'));
   state.biz.units.filter(x=>x.status==='ACTIVE').sort((a,b)=>businessScore(b)-businessScore(a)).slice(0,2).forEach(x=>add(Math.max(56,businessScore(x)),x.name,x.nextAction||'Highest-ranked active business unit.','BUSINESS · '+x.category));
   state.biz.products.filter(x=>x.status==='ACTIVE').sort((a,b)=>productScore(b)-productScore(a)).slice(0,2).forEach(x=>add(Math.max(54,productScore(x)),x.name,x.nextAction||'Highest-ranked active product.','PRODUCT · '+x.productType));
+  state.allocations.filter(x=>x.status==='PROPOSED'&&!x.humanApproved).slice(0,3).forEach(x=>{const b=linkedBusiness(x.businessId),p=linkedProduct(x.productId);add(optionalNumber(x.amount)!==null?66:58,'Review resource proposal: '+(p?.name||b?.name||x.allocationType),x.rationale||'Human approval required before activation.','RESOURCE · HUMAN REVIEW')});
   const seen=new Set();
   return items.sort((a,b)=>b.score-a.score).filter(x=>{const k=x.title.toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,12);
 }
@@ -567,7 +629,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -588,6 +650,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderCloudState();renderOrgCloudState();renderBizCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);
 }
 boot();
