@@ -7,7 +7,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('X-TFA-Engine','V174');
   return res.status(status).json({
     ok:false,
-    version:'v174-executive-workflow-bridge-v1',
+    version:'v174.1-executive-workflow-bridge-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -40,7 +40,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V174');
     return res.status(200).json({
       ok:true,
-      version:'v174-executive-workflow-bridge-v1',
+      version:'v174.1-executive-workflow-bridge-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       results,
