@@ -236,10 +236,12 @@ async function loadOwner(userId:string){
   return{decisions,objectives,projects,businesses,products,channels,allocations,outcomes,existing:cycles[0]||null};
 }
 Deno.serve(async(req:Request)=>{
+  let stage='AUTH';
   if(req.method!=='GET'&&req.method!=='POST')return Response.json({ok:false,error:'method_not_allowed'},{status:405,headers:{Allow:'GET, POST','Cache-Control':'no-store'}});
   if(!(await authorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401,headers:{'Cache-Control':'no-store'}});
   try{
     if(!SERVICE_ROLE)throw new Error('service_role_unavailable');
+    stage='SOURCE_AND_OWNER_LOAD';
     const [sourceResults,owners]=await Promise.all([
       Promise.all(SOURCES.map(x=>source(x[0] as string,x[1] as string,x[2] as string,x[3] as boolean))),
       dbRows('owner_users?active=eq.true&select=user_id')
@@ -247,13 +249,18 @@ Deno.serve(async(req:Request)=>{
     if(!owners.length)throw new Error('no_active_owner');
     const results:any[]=[];
     for(const owner of owners){
-      const data=await loadOwner(owner.user_id),cycle=buildCycle(owner.user_id,data,sourceResults,data.existing);
-      if(cycle.changed){const row={...cycle};delete row.changed;await upsert('command_executive_cycles','user_id,cycle_date',row)}
+      stage='OWNER_STATE_LOAD';
+      const data=await loadOwner(owner.user_id);
+      stage='CYCLE_BUILD';
+      const cycle=buildCycle(owner.user_id,data,sourceResults,data.existing);
+      if(cycle.changed){stage='CYCLE_PERSIST';const row={...cycle};delete row.changed;await upsert('command_executive_cycles','user_id,cycle_date',row)}
+      stage='INTERVENTION_SYNC';
       const intervention_sync=await syncInterventionInbox(owner.user_id,cycle);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync});
     }
     return Response.json({ok:true,version:'v174-executive-workflow-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
   }catch(error){
-    return Response.json({ok:false,version:'v174-executive-workflow-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
+    console.error('V174_EXECUTIVE_WORKFLOW_ERROR',stage,String(error).slice(0,300));
+    return Response.json({ok:false,version:'v174-executive-workflow-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V174'}});
   }
 });
