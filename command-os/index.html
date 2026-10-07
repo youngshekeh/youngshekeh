@@ -32,7 +32,9 @@
     .module-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px}.module{display:block;padding:16px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.12);text-decoration:none;color:inherit}.module:hover{border-color:rgba(165,140,255,.28)}.module strong{display:block;font-size:10px}.module span{display:block;font-size:8px;color:#77717e;margin-top:6px;line-height:1.45}
     .scenario{padding:19px;border-radius:18px;border:1px solid rgba(165,140,255,.18);background:radial-gradient(circle at 80% 0,rgba(165,140,255,.1),transparent 42%),rgba(165,140,255,.025);font-size:12px;line-height:1.7;color:#d7d2df}
     .section-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.empty{padding:26px;text-align:center;color:#77717e;border:1px dashed rgba(255,255,255,.08);border-radius:15px}
-    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid{grid-template-columns:1fr}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
+    .org-brief{padding:18px;border:1px solid rgba(114,240,173,.14);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(114,240,173,.08),transparent 36%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#d9d5df}
+    .org-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.org-list{display:grid;gap:9px}.org-item{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.14)}.org-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.org-title{font-size:11px;font-weight:950}.org-score{font-size:18px;font-weight:1000;color:var(--cmd-gold)}.org-meta{font-size:8px;color:#7d7782;line-height:1.5;margin-top:6px}.org-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.org-form-title{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#99929f;margin-top:14px}
+    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid,.org-board{grid-template-columns:1fr}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
     @media(max-width:620px){.health-grid,.constitution{grid-template-columns:1fr}.cmd-form label,.cmd-form label.wide{grid-column:span 12}.cmd-hero-main{padding:23px}.priority-item{grid-template-columns:46px minmax(0,1fr)}.priority-type{grid-column:2}}
   </style>
 </head>
@@ -46,7 +48,7 @@
   <main class="wrap command-shell">
     <section class="cmd-hero">
       <article class="cmd-hero-main">
-        <div class="cmd-label">V168 · ARCHITECT-STEWARD CONTROL LAYER</div>
+        <div class="cmd-label">V169 · ARCHITECT-STEWARD + ORGANIZATION BRAIN</div>
         <h1>See everything.<br><span>Decide little.</span></h1>
         <p>THE FATHER COMMAND OS compresses the machine into the few decisions worthy of human judgment. Intelligence flows upward. Permission flows downward. Every decision leaves evidence for the next version of the system.</p>
         <div class="cmd-badges">
@@ -92,6 +94,57 @@
           <div class="steward-cell"><div class="cmd-label">ONLY I SHOULD DECIDE</div><div id="steward-judgment" class="steward-value">SYNCING</div><div id="steward-judgment-copy" class="steward-copy">Human judgment is reserved for irreversible or capital-bearing decisions.</div></div>
           <div class="steward-cell"><div class="cmd-label">SYSTEM CAN HANDLE</div><div id="steward-system" class="steward-value">SYNCING</div><div id="steward-system-copy" class="steward-copy">Routine observation, scoring and evidence capture stay automated.</div></div>
           <div class="steward-cell"><div class="cmd-label">KILL / DEFER</div><div id="steward-defer" class="steward-value">SYNCING</div><div id="steward-defer-copy" class="steward-copy">Low-confidence work should not compete with the highest-value decision.</div></div>
+        </div>
+      </article>
+
+      <article class="cmd-card span-12">
+        <div class="section-row">
+          <div><div class="cmd-label">ORGANIZATION BRAIN · V1</div><h2>Objectives become priorities. Projects earn attention.</h2></div>
+          <div class="cmd-actions"><span id="org-cloud-state" class="cmd-badge warn">LOCAL FALLBACK</span><button id="sync-organization" class="cmd-btn">SYNC ORGANIZATION</button></div>
+        </div>
+        <div class="cmd-grid" style="margin-top:12px">
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE OBJECTIVES</div><div id="org-objectives-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE PROJECTS</div><div id="org-projects-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">BLOCKED</div><div id="org-blocked-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">FOCUS SCORE</div><div id="org-focus-kpi" class="cmd-kpi">—</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="cmd-label">DAILY EXECUTIVE BRIEF</div>
+          <div id="org-brief" class="org-brief">Organization state is initializing. The brief is descriptive and does not grant trading or capital permission.</div>
+        </div>
+
+        <div class="org-form-title">ADD OBJECTIVE</div>
+        <form id="objective-form" class="cmd-form">
+          <label class="wide"><span>OBJECTIVE</span><input name="title" required placeholder="What outcome are we trying to create?" /></label>
+          <label><span>HORIZON</span><select name="horizon"><option>NOW</option><option>QUARTER</option><option>YEAR</option><option>LONG_RANGE</option></select></label>
+          <label><span>PRIORITY 1–5</span><input name="priority" type="number" min="1" max="5" value="3" required /></label>
+          <label><span>TARGET METRIC</span><input name="targetMetric" placeholder="Revenue, users, uptime…" /></label>
+          <label><span>TARGET</span><input name="targetValue" placeholder="Desired result" /></label>
+          <label><span>CURRENT</span><input name="currentValue" placeholder="Current result" /></label>
+          <label><span>DUE DATE</span><input name="dueDate" type="date" /></label>
+          <label class="wide"><span>NOTES</span><input name="notes" placeholder="Constraint, strategic reason, or definition of done" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">ADD OBJECTIVE</button></div>
+        </form>
+
+        <div class="org-form-title">ADD PROJECT</div>
+        <form id="project-form" class="cmd-form">
+          <label class="wide"><span>PROJECT</span><input name="title" required placeholder="What are we building or changing?" /></label>
+          <label><span>OBJECTIVE</span><select id="project-objective" name="objectiveId"><option value="">UNLINKED</option></select></label>
+          <label><span>DOMAIN</span><select name="domain"><option>PRODUCT</option><option>TECHNOLOGY</option><option>DISTRIBUTION</option><option>OPERATIONS</option><option>CAPITAL</option><option>MARKETS</option><option>RESEARCH</option></select></label>
+          <label><span>STATUS</span><select name="status"><option>ACTIVE</option><option>PLANNED</option><option>BLOCKED</option><option>DEFERRED</option></select></label>
+          <label><span>IMPACT 1–5</span><input name="impact" type="number" min="1" max="5" value="3" required /></label>
+          <label><span>EFFORT 1–5</span><input name="effort" type="number" min="1" max="5" value="3" required /></label>
+          <label><span>CONFIDENCE %</span><input name="confidence" type="number" min="0" max="100" value="60" required /></label>
+          <label><span>ATTENTION WEIGHT %</span><input name="allocationWeight" type="number" min="0" max="100" value="0" /></label>
+          <label class="wide"><span>NEXT ACTION</span><input name="nextAction" placeholder="Smallest concrete next step" /></label>
+          <label class="wide"><span>BLOCKER</span><input name="blocker" placeholder="What is stopping progress?" /></label>
+          <label><span>DUE DATE</span><input name="dueDate" type="date" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">ADD PROJECT</button></div>
+        </form>
+
+        <div class="org-board">
+          <section><div class="cmd-label">OBJECTIVE MAP</div><div id="objective-list" class="org-list"></div></section>
+          <section><div class="cmd-label">PROJECT PRIORITY STACK</div><div id="project-list" class="org-list"></div></section>
         </div>
       </article>
 
