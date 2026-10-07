@@ -33,7 +33,7 @@ async function dbRows(path:string){
 }
 async function upsert(table:string,conflict:string,row:any){
   const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(conflict)}`,{method:'POST',headers:{...headers(),Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(row),signal:AbortSignal.timeout(12000)});
-  if(!r.ok){const body=await r.text().catch(()=>'' );throw new Error(`upsert_${table}_${r.status}_${body.slice(0,220)}`);}
+  if(!r.ok)throw new Error(`upsert_${table}_${r.status}`);
 }
 async function insertRows(table:string,rows:any[]){
   if(!rows.length)return;
