@@ -721,7 +721,7 @@ async function syncMultiAgentPlanner(userId:string,cycle:any,data:any){
       escalationRows.push({
         user_id:userId,plan_id:plan.id,task_id:oldTaskByKey.get(plan.id+':HUMAN_GATE')?.id||null,
         escalation_key:escKey,reason:s.gate_reason,question:s.gate_question,priority:Math.max(75,s.priority),
-        status:priorEsc?.status||'OPEN',owner_response, evidence:{plan_key:planKey,source_fingerprint:s.fingerprint},
+        status:priorEsc?.status||'OPEN',owner_response:ownerResponse, evidence:{plan_key:planKey,source_fingerprint:s.fingerprint},
         opened_at:priorEsc?.opened_at||now,acknowledged_at:priorEsc?.acknowledged_at||null,
         resolved_at:priorEsc?.resolved_at||null,signal_active:true,cleared_at:null,updated_at:now
       });
@@ -839,9 +839,9 @@ Deno.serve(async(req:Request)=>{
       const multi_agent_planner=await syncMultiAgentPlanner(owner.user_id,cycle,data);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner});
     }
-    return Response.json({ok:true,version:'v177-multi-agent-planner-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
+    return Response.json({ok:true,version:'v177.1-multi-agent-planner-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
   }catch(error){
     console.error('V177_MULTI_AGENT_PLANNER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v177-multi-agent-planner-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
+    return Response.json({ok:false,version:'v177.1-multi-agent-planner-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
   }
 });
