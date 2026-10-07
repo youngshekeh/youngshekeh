@@ -48,7 +48,7 @@
   <main class="wrap command-shell">
     <section class="cmd-hero">
       <article class="cmd-hero-main">
-        <div class="cmd-label">V178 · ARCHITECT-STEWARD + ADAPTIVE SCHEDULER</div>
+        <div class="cmd-label">V179 · ARCHITECT-STEWARD + RESOURCE GOVERNOR</div>
         <h1>See everything.<br><span>Decide little.</span></h1>
         <p>THE FATHER COMMAND OS compresses the machine into the few decisions worthy of human judgment. Intelligence flows upward. Permission flows downward. Every decision leaves evidence for the next version of the system.</p>
         <div class="cmd-badges">
@@ -300,6 +300,42 @@
 
         <div class="workflow-path">REAL SOURCE DEADLINE → INHERITED<br>NO SOURCE DEADLINE → INTERNAL SLA TARGET, EXPLICITLY LABELED<br>DEPENDENCY SLACK + TASK AGE + AGENT CAPACITY → URGENCY</div>
         <div class="cmd-muted" style="margin-top:10px">V178 may reprioritize internal work and surface timing risk. It cannot change planner ownership, bypass Architect gates, release capital, publish externally, place trades, or reinterpret an internal SLA target as a real-world deadline.</div>
+      </article>
+    </section>
+
+    <section class="cmd-grid" style="margin-bottom:14px">
+      <article class="cmd-card span-12">
+        <div class="section-row">
+          <div>
+            <div class="cmd-label">RESOURCE GOVERNOR + AUTONOMOUS WORK DISPATCHER · V179</div>
+            <h2>The machine chooses the next safe internal move. Authority stays where it belongs.</h2>
+          </div>
+          <div class="cmd-actions">
+            <span id="dispatch-cloud-state" class="cmd-badge warn">SYNCING</span>
+            <button id="sync-dispatch" class="cmd-btn">SYNC DISPATCH</button>
+          </div>
+        </div>
+
+        <div class="cmd-grid" style="margin-top:12px">
+          <div class="cmd-card span-3"><div class="cmd-label">ACTIVE LEASES</div><div id="dispatch-active-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">COMPLETED RECEIPTS</div><div id="dispatch-complete-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">FAILED / EXPIRED</div><div id="dispatch-failed-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">EXTERNAL EFFECTS</div><div id="dispatch-external-kpi" class="cmd-kpi">0</div></div>
+        </div>
+
+        <div class="runbook-grid">
+          <section>
+            <div class="cmd-label">DISPATCH LEDGER</div>
+            <div id="dispatch-list" class="runbook-list" style="margin-top:10px"><div class="route-item"><small>Sign in and synchronize to load governed dispatch leases.</small></div></div>
+          </section>
+          <aside>
+            <div class="cmd-label">DISPATCH EVENTS</div>
+            <div id="dispatch-events" class="action-receipts" style="margin-top:10px"></div>
+          </aside>
+        </div>
+
+        <div class="workflow-path">V178 URGENCY → ATOMIC CLAIM → SPECIALIST LEASE → INTERNAL RECEIPT → COMPLETE → NEXT DEPENDENCY UNLOCKS</div>
+        <div class="cmd-muted" style="margin-top:10px">V179 can dispatch only OBSERVE, PROPOSE and REVERSIBLE EXECUTE planner nodes. Human decisions, trading, payments, fund movement, credentials, secrets, publishing and irreversible external actions never enter this dispatcher.</div>
       </article>
     </section>
 
