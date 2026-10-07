@@ -223,6 +223,35 @@ function organizationMetrics(){
   const focus=Math.max(0,Math.min(100,100-Math.max(0,activeProjects.length-5)*8-blocked.length*15-overdue.length*8-low.length*8-unlinked.length*4));
   return{activeObjectives,activeProjects,blocked,overdue,low,unlinked,focus};
 }
+
+function attentionRoutes(){
+  const live=state.org.projects.filter(x=>!['COMPLETE','KILLED'].includes(x.status));
+  const ranked=live.slice().sort((a,b)=>projectScore(b)-projectScore(a));
+  const review=ranked.filter(x=>projectScore(x)<35||(num(x.confidence)<35&&num(x.effort)>=4)||(x.status==='BLOCKED'&&x.dueDate&&new Date(x.dueDate+'T23:59:59').getTime()<Date.now()));
+  const reviewIds=new Set(review.map(x=>x.id));
+  const eligible=ranked.filter(x=>!reviewIds.has(x.id));
+  const now=eligible.filter(x=>x.status==='ACTIVE'||x.status==='BLOCKED').slice(0,2);
+  const nowIds=new Set(now.map(x=>x.id));
+  const next=eligible.filter(x=>!nowIds.has(x.id)&&(x.status==='ACTIVE'||x.status==='PLANNED')).slice(0,3);
+  const used=new Set([...nowIds,...next.map(x=>x.id),...reviewIds]);
+  const later=ranked.filter(x=>!used.has(x.id)||x.status==='DEFERRED').slice(0,4);
+  return{now,next,later,review};
+}
+function routeHtml(items,empty){
+  return items.length?items.map(x=>'<div class="route-item">'+esc(x.title)+'<small>'+projectScore(x)+'/100 · '+esc(x.status)+(x.nextAction?' · '+esc(x.nextAction):'')+'</small></div>').join(''):'<div class="route-item"><small>'+esc(empty)+'</small></div>';
+}
+function renderAttentionRouter(){
+  const r=attentionRoutes(),m=organizationMetrics();
+  const now=byId('route-now'),next=byId('route-next'),later=byId('route-later'),review=byId('route-review');
+  if(now)now.innerHTML=routeHtml(r.now,'No project currently earns NOW attention.');
+  if(next)next.innerHTML=routeHtml(r.next,'No queued NEXT work.');
+  if(later)later.innerHTML=routeHtml(r.later,'No lower-priority work is waiting.');
+  if(review)review.innerHTML=routeHtml(r.review,'No project currently meets review thresholds.');
+  const founder=r.review.find(x=>x.status==='BLOCKED')||r.now[0]||null;
+  set('architect-one-thing',founder?(founder.status==='BLOCKED'?'Remove the constraint on '+founder.title+'.':'Protect attention for '+founder.title+'. Do not open new work until its next action is clear.'):'No founder-level project decision is surfaced. Preserve optionality.');
+  set('system-autonomy-brief','The system can rank '+m.activeProjects.length+' active project'+(m.activeProjects.length===1?'':'s')+', track '+m.blocked.length+' blocker'+(m.blocked.length===1?'':'s')+', watch deadlines, sync memory, and update the command queue. It does not execute external project actions or release capital by itself.');
+}
+
 function renderOrganization(){
   const m=organizationMetrics();set('org-objectives-kpi',String(m.activeObjectives.length));set('org-projects-kpi',String(m.activeProjects.length));set('org-blocked-kpi',String(m.blocked.length));set('org-focus-kpi',m.focus+'%');
   const ranked=m.activeProjects.slice().sort((a,b)=>projectScore(b)-projectScore(a));
@@ -407,7 +436,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderLedger();renderScenario();renderOrgCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderLedger();renderScenario();renderOrgCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -428,6 +457,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();renderLedger();renderOrganization();renderCloudState();renderOrgCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);
+  setupLedger();setupOrganization();renderLedger();renderOrganization();renderAttentionRouter();renderCloudState();renderOrgCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);
 }
 boot();
