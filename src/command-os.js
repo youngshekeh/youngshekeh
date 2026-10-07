@@ -707,7 +707,7 @@ function executiveReallocation(){
   return rows.slice(0,6);
 }
 function buildExecutiveCycle(){
-  const date=localDateKey(),snapshot=executiveSnapshot(),fingerprint='CYC-'+date+'-'+simpleHash(JSON.stringify(snapshot)),g=governedPermission(),m=organizationMetrics();
+  const date=localDateKey(),snapshot=executiveSnapshot(),g=governedPermission(),m=organizationMetrics();
   const healthy=SOURCE_DEFS.filter(d=>state.sources[d.key]?.ok&&severityFromText(textState(state.sources[d.key]?.data))==='good').length,healthPct=Math.round(healthy/SOURCE_DEFS.length*100);
   const anomalies=detectExecutiveAnomalies(),interventions=anomalies.slice(0,3).map(x=>({priority:x.severity,title:x.action,reason:x.title,type:x.type})),reallocation=executiveReallocation(),human=executiveHumanDecisions();
   if(!interventions.length){
@@ -715,6 +715,18 @@ function buildExecutiveCycle(){
     if(top)interventions.push({priority:top.score,title:top.title,reason:top.copy,type:top.type});
     else interventions.push({priority:20,title:'Preserve focus and continue observation',reason:'No anomaly currently earns intervention. Silence is a valid machine output.',type:'STEWARD'});
   }
+  const semanticState={
+    governance:[g.action,g.capital],
+    machineHealthPct:healthPct,
+    focusScore:m.focus,
+    sourceRegimes:Object.fromEntries(SOURCE_DEFS.map(def=>{const r=state.sources[def.key];return[def.key,r?.ok?severityFromText(textState(r.data)):'bad']})),
+    anomalies:anomalies.map(x=>[x.code,x.severity]),
+    interventions:interventions.map(x=>[x.type,x.title]),
+    humanDecisions:human.map(x=>[x.priority,x.title]),
+    reallocation:reallocation.map(x=>[x.target,x.weight,x.score]),
+    candidateReady:state.sources.q4?.data?.watch?.candidate_ready===true
+  };
+  const fingerprint='CYC-'+date+'-'+simpleHash(JSON.stringify(semanticState));
   const summary='Executive cycle '+date+': '+anomalies.length+' anomal'+(anomalies.length===1?'y':'ies')+', '+human.length+' human decision'+(human.length===1?'':'s')+', machine health '+healthPct+'%, organization focus '+m.focus+'%. Sovereign authority remains '+g.action+' / '+g.capital+'. '+(interventions[0]?'Top intervention: '+interventions[0].title+'.':'');
   return{cycleDate:date,version:'V173',stateFingerprint:fingerprint,sovereignAction:g.action,capitalPermission:g.capital,machineHealthPct:healthPct,focusScore:m.focus,summary,anomalies,interventions:interventions.slice(0,3),reallocationSuggestions:reallocation,humanDecisions:human,sourceSnapshot:snapshot};
 }
