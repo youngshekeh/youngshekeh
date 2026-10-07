@@ -111,7 +111,6 @@ function buildCycle(userId:string,data:any,sources:any,existing:any){
     governance:[g.action,g.capital],
     machineHealthPct:healthPct,
     focusScore:focus,
-    sourceRegimes:Object.fromEntries(sources.map((v:any)=>[v.key,v.ok?severity(textState(v.data)):'bad'])),
     anomalies:anomalies.map((v:any)=>[v.code,v.severity]),
     interventions:interventions.map((v:any)=>[v.type,v.title]),
     humanDecisions:human.map((v:any)=>[v.priority,v.title]),
@@ -146,8 +145,8 @@ Deno.serve(async(req:Request)=>{
       if(cycle.changed){const row={...cycle};delete row.changed;await upsert('command_executive_cycles','user_id,cycle_date',row)}
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission});
     }
-    return Response.json({ok:true,version:'v173.1-autonomous-executive-cycle-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
+    return Response.json({ok:true,version:'v173.2-autonomous-executive-cycle-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
   }catch(error){
-    return Response.json({ok:false,version:'v173.1-autonomous-executive-cycle-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
+    return Response.json({ok:false,version:'v173.2-autonomous-executive-cycle-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
   }
 });
