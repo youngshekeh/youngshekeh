@@ -733,10 +733,25 @@ async function fetchTodayCycle(){
 }
 async function runExecutiveCycle(force=false){
   const draft=buildExecutiveCycle(),previous=state.executiveCycle&&state.executiveCycle.cycleDate===draft.cycleDate?state.executiveCycle:null;
-  if(previous&&!force&&previous.stateFingerprint===draft.stateFingerprint){renderExecutiveCycle();return previous}
+  if(previous&&!force&&previous.stateFingerprint===draft.stateFingerprint){
+    state.executiveCycle={...previous,...draft,generationCount:previous.generationCount||1,firstGeneratedAt:previous.firstGeneratedAt||previous.generatedAt||new Date().toISOString(),generatedAt:previous.generatedAt||new Date().toISOString()};
+    saveExecutiveCycle();renderExecutiveCycle();
+    if(!sessionToken()){state.cycleCloud.state='LOCAL_ONLY';renderCycleCloudState();return state.executiveCycle}
+    state.cycleCloud.state='SYNCING';renderCycleCloudState();
+    try{
+      if(!await verifyCloudSession()){state.cycleCloud.state='LOCAL_ONLY';renderCycleCloudState();return state.executiveCycle}
+      const remote=await fetchTodayCycle();
+      if(remote&&remote.stateFingerprint===draft.stateFingerprint){
+        state.executiveCycle={...state.executiveCycle,generationCount:Math.max(num(state.executiveCycle.generationCount),num(remote.generationCount)),firstGeneratedAt:remote.firstGeneratedAt||state.executiveCycle.firstGeneratedAt,generatedAt:remote.generatedAt||state.executiveCycle.generatedAt};
+        saveExecutiveCycle();
+      }else{
+        await upsertOrgRows('command_executive_cycles','user_id,cycle_date',[cycleToCloud(state.executiveCycle)]);
+      }
+      state.cycleCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderExecutiveCycle();renderCycleCloudState();return state.executiveCycle;
+    }catch(error){state.cycleCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.cycleCloud.lastSync};renderCycleCloudState();return state.executiveCycle}
+  }
   const now=new Date().toISOString();
-  let generation=previous?num(previous.generationCount)+1:1,first=previous?.firstGeneratedAt||now;
-  const item={...draft,generationCount:generation,firstGeneratedAt:first,generatedAt:now};
+  const item={...draft,generationCount:previous?num(previous.generationCount)+1:1,firstGeneratedAt:previous?.firstGeneratedAt||now,generatedAt:now};
   state.executiveCycle=item;saveExecutiveCycle();renderExecutiveCycle();
   if(!await verifyCloudSession()){state.cycleCloud.state='LOCAL_ONLY';renderCycleCloudState();return item}
   state.cycleCloud.state='SYNCING';renderCycleCloudState();
