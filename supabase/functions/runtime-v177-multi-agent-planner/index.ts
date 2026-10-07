@@ -660,14 +660,31 @@ function plannerTaskOutput(taskKey:string,src:any,gateResolved:boolean,ownerResp
   return{...base,qa:{checks:['dependency chain satisfied','source fingerprint attached','zero external effects','authority boundary preserved'],ready:gateResolved},verdict:gateResolved?'PLAN_READY':'BLOCKED_BY_HUMAN_GATE'};
 }
 async function syncMultiAgentPlanner(userId:string,cycle:any,data:any){
-  const [agents,interventions,existingPlans,existingEscalations]=await Promise.all([
+  const [agents,interventions,existingPlans,existingEscalations,workforceAssignments]=await Promise.all([
     ensureAgents(userId),
     dbRows('command_interventions?user_id=eq.'+encodeURIComponent(userId)+'&select=*'),
     dbRows('command_plans?user_id=eq.'+encodeURIComponent(userId)+'&select=*'),
-    dbRows('command_planner_escalations?user_id=eq.'+encodeURIComponent(userId)+'&select=*')
+    dbRows('command_planner_escalations?user_id=eq.'+encodeURIComponent(userId)+'&select=*'),
+    dbRows('command_agent_assignments?user_id=eq.'+encodeURIComponent(userId)+'&select=*')
   ]);
   const sources=plannerSourceRows(data,interventions);
   const agentByKey=new Map(agents.map((x:any)=>[x.agent_key,x]));
+  const queueLoad=new Map<string,number>();
+  for(const x of workforceAssignments.filter((x:any)=>['QUEUED','RUNNING'].includes(x.status))){
+    queueLoad.set(x.agent_id,(queueLoad.get(x.agent_id)||0)+1);
+  }
+  const underCapacity=(agent:any)=>!!agent&&(queueLoad.get(agent.id)||0)<Math.max(1,n(agent.max_open_assignments));
+  const chooseAgent=(preferredKey:string,capability:string,actionKind:string)=>{
+    const preferred:any=agentByKey.get(preferredKey),ops:any=agentByKey.get('OPERATIONS_AGENT');
+    const rank=capability==='OBSERVE'?1:capability==='PROPOSE'?2:3;
+    const ceiling=(a:any)=>a?.capability_ceiling==='OBSERVE'?1:a?.capability_ceiling==='PROPOSE'?2:a?.capability_ceiling==='REVERSIBLE_EXECUTE'?3:0;
+    const eligible=(a:any)=>!!a&&a.status==='ACTIVE'&&ceiling(a)>=rank&&Array.isArray(a.allowed_action_kinds)&&a.allowed_action_kinds.includes(actionKind);
+    if(eligible(preferred)&&underCapacity(preferred))return{agent:preferred,fallback:false};
+    if(preferredKey!=='OPERATIONS_AGENT'&&eligible(ops)&&underCapacity(ops))return{agent:ops,fallback:true};
+    if(eligible(preferred))return{agent:preferred,fallback:false,saturated:true};
+    if(eligible(ops))return{agent:ops,fallback:true,saturated:true};
+    return{agent:null,fallback:false,saturated:true};
+  };
   const priorPlanByKey=new Map(existingPlans.map((x:any)=>[x.plan_key,x]));
   const now=new Date().toISOString(),planRows:any[]=[],sourceByPlanKey=new Map<string,any>(),events:any[]=[];
   let compiled=0,versioned=0,staled=0;
@@ -705,13 +722,19 @@ async function syncMultiAgentPlanner(userId:string,cycle:any,data:any){
   const escByKey=new Map(existingEscalations.map((x:any)=>[x.escalation_key,x]));
   const taskRows:any[]=[],escalationRows:any[]=[],currentEscKeys=new Set<string>();
   const planState=new Map<string,{status:string,bottleneck:string,gateResolved:boolean}>();
+  let capacityFallbacks=0,capacitySaturated=0;
 
   for(const [planKey,s] of sourceByPlanKey.entries()){
     const plan:any=planByKey.get(planKey);if(!plan)continue;
-    const specialistKey=plannerAgentKey(s.domain,s.title,s.objective),specialist:any=agentByKey.get(specialistKey)||agentByKey.get('OPERATIONS_AGENT');
-    const workAgent:any=specialist?.capability_ceiling==='REVERSIBLE_EXECUTE'?specialist:agentByKey.get('OPERATIONS_AGENT');
-    const dataAgent:any=agentByKey.get('DATA_AGENT'),qaAgent:any=agentByKey.get('QA_AGENT');
+    const specialistKey=plannerAgentKey(s.domain,s.title,s.objective);
+    const dataPick=chooseAgent('DATA_AGENT','OBSERVE','PLANNER_EVIDENCE');
+    const synthPick=chooseAgent(specialistKey,'PROPOSE','PLANNER_SYNTHESIS');
+    const workPreferred=(agentByKey.get(specialistKey) as any)?.capability_ceiling==='REVERSIBLE_EXECUTE'?specialistKey:'OPERATIONS_AGENT';
+    const workPick=chooseAgent(workPreferred,'REVERSIBLE_EXECUTE','PLANNER_WORK_PACKAGE');
+    const qaPick=chooseAgent('QA_AGENT','PROPOSE','PLANNER_QA');
+    const dataAgent:any=dataPick.agent,specialist:any=synthPick.agent,workAgent:any=workPick.agent,qaAgent:any=qaPick.agent;
     if(!dataAgent||!specialist||!workAgent||!qaAgent)throw new Error('planner_agent_roster_incomplete');
+    for(const pick of [dataPick,synthPick,workPick,qaPick]){if(pick.fallback)capacityFallbacks++;if(pick.saturated)capacitySaturated++}
 
     const escKey=s.gate_reason?'ESC:'+planKey+':'+hash(s.gate_reason):'',priorEsc:any=s.gate_reason?escByKey.get(escKey):null;
     const gateResolved=!s.gate_reason||(priorEsc?.status==='RESOLVED'&&priorEsc?.signal_active!==false);
@@ -800,7 +823,7 @@ async function syncMultiAgentPlanner(userId:string,cycle:any,data:any){
   await bulkInsertIgnore('command_planner_events','user_id,event_key',eventRows);
 
   const activeEsc=refreshedEsc.filter((e:any)=>e.signal_active!==false&&e.status!=='RESOLVED').length;
-  return{sources:sources.length,compiled,versioned,staled,ready_plans:ready,waiting_human:waitingHuman,complete_tasks:completeTasks,blocked_or_escalated_tasks:blockedTasks,open_escalations:activeEsc,external_effects:0,forbidden_actions:0};
+  return{sources:sources.length,compiled,versioned,staled,ready_plans:ready,waiting_human:waitingHuman,complete_tasks:completeTasks,blocked_or_escalated_tasks:blockedTasks,open_escalations:activeEsc,capacity_fallbacks:capacityFallbacks,capacity_saturated_routes:capacitySaturated,external_effects:0,forbidden_actions:0};
 }
 
 async function loadOwner(userId:string){
@@ -839,9 +862,9 @@ Deno.serve(async(req:Request)=>{
       const multi_agent_planner=await syncMultiAgentPlanner(owner.user_id,cycle,data);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner});
     }
-    return Response.json({ok:true,version:'v177.1-multi-agent-planner-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
+    return Response.json({ok:true,version:'v177.2-multi-agent-planner-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
   }catch(error){
     console.error('V177_MULTI_AGENT_PLANNER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v177.1-multi-agent-planner-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
+    return Response.json({ok:false,version:'v177.2-multi-agent-planner-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V177'}});
   }
 });
