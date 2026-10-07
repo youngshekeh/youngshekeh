@@ -7,7 +7,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('X-TFA-Engine','V176');
   return res.status(status).json({
     ok:false,
-    version:'v176-capability-router-bridge-v1',
+    version:'v176.2-capability-router-bridge-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -26,7 +26,7 @@ export default async function handler(req,res){
 
   try{
     const response=await fetch(RUNTIME,{
-      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V176-CAPABILITY-ROUTER-BRIDGE/1.0'},
+      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V176.2-CAPABILITY-ROUTER-BRIDGE/1.0'},
       cache:'no-store',
       signal:AbortSignal.timeout(45000)
     });
@@ -40,7 +40,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V176');
     return res.status(200).json({
       ok:true,
-      version:'v176-capability-router-bridge-v1',
+      version:'v176.2-capability-router-bridge-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       results,
