@@ -956,16 +956,16 @@ async function syncAdaptiveScheduler(userId:string,cycle:any,data:any){
       const slack=Math.floor((targetStart.getTime()-nowMs)/60000);
       const isStalled=task.status!=='COMPLETE'&&dependency==='READY'&&age>sla*n(policy.stall_multiplier||2);
       const breach=task.status!=='COMPLETE'&&due.getTime()<nowMs;
-      const risk=!breach&&(slack<=n(policy.critical_slack_minutes)||isStalled||capacity==='SATURATED');
+      const risk=task.status!=='COMPLETE'&&!breach&&(slack<=n(policy.critical_slack_minutes)||isStalled||capacity==='SATURATED');
       const isCritical=task.status!=='COMPLETE'&&(planSlack<=n(policy.critical_slack_minutes)||deadline.origin!=='INTERNAL_SLA'&&slack<=n(policy.critical_slack_minutes));
       const urgency=task.status==='COMPLETE'?0:urgencyScore(n(plan.priority),slack,sla,age,capacity,dependency);
       let scheduleStatus='READY';
       if(task.status==='COMPLETE')scheduleStatus='DONE';
-      else if(breach)scheduleStatus='BREACHED';
       else if(dependency==='WAITING_HUMAN')scheduleStatus='WAITING_HUMAN';
       else if(dependency==='WAITING_DEPENDENCY')scheduleStatus='WAITING_DEPENDENCY';
+      else if(breach)scheduleStatus='BREACHED';
       else if(task.status==='RUNNING')scheduleStatus='RUNNING';
-      const breachState=breach?'BREACHED':risk?'AT_RISK':'CLEAR';
+      const breachState=task.status==='COMPLETE'?'CLEAR':breach?'BREACHED':risk?'AT_RISK':'CLEAR';
       const old:any=existingByTask.get(task.id),key='SCHED:'+task.id;
       const row={
         user_id:userId,plan_id:plan.id,task_id:task.id,assigned_agent_id:task.assigned_agent_id||null,
@@ -1066,9 +1066,9 @@ Deno.serve(async(req:Request)=>{
       const adaptive_scheduler=await syncAdaptiveScheduler(owner.user_id,cycle,data);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decision_count||cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner,adaptive_scheduler});
     }
-    return Response.json({ok:true,version:'v178-adaptive-scheduler-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
+    return Response.json({ok:true,version:'v178.1-adaptive-scheduler-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
   }catch(error){
     console.error('V178_ADAPTIVE_SCHEDULER_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v178-adaptive-scheduler-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
+    return Response.json({ok:false,version:'v178.1-adaptive-scheduler-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V178'}});
   }
 });
