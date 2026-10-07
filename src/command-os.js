@@ -719,7 +719,6 @@ function buildExecutiveCycle(){
     governance:[g.action,g.capital],
     machineHealthPct:healthPct,
     focusScore:m.focus,
-    sourceRegimes:Object.fromEntries(SOURCE_DEFS.map(def=>{const r=state.sources[def.key];return[def.key,r?.ok?severityFromText(textState(r.data)):'bad']})),
     anomalies:anomalies.map(x=>[x.code,x.severity]),
     interventions:interventions.map(x=>[x.type,x.title]),
     humanDecisions:human.map(x=>[x.priority,x.title]),
