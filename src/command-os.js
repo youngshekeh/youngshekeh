@@ -5,10 +5,11 @@ const ORG_KEY='tfa.v169.organization.v1';
 const BIZ_KEY='tfa.v170.business.v1';
 const ALLOC_KEY='tfa.v171.allocations.v1';
 const OUTCOME_KEY='tfa.v172.outcomes.v1';
+const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -34,6 +35,8 @@ function loadAllocations(){try{const v=JSON.parse(localStorage.getItem(ALLOC_KEY
 function saveAllocations(){localStorage.setItem(ALLOC_KEY,JSON.stringify(state.allocations))}
 function loadOutcomes(){try{const v=JSON.parse(localStorage.getItem(OUTCOME_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
 function saveOutcomes(){localStorage.setItem(OUTCOME_KEY,JSON.stringify(state.outcomes))}
+function loadExecutiveCycle(){try{const v=JSON.parse(localStorage.getItem(CYCLE_KEY)||'null');return v&&typeof v==='object'?v:null}catch{return null}}
+function saveExecutiveCycle(){if(state.executiveCycle)localStorage.setItem(CYCLE_KEY,JSON.stringify(state.executiveCycle))}
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 function sessionToken(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')?.access_token||null}catch{return null}}
 function cloudTimestamp(x){const value=x?.updatedAt||x?.resolvedAt||x?.createdAt||'';const n=Date.parse(value);return Number.isFinite(n)?n:0}
@@ -623,6 +626,147 @@ function setupOutcomeBrain(){
   byId('outcome-form')?.addEventListener('submit',e=>{e.preventDefault();const row=Object.fromEntries(new FormData(e.currentTarget).entries());if(!row.entityId)return;const now=new Date().toISOString();row.currency=row.currency?String(row.currency).toUpperCase():'';row.dueAt=row.dueAt?new Date(row.dueAt).toISOString():null;const item={...row,id:uid(),status:'PLANNED',lesson:'',startedAt:null,resolvedAt:null,createdAt:now,updatedAt:now};state.outcomes.push(item);saveOutcomes();e.currentTarget.reset();const c=e.currentTarget.querySelector('[name=confidence]');if(c)c.value='60';renderAll();void syncOutcomeItem(item)});
 }
 
+
+function localDateKey(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function simpleHash(input){
+  let h=2166136261;
+  for(let i=0;i<input.length;i++){h^=input.charCodeAt(i);h=Math.imul(h,16777619)}
+  return (h>>>0).toString(16).toUpperCase().padStart(8,'0');
+}
+function renderCycleCloudState(){
+  const badge=byId('cycle-cloud-state');if(!badge)return;
+  const mode=state.cycleCloud.state,cls=mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='LOCAL_ONLY'?'warn':'bad';
+  badge.className='cmd-badge '+cls;
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':'LOCAL FALLBACK';
+}
+function executiveSnapshot(){
+  const sourceState={};
+  for(const def of SOURCE_DEFS){
+    const r=state.sources[def.key];
+    sourceState[def.key]={ok:!!r?.ok,state:r?.ok?textState(r.data,'RESPONDING'):'OFFLINE',status:r?.status||0};
+  }
+  return{
+    sources:sourceState,
+    decisions:state.ledger.map(x=>[x.id,x.status,x.outcome,x.confidence,x.updatedAt||x.createdAt]),
+    objectives:state.org.objectives.map(x=>[x.id,x.status,x.priority,x.currentValue,x.updatedAt||x.createdAt]),
+    projects:state.org.projects.map(x=>[x.id,x.status,x.impact,x.effort,x.confidence,x.allocationWeight,x.blocker,x.updatedAt||x.createdAt]),
+    businesses:state.biz.units.map(x=>[x.id,x.status,x.strategicPriority,x.revenue30d,x.cost30d,x.growthPct,x.blocker,x.updatedAt||x.createdAt]),
+    products:state.biz.products.map(x=>[x.id,x.status,x.strategicPriority,x.revenue30d,x.conversionPct,x.marginPct,x.blocker,x.updatedAt||x.createdAt]),
+    channels:state.biz.channels.map(x=>[x.id,x.status,x.leads30d,x.conversions30d,x.revenue30d,x.cost30d,x.updatedAt||x.createdAt]),
+    allocations:state.allocations.map(x=>[x.id,x.status,x.humanApproved,x.allocationType,x.weightPct,x.amount,x.updatedAt||x.createdAt]),
+    outcomes:state.outcomes.map(x=>[x.id,x.status,x.expectedValue,x.actualValue,x.dueAt,x.resolvedAt,x.updatedAt||x.createdAt])
+  };
+}
+function detectExecutiveAnomalies(){
+  const rows=[],push=(severity,code,title,copy,action,type='OPERATING')=>rows.push({severity,code,title,copy,action,type});
+  const g=governedPermission(),healthy=SOURCE_DEFS.filter(d=>state.sources[d.key]?.ok&&severityFromText(textState(state.sources[d.key]?.data))==='good').length,healthPct=Math.round(healthy/SOURCE_DEFS.length*100);
+  if(!state.sources.closure?.ok)push(100,'SOVEREIGN_GATE_OFFLINE','Sovereign gate unavailable','Production closure cannot be read. Capital-bearing decisions remain WAIT / 0R.','Restore production closure visibility before any execution promotion.','GOVERNANCE');
+  for(const def of SOURCE_DEFS.filter(x=>x.critical&&x.key!=='closure'))if(!state.sources[def.key]?.ok)push(92,'CRITICAL_SOURCE_'+def.key.toUpperCase(),def.name+' unavailable','A critical command source is offline or unreadable.','Restore '+def.name+' observability and preserve fail-closed behavior.','SYSTEM');
+  if(healthPct<50)push(88,'LOW_MACHINE_HEALTH','Machine health below 50%','Only '+healthy+' of '+SOURCE_DEFS.length+' sources are healthy by command-state classification.','Repair observability before expanding autonomy.','SYSTEM');
+  const blocked=state.org.projects.filter(x=>x.status==='BLOCKED'||String(x.blocker||'').trim()).sort((a,b)=>projectScore(b)-projectScore(a));
+  blocked.slice(0,3).forEach((x,i)=>push(82-i,'PROJECT_BLOCKED_'+x.id,x.title,'Blocked project with priority score '+projectScore(x)+'/100. '+(x.blocker||'Constraint unspecified.'),'Remove or explicitly accept the blocker before assigning more work.','ORGANIZATION'));
+  const overdue=state.outcomes.filter(x=>['PLANNED','RUNNING'].includes(x.status)&&x.dueAt&&new Date(x.dueAt).getTime()<Date.now());
+  overdue.slice(0,3).forEach((x,i)=>push(84-i,'OUTCOME_OVERDUE_'+x.id,x.title,'Measurement deadline passed without a resolved actual value.','Record the actual outcome or cancel the experiment so learning does not stall.','LEARNING'));
+  const activeProjects=state.org.projects.filter(x=>['ACTIVE','PLANNED','BLOCKED'].includes(x.status)),weights=activeProjects.reduce((s,x)=>s+num(x.allocationWeight),0);
+  if(weights>100)push(79,'ATTENTION_OVERCOMMITTED','Project attention exceeds 100%','Declared project attention totals '+weights+'%.','Reduce active attention weights until the portfolio fits inside 100%.','ORGANIZATION');
+  const monetary=state.allocations.filter(x=>x.status==='PROPOSED'&&!x.humanApproved&&optionalNumber(x.amount)!==null);
+  if(monetary.length)push(76,'MONEY_PROPOSALS_PENDING',monetary.length+' monetary proposal'+(monetary.length===1?' awaits':'s await')+' review','Money proposals remain planning records until human approval.','Approve, reject or defer each proposal. No funds move automatically.','HUMAN');
+  for(const x of state.biz.units.filter(x=>x.status==='ACTIVE')){
+    const rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d),growth=optionalNumber(x.growthPct);
+    if(rev!==null&&cost!==null&&cost>rev)push(69,'NEGATIVE_UNIT_MARGIN_'+x.id,x.name+' is spending above 30D revenue','Recorded cost exceeds recorded revenue in '+esc(x.currency||'USD')+'.','Inspect cost structure and verify the measurement window before increasing resources.','BUSINESS');
+    if(growth!==null&&growth<0)push(63,'NEGATIVE_GROWTH_'+x.id,x.name+' growth is negative','Recorded 30-day growth is '+growth+'%.','Diagnose retention, conversion and distribution before adding acquisition spend.','BUSINESS');
+  }
+  for(const x of state.biz.channels.filter(x=>x.status==='ACTIVE')){
+    const rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d);
+    if(rev!==null&&cost!==null&&cost>0&&rev<cost)push(61,'CHANNEL_NEGATIVE_ROI_'+x.id,x.name+' has negative observed channel ROI','30-day revenue is below recorded channel cost.','Review attribution and pause scaling until economics improve.','DISTRIBUTION');
+  }
+  const stale=state.ledger.filter(x=>x.status==='OPEN'&&Date.now()-new Date(x.createdAt).getTime()>7*864e5);
+  if(stale.length)push(56,'STALE_DECISIONS',stale.length+' open decision'+(stale.length===1?' is':'s are')+' older than 7 days','Old unresolved decisions create hidden cognitive inventory.','Resolve, defer or delete stale decisions.','DECISION');
+  if(activeProjects.length>0&&!state.outcomes.some(x=>['PLANNED','RUNNING'].includes(x.status)))push(58,'MEASUREMENT_DEBT','Active work has no running measurement loop','Projects are moving without a frozen expected outcome.','Attach at least one measurable outcome to the highest-priority active work.','LEARNING');
+  if(g.action!=='WAIT'||g.capital!=='0R')push(70,'PERMISSION_CHANGED','Sovereign permission is no longer baseline WAIT / 0R','Current authority reads '+g.action+' / '+g.capital+'.','Require human review of the upstream evidence before treating any permission change as actionable.','GOVERNANCE');
+  return rows.sort((a,b)=>b.severity-a.severity);
+}
+function executiveHumanDecisions(){
+  const rows=[];
+  const q=state.sources.q4?.data;
+  if(q?.watch?.candidate_ready===true)rows.push({priority:95,title:'Review governed market candidate',copy:'Candidate readiness is reviewable, but review does not grant exposure.'});
+  state.allocations.filter(x=>x.status==='PROPOSED'&&!x.humanApproved).slice(0,3).forEach(x=>{const target=linkedProduct(x.productId)?.name||linkedBusiness(x.businessId)?.name||x.allocationType;rows.push({priority:optionalNumber(x.amount)!==null?90:72,title:'Approve / reject '+target+' resource proposal',copy:x.rationale||'Human approval is required before activation.'})});
+  state.biz.units.filter(x=>x.status==='EXIT_REVIEW').forEach(x=>rows.push({priority:85,title:'Decide whether to exit '+x.name,copy:'Business unit is explicitly in EXIT REVIEW.'}));
+  state.biz.products.filter(x=>x.status==='KILL_REVIEW').forEach(x=>rows.push({priority:82,title:'Decide whether to kill '+x.name,copy:'Product is explicitly in KILL REVIEW.'}));
+  const blocked=state.org.projects.filter(x=>(x.status==='BLOCKED'||x.blocker)&&projectScore(x)>=70).sort((a,b)=>projectScore(b)-projectScore(a))[0];
+  if(blocked)rows.push({priority:78,title:'Resolve founder-level blocker: '+blocked.title,copy:blocked.blocker||'High-priority work is blocked.'});
+  return rows.sort((a,b)=>b.priority-a.priority).slice(0,5);
+}
+function executiveReallocation(){
+  const rows=recommendedAttention().slice(0,5).map(x=>({target:x.unit.name,weight:Number(x.weight.toFixed(1)),score:x.score,copy:'Suggested attention share based on current business score and resolved outcome evidence. Advisory only.'}));
+  const weak=state.biz.units.filter(x=>x.status==='ACTIVE'&&outcomeFeedback('BUSINESS',x.id)!==null&&outcomeFeedback('BUSINESS',x.id)<45).sort((a,b)=>outcomeFeedback('BUSINESS',a.id)-outcomeFeedback('BUSINESS',b.id));
+  weak.slice(0,2).forEach(x=>rows.push({target:x.name,weight:null,score:businessScore(x),copy:'Resolved outcome evidence is weak. Consider reducing incremental attention until assumptions are reviewed.'}));
+  return rows.slice(0,6);
+}
+function buildExecutiveCycle(){
+  const date=localDateKey(),snapshot=executiveSnapshot(),fingerprint='CYC-'+date+'-'+simpleHash(JSON.stringify(snapshot)),g=governedPermission(),m=organizationMetrics();
+  const healthy=SOURCE_DEFS.filter(d=>state.sources[d.key]?.ok&&severityFromText(textState(state.sources[d.key]?.data))==='good').length,healthPct=Math.round(healthy/SOURCE_DEFS.length*100);
+  const anomalies=detectExecutiveAnomalies(),interventions=anomalies.slice(0,3).map(x=>({priority:x.severity,title:x.action,reason:x.title,type:x.type})),reallocation=executiveReallocation(),human=executiveHumanDecisions();
+  if(!interventions.length){
+    const top=buildQueue()[0];
+    if(top)interventions.push({priority:top.score,title:top.title,reason:top.copy,type:top.type});
+    else interventions.push({priority:20,title:'Preserve focus and continue observation',reason:'No anomaly currently earns intervention. Silence is a valid machine output.',type:'STEWARD'});
+  }
+  const summary='Executive cycle '+date+': '+anomalies.length+' anomal'+(anomalies.length===1?'y':'ies')+', '+human.length+' human decision'+(human.length===1?'':'s')+', machine health '+healthPct+'%, organization focus '+m.focus+'%. Sovereign authority remains '+g.action+' / '+g.capital+'. '+(interventions[0]?'Top intervention: '+interventions[0].title+'.':'');
+  return{cycleDate:date,version:'V173',stateFingerprint:fingerprint,sovereignAction:g.action,capitalPermission:g.capital,machineHealthPct:healthPct,focusScore:m.focus,summary,anomalies,interventions:interventions.slice(0,3),reallocationSuggestions:reallocation,humanDecisions:human,sourceSnapshot:snapshot};
+}
+function cycleToCloud(x){
+  return{user_id:state.cloud.userId,cycle_date:x.cycleDate,version:x.version,state_fingerprint:x.stateFingerprint,sovereign_action:x.sovereignAction,capital_permission:x.capitalPermission,machine_health_pct:x.machineHealthPct,focus_score:x.focusScore,summary:x.summary,anomalies:x.anomalies,interventions:x.interventions,reallocation_suggestions:x.reallocationSuggestions,human_decisions:x.humanDecisions,source_snapshot:x.sourceSnapshot,generation_count:x.generationCount,first_generated_at:x.firstGeneratedAt,generated_at:x.generatedAt,updated_at:x.generatedAt};
+}
+function cycleFromCloud(r){
+  return{cycleDate:r.cycle_date,version:r.version,stateFingerprint:r.state_fingerprint,sovereignAction:r.sovereign_action,capitalPermission:r.capital_permission,machineHealthPct:r.machine_health_pct,focusScore:r.focus_score,summary:r.summary,anomalies:Array.isArray(r.anomalies)?r.anomalies:[],interventions:Array.isArray(r.interventions)?r.interventions:[],reallocationSuggestions:Array.isArray(r.reallocation_suggestions)?r.reallocation_suggestions:[],humanDecisions:Array.isArray(r.human_decisions)?r.human_decisions:[],sourceSnapshot:r.source_snapshot||{},generationCount:r.generation_count,firstGeneratedAt:r.first_generated_at,generatedAt:r.generated_at};
+}
+async function fetchTodayCycle(){
+  if(!state.cloud.token)return null;
+  const date=localDateKey(),response=await fetch(SUPABASE+'/rest/v1/command_executive_cycles?cycle_date=eq.'+encodeURIComponent(date)+'&select=*&limit=1',{headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'executive_cycle_read_failed');
+  return Array.isArray(data)&&data[0]?cycleFromCloud(data[0]):null;
+}
+async function runExecutiveCycle(force=false){
+  const draft=buildExecutiveCycle(),previous=state.executiveCycle&&state.executiveCycle.cycleDate===draft.cycleDate?state.executiveCycle:null;
+  if(previous&&!force&&previous.stateFingerprint===draft.stateFingerprint){renderExecutiveCycle();return previous}
+  const now=new Date().toISOString();
+  let generation=previous?num(previous.generationCount)+1:1,first=previous?.firstGeneratedAt||now;
+  const item={...draft,generationCount:generation,firstGeneratedAt:first,generatedAt:now};
+  state.executiveCycle=item;saveExecutiveCycle();renderExecutiveCycle();
+  if(!await verifyCloudSession()){state.cycleCloud.state='LOCAL_ONLY';renderCycleCloudState();return item}
+  state.cycleCloud.state='SYNCING';renderCycleCloudState();
+  try{
+    const remote=await fetchTodayCycle();
+    if(remote&&remote.stateFingerprint===item.stateFingerprint){
+      state.executiveCycle={...item,generationCount:Math.max(num(item.generationCount),num(remote.generationCount)),firstGeneratedAt:remote.firstGeneratedAt||item.firstGeneratedAt,generatedAt:remote.generatedAt||item.generatedAt};
+      saveExecutiveCycle();state.cycleCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderExecutiveCycle();renderCycleCloudState();return state.executiveCycle;
+    }
+    if(remote){item.generationCount=Math.max(num(item.generationCount),num(remote.generationCount)+1);item.firstGeneratedAt=remote.firstGeneratedAt||item.firstGeneratedAt}
+    await upsertOrgRows('command_executive_cycles','user_id,cycle_date',[cycleToCloud(item)]);
+    state.executiveCycle=item;saveExecutiveCycle();state.cycleCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderExecutiveCycle();renderCycleCloudState();return item;
+  }catch(error){state.cycleCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.cycleCloud.lastSync};renderCycleCloudState();return item}
+}
+function cycleListHtml(rows,empty,format){
+  return rows?.length?rows.map(format).join(''):'<div class="route-item"><small>'+esc(empty)+'</small></div>';
+}
+function renderExecutiveCycle(){
+  const x=state.executiveCycle;if(!x){set('cycle-summary','Executive cycle has not generated yet.');return}
+  set('cycle-anomaly-kpi',String(x.anomalies?.length||0));set('cycle-intervention-kpi',String(x.interventions?.length||0));set('cycle-human-kpi',String(x.humanDecisions?.length||0));set('cycle-generation-kpi',String(x.generationCount||1));
+  set('cycle-summary',x.summary);set('cycle-stamp','Generated '+new Date(x.generatedAt).toLocaleString()+' · '+x.cycleDate+' · '+x.version);set('cycle-fingerprint',x.stateFingerprint);
+  const a=byId('cycle-anomalies');if(a)a.innerHTML=cycleListHtml(x.anomalies,'No meaningful anomaly detected.',r=>'<div class="route-item">'+esc(r.title)+'<small>'+esc(r.type)+' · severity '+esc(r.severity)+' · '+esc(r.copy)+'</small></div>');
+  const i=byId('cycle-interventions');if(i)i.innerHTML=cycleListHtml(x.interventions,'No intervention required.',r=>'<div class="route-item">'+esc(r.title)+'<small>'+esc(r.type)+' · '+esc(r.reason)+'</small></div>');
+  const rr=byId('cycle-reallocation');if(rr)rr.innerHTML=cycleListHtml(x.reallocationSuggestions,'No active business evidence supports a reallocation suggestion yet.',r=>'<div class="route-item">'+esc(r.target)+(r.weight!=null?' · '+esc(r.weight)+'%':'')+'<small>score '+esc(r.score)+' · '+esc(r.copy)+'</small></div>');
+  const h=byId('cycle-human-decisions');if(h)h.innerHTML=cycleListHtml(x.humanDecisions,'Nothing currently requires founder-level judgment.',r=>'<div class="route-item">'+esc(r.title)+'<small>priority '+esc(r.priority)+' · '+esc(r.copy)+'</small></div>');
+}
+function setupExecutiveCycle(){
+  byId('run-executive-cycle')?.addEventListener('click',()=>void runExecutiveCycle(true));
+}
+
 function textState(data,fallback='UNKNOWN'){
   const candidates=[data?.state,data?.status,data?.health?.state,data?.machine_state,data?.decision?.state,data?.watch?.state,data?.desk_state];
   return String(candidates.find(v=>v!==undefined&&v!==null&&String(v).trim())??fallback).toUpperCase();
@@ -773,7 +917,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -794,6 +938,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);
 }
 boot();
