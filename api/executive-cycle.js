@@ -7,7 +7,7 @@ function failClosed(res,status,error,detail){
   res.setHeader('X-TFA-Engine','V177');
   return res.status(status).json({
     ok:false,
-    version:'v177-multi-agent-planner-bridge-v1',
+    version:'v177.3-multi-agent-planner-bridge-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -26,9 +26,9 @@ export default async function handler(req,res){
 
   try{
     const response=await fetch(RUNTIME,{
-      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V177-MULTI-AGENT-PLANNER-BRIDGE/1.0'},
+      headers:{Authorization:`Bearer ${oidc}`,Accept:'application/json','User-Agent':'TFA-V177.3-MULTI-AGENT-PLANNER-BRIDGE/1.0'},
       cache:'no-store',
-      signal:AbortSignal.timeout(45000)
+      signal:AbortSignal.timeout(60000)
     });
     const body=await response.json().catch(()=>null);
     if(!response.ok||!body?.ok)return failClosed(res,response.status||503,body?.error||'private_runtime_unavailable',body?.detail);
@@ -40,7 +40,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V177');
     return res.status(200).json({
       ok:true,
-      version:'v177-multi-agent-planner-bridge-v1',
+      version:'v177.3-multi-agent-planner-bridge-v1',
       generated_at:body.generated_at,
       owners_processed:body.owners_processed,
       results,
