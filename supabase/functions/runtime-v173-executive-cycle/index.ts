@@ -76,7 +76,7 @@ function snapRows(data:any,sources:any){
   };
 }
 function buildCycle(userId:string,data:any,sources:any,existing:any){
-  const date=dateKey(),snap=snapRows(data,sources),fingerprint=`CYC-${date}-${hash(JSON.stringify(snap))}`;
+  const date=dateKey(),snap=snapRows(data,sources);
   const closure=sources.find((x:any)=>x.key==='closure'),g=closure?.ok?{action:String(closure.data?.governance?.action_permitted||'WAIT').toUpperCase(),capital:String(closure.data?.governance?.capital_permission||'0R').toUpperCase()}:{action:'WAIT',capital:'0R'};
   const healthy=sources.filter((r:any)=>r.ok&&severity(textState(r.data))==='good').length,healthPct=Math.round(healthy/SOURCES.length*100),focus=focusScore(data.projects);
   const anomalies:any[]=[],push=(severityN:number,code:string,title:string,copy:string,action:string,type='OPERATING')=>anomalies.push({severity:severityN,code,title,copy,action,type});
@@ -107,6 +107,18 @@ function buildCycle(userId:string,data:any,sources:any,existing:any){
   const hb=blocked.find((x:any)=>projectScore(x,data.objectives,data.outcomes)>=70);if(hb)human.push({priority:78,title:'Resolve founder-level blocker: '+hb.title,copy:hb.blocker||'High-priority work is blocked.'});human.sort((a,b)=>b.priority-a.priority);
   const activeBiz=data.businesses.filter((x:any)=>x.status==='ACTIVE').map((x:any)=>({x,score:Math.max(1,businessScore(x,data.outcomes))}));const sum=activeBiz.reduce((s:number,x:any)=>s+x.score,0);
   const realloc=activeBiz.sort((a:any,b:any)=>b.score-a.score).slice(0,5).map((v:any)=>({target:v.x.name,weight:Number((sum?v.score/sum*100:0).toFixed(1)),score:v.score,copy:'Suggested attention share based on current business score and resolved outcome evidence. Advisory only.'}));
+  const semanticState={
+    governance:[g.action,g.capital],
+    machineHealthPct:healthPct,
+    focusScore:focus,
+    sourceRegimes:Object.fromEntries(sources.map((v:any)=>[v.key,v.ok?severity(textState(v.data)):'bad'])),
+    anomalies:anomalies.map((v:any)=>[v.code,v.severity]),
+    interventions:interventions.map((v:any)=>[v.type,v.title]),
+    humanDecisions:human.map((v:any)=>[v.priority,v.title]),
+    reallocation:realloc.map((v:any)=>[v.target,v.weight,v.score]),
+    candidateReady:q4?.watch?.candidate_ready===true
+  };
+  const fingerprint=`CYC-${date}-${hash(JSON.stringify(semanticState))}`;
   const summary=`Executive cycle ${date}: ${anomalies.length} anomal${anomalies.length===1?'y':'ies'}, ${human.length} human decision${human.length===1?'':'s'}, machine health ${healthPct}%, organization focus ${focus}%. Sovereign authority remains ${g.action} / ${g.capital}. Top intervention: ${interventions[0]?.title||'preserve focus'}.`;
   const now=new Date().toISOString(),same=existing&&existing.state_fingerprint===fingerprint,generation=same?n(existing.generation_count)||1:(existing?n(existing.generation_count)+1:1);
   return{user_id:userId,cycle_date:date,version:'V173',state_fingerprint:fingerprint,sovereign_action:g.action,capital_permission:g.capital,machine_health_pct:healthPct,focus_score:focus,summary,anomalies,interventions,reallocation_suggestions:realloc,human_decisions:human.slice(0,5),source_snapshot:snap,generation_count:generation,first_generated_at:existing?.first_generated_at||now,generated_at:same?(existing?.generated_at||now):now,updated_at:same?(existing?.updated_at||now):now,changed:!same};
@@ -134,8 +146,8 @@ Deno.serve(async(req:Request)=>{
       if(cycle.changed){const row={...cycle};delete row.changed;await upsert('command_executive_cycles','user_id,cycle_date',row)}
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission});
     }
-    return Response.json({ok:true,version:'v173-autonomous-executive-cycle-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
+    return Response.json({ok:true,version:'v173.1-autonomous-executive-cycle-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
   }catch(error){
-    return Response.json({ok:false,version:'v173-autonomous-executive-cycle-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
+    return Response.json({ok:false,version:'v173.1-autonomous-executive-cycle-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V173'}});
   }
 });
