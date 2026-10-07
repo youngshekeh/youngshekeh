@@ -4,10 +4,11 @@ const LEDGER_KEY='tfa.v168.command.decisions.v1';
 const ORG_KEY='tfa.v169.organization.v1';
 const BIZ_KEY='tfa.v170.business.v1';
 const ALLOC_KEY='tfa.v171.allocations.v1';
+const OUTCOME_KEY='tfa.v172.outcomes.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -31,6 +32,8 @@ function loadBiz(){try{const v=JSON.parse(localStorage.getItem(BIZ_KEY)||'null')
 function saveBiz(){localStorage.setItem(BIZ_KEY,JSON.stringify(state.biz))}
 function loadAllocations(){try{const v=JSON.parse(localStorage.getItem(ALLOC_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
 function saveAllocations(){localStorage.setItem(ALLOC_KEY,JSON.stringify(state.allocations))}
+function loadOutcomes(){try{const v=JSON.parse(localStorage.getItem(OUTCOME_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return[]}}
+function saveOutcomes(){localStorage.setItem(OUTCOME_KEY,JSON.stringify(state.outcomes))}
 function download(name,content){const blob=new Blob([content],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 function sessionToken(){try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')?.access_token||null}catch{return null}}
 function cloudTimestamp(x){const value=x?.updatedAt||x?.resolvedAt||x?.createdAt||'';const n=Date.parse(value);return Number.isFinite(n)?n:0}
@@ -212,8 +215,9 @@ async function deleteOrgCloud(kind,id){
 }
 function linkedObjective(project){return state.org.objectives.find(x=>x.id===project.objectiveId)||null}
 function projectScore(project){
-  const objective=linkedObjective(project),priority=num(objective?.priority)||3;
+  const objective=linkedObjective(project),priority=num(objective?.priority)||3,feedback=outcomeFeedback('PROJECT',project.id);
   let score=num(project.impact)*12+num(project.confidence)*0.25+priority*6-num(project.effort)*6;
+  if(feedback!==null)score+=(feedback-50)*0.2;
   if(project.status==='BLOCKED'||String(project.blocker||'').trim())score-=20;
   if(project.status==='DEFERRED')score-=25;
   if(project.dueDate&&new Date(project.dueDate+'T23:59:59').getTime()<Date.now()&&!['COMPLETE','KILLED'].includes(project.status))score-=10;
@@ -358,23 +362,26 @@ function linkedBusiness(id){return state.biz.units.find(x=>x.id===id)||null}
 function linkedProduct(id){return state.biz.products.find(x=>x.id===id)||null}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function businessScore(x){
-  const rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d),growth=optionalNumber(x.growthPct);
+  const rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d),growth=optionalNumber(x.growthPct),feedback=outcomeFeedback('BUSINESS',x.id);
   const margin=rev!==null&&rev>0&&cost!==null?(rev-cost)/rev*100:null;
   let score=num(x.strategicPriority)*12+(x.status==='ACTIVE'?12:x.status==='INCUBATING'?6:0)+(growth===null?0:clamp(growth,-50,50)*0.25)+(margin===null?0:clamp(margin,-100,100)*0.18)+(x.nextAction?4:0);
+  if(feedback!==null)score+=(feedback-50)*0.2;
   if(x.blocker)score-=18;if(x.status==='EXIT_REVIEW')score-=20;if(x.status==='PAUSED')score-=15;
   return clamp(Math.round(score),0,100);
 }
 function productScore(x){
-  const margin=optionalNumber(x.marginPct),conv=optionalNumber(x.conversionPct);
+  const margin=optionalNumber(x.marginPct),conv=optionalNumber(x.conversionPct),feedback=outcomeFeedback('PRODUCT',x.id);
   let score=num(x.strategicPriority)*12+(x.status==='ACTIVE'?12:x.status==='BUILDING'?6:0)+(margin===null?0:clamp(margin,-100,100)*0.16)+(conv===null?0:clamp(conv,0,100)*0.22)+(optionalNumber(x.revenue30d)!==null?5:0)+(x.nextAction?4:0);
+  if(feedback!==null)score+=(feedback-50)*0.2;
   if(x.blocker)score-=18;if(x.status==='KILL_REVIEW')score-=24;if(x.status==='PAUSED')score-=15;
   return clamp(Math.round(score),0,100);
 }
 function channelScore(x){
-  const leads=optionalNumber(x.leads30d),conversions=optionalNumber(x.conversions30d),rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d);
+  const leads=optionalNumber(x.leads30d),conversions=optionalNumber(x.conversions30d),rev=optionalNumber(x.revenue30d),cost=optionalNumber(x.cost30d),feedback=outcomeFeedback('CHANNEL',x.id);
   const cvr=leads!==null&&leads>0&&conversions!==null?conversions/leads*100:null;
   const roi=cost!==null&&cost>0&&rev!==null?(rev-cost)/cost*100:null;
   let score=(x.status==='ACTIVE'?35:x.status==='TESTING'?24:8)+(cvr===null?0:clamp(cvr,0,100)*0.35)+(roi===null?0:clamp(roi,-100,300)*0.08)+(conversions!==null&&conversions>0?8:0)+(x.nextAction?4:0);
+  if(feedback!==null)score+=(feedback-50)*0.2;
   if(x.status==='STOPPED')score-=30;if(x.status==='PAUSED')score-=15;
   return clamp(Math.round(score),0,100);
 }
@@ -482,6 +489,140 @@ function setupAllocationBrain(){
   byId('allocation-form')?.addEventListener('submit',e=>{e.preventDefault();const row=Object.fromEntries(new FormData(e.currentTarget).entries()),now=new Date().toISOString();row.currency=row.currency?String(row.currency).toUpperCase():'';const item={...row,id:uid(),status:'PROPOSED',humanApproved:false,createdAt:now,updatedAt:now};state.allocations.push(item);saveAllocations();e.currentTarget.reset();const c=e.currentTarget.querySelector('[name=currency]');if(c)c.value='USD';renderAll();void syncAllocationItem(item)});
 }
 
+
+function renderOutcomeCloudState(){
+  const badge=byId('outcome-cloud-state');if(!badge)return;
+  const mode=state.outcomeCloud.state,cls=mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='LOCAL_ONLY'?'warn':'bad';
+  badge.className='cmd-badge '+cls;badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':'LOCAL FALLBACK';
+}
+function outcomeToCloud(x){
+  return{
+    user_id:state.cloud.userId,client_outcome_id:x.id,entity_type:x.entityType,entity_client_id:x.entityId,
+    title:String(x.title||'').slice(0,240),status:x.status||'PLANNED',metric_name:String(x.metricName||''),
+    direction:x.direction||'HIGHER_IS_BETTER',baseline_value:optionalNumber(x.baselineValue),expected_value:num(x.expectedValue),
+    actual_value:optionalNumber(x.actualValue),unit:String(x.unit||''),confidence:Math.max(0,Math.min(100,Math.round(num(x.confidence)||0))),
+    currency:x.currency?String(x.currency).toUpperCase().slice(0,3):null,revenue:optionalNumber(x.revenue),
+    cost:optionalNumber(x.cost),quantity:optionalNumber(x.quantity),lesson:String(x.lesson||''),next_action:String(x.nextAction||''),
+    started_at:x.startedAt||null,due_at:x.dueAt||null,resolved_at:x.resolvedAt||null,
+    client_created_at:x.createdAt||new Date().toISOString(),updated_at:x.updatedAt||x.resolvedAt||x.createdAt||new Date().toISOString()
+  };
+}
+function outcomeFromCloud(r){
+  return{id:r.client_outcome_id,entityType:r.entity_type,entityId:r.entity_client_id,title:r.title,status:r.status,metricName:r.metric_name,
+    direction:r.direction,baselineValue:r.baseline_value==null?'':String(r.baseline_value),expectedValue:String(r.expected_value),
+    actualValue:r.actual_value==null?'':String(r.actual_value),unit:r.unit||'',confidence:String(r.confidence),currency:r.currency||'',
+    revenue:r.revenue==null?'':String(r.revenue),cost:r.cost==null?'':String(r.cost),quantity:r.quantity==null?'':String(r.quantity),
+    lesson:r.lesson||'',nextAction:r.next_action||'',startedAt:r.started_at||null,dueAt:r.due_at||null,resolvedAt:r.resolved_at||null,
+    createdAt:r.client_created_at||r.created_at,updatedAt:r.updated_at||r.created_at};
+}
+async function syncOutcomeBrain(){
+  state.outcomeCloud.state='SYNCING';renderOutcomeCloudState();
+  if(!await verifyCloudSession()){state.outcomeCloud.state='LOCAL_ONLY';renderOutcomeCloudState();return}
+  try{
+    const remote=(await restRows('command_outcomes')).map(outcomeFromCloud),map=new Map(state.outcomes.map(x=>[x.id,x]));
+    for(const x of remote){const local=map.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))map.set(x.id,x)}
+    state.outcomes=[...map.values()];saveOutcomes();
+    await upsertOrgRows('command_outcomes','user_id,client_outcome_id',state.outcomes.map(outcomeToCloud));
+    state.outcomeCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderOutcomeCloudState();
+  }catch(error){state.outcomeCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.outcomeCloud.lastSync};renderOutcomeCloudState();renderAll()}
+}
+async function syncOutcomeItem(item){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{await upsertOrgRows('command_outcomes','user_id,client_outcome_id',[outcomeToCloud(item)]);state.outcomeCloud.state='CLOUD_SYNCED';state.outcomeCloud.lastSync=new Date().toISOString();renderOutcomeCloudState()}
+  catch(error){state.outcomeCloud.state='CLOUD_ERROR';state.outcomeCloud.lastError=String(error);renderOutcomeCloudState()}
+}
+async function deleteOutcomeCloud(id){
+  if(!state.cloud.token||!state.cloud.userId)return;
+  try{
+    const response=await fetch(SUPABASE+'/rest/v1/command_outcomes?client_outcome_id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Prefer:'return=minimal'},cache:'no-store',signal:AbortSignal.timeout(10000)});
+    if(!response.ok)throw new Error('outcome_delete_failed');
+  }catch(error){state.outcomeCloud.state='CLOUD_ERROR';state.outcomeCloud.lastError=String(error);renderOutcomeCloudState()}
+}
+function outcomeDenominator(x){const e=Math.abs(num(x.expectedValue)),b=Math.abs(num(x.baselineValue));return Math.max(e,b,1e-9)}
+function expectationAccuracy(x){
+  if(x.status!=='RESOLVED'||optionalNumber(x.actualValue)===null)return null;
+  const err=Math.abs(num(x.actualValue)-num(x.expectedValue))/outcomeDenominator(x);
+  return clamp((1-err)*100,0,100);
+}
+function outcomePerformance(x){
+  if(x.status!=='RESOLVED'||optionalNumber(x.actualValue)===null)return null;
+  const expected=num(x.expectedValue),actual=num(x.actualValue),den=outcomeDenominator(x);
+  if(x.direction==='LOWER_IS_BETTER'){
+    if(actual<=expected)return 100;
+    return clamp((Math.abs(expected)||den)/(Math.abs(actual)||den)*100,0,100);
+  }
+  if(x.direction==='TARGET')return expectationAccuracy(x);
+  if(actual>=expected)return 100;
+  return clamp((actual/den)*100,0,100);
+}
+function outcomeFeedback(type,id){
+  const rows=state.outcomes.filter(x=>x.entityType===type&&x.entityId===id&&x.status==='RESOLVED').map(outcomePerformance).filter(x=>x!==null);
+  return rows.length?rows.reduce((a,b)=>a+b,0)/rows.length:null;
+}
+function outcomeEntityLabel(x){
+  if(x.entityType==='PROJECT')return state.org.projects.find(v=>v.id===x.entityId)?.title||'Unknown project';
+  if(x.entityType==='BUSINESS')return linkedBusiness(x.entityId)?.name||'Unknown business';
+  if(x.entityType==='PRODUCT')return linkedProduct(x.entityId)?.name||'Unknown product';
+  if(x.entityType==='CHANNEL')return state.biz.channels.find(v=>v.id===x.entityId)?.name||'Unknown channel';
+  if(x.entityType==='ALLOCATION'){
+    const a=state.allocations.find(v=>v.id===x.entityId);if(!a)return'Unknown allocation';
+    return (linkedProduct(a.productId)?.name||linkedBusiness(a.businessId)?.name||a.allocationType)+' allocation';
+  }
+  return'Unknown entity';
+}
+function outcomeEntities(type){
+  if(type==='PROJECT')return state.org.projects.map(x=>({id:x.id,label:x.title}));
+  if(type==='BUSINESS')return state.biz.units.map(x=>({id:x.id,label:x.name}));
+  if(type==='PRODUCT')return state.biz.products.map(x=>({id:x.id,label:x.name}));
+  if(type==='CHANNEL')return state.biz.channels.map(x=>({id:x.id,label:x.name}));
+  if(type==='ALLOCATION')return state.allocations.map(x=>({id:x.id,label:(linkedProduct(x.productId)?.name||linkedBusiness(x.businessId)?.name||x.allocationType)+' · '+x.allocationType}));
+  return[];
+}
+function refreshOutcomeEntitySelect(){
+  const type=byId('outcome-entity-type')?.value||'PROJECT',select=byId('outcome-entity');if(!select)return;
+  const current=select.value,rows=outcomeEntities(type);select.innerHTML='<option value="">SELECT ENTITY</option>'+rows.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.label)+'</option>').join('');
+  if(rows.some(x=>x.id===current))select.value=current;
+}
+function outcomeMetrics(){
+  const resolved=state.outcomes.filter(x=>x.status==='RESOLVED'),running=state.outcomes.filter(x=>x.status==='RUNNING');
+  const accuracy=resolved.map(expectationAccuracy).filter(x=>x!==null),performance=resolved.map(outcomePerformance).filter(x=>x!==null);
+  const roiRows=resolved.map(x=>{const rev=optionalNumber(x.revenue),cost=optionalNumber(x.cost);return rev!==null&&cost!==null&&cost>0?(rev-cost)/cost*100:null}).filter(x=>x!==null);
+  return{resolved,running,accuracy:accuracy.length?accuracy.reduce((a,b)=>a+b,0)/accuracy.length:null,performance:performance.length?performance.reduce((a,b)=>a+b,0)/performance.length:null,roi:roiRows.length?roiRows.reduce((a,b)=>a+b,0)/roiRows.length:null};
+}
+function renderOutcomeBrain(){
+  const m=outcomeMetrics();set('outcome-running-kpi',String(m.running.length));set('outcome-resolved-kpi',String(m.resolved.length));set('outcome-accuracy-kpi',m.accuracy==null?'—':m.accuracy.toFixed(0)+'%');set('outcome-roi-kpi',m.roi==null?'—':m.roi.toFixed(1)+'%');
+  let brief=m.resolved.length?'Resolved evidence now influences project, product, business and channel priority scores. Average performance score '+(m.performance==null?'—':m.performance.toFixed(0)+'/100')+'; expectation accuracy '+(m.accuracy==null?'—':m.accuracy.toFixed(0)+'%')+'. ':'No resolved outcomes yet. Priority scores still rely on declared impact, confidence, economics and blockers. ';
+  const overdue=state.outcomes.filter(x=>['PLANNED','RUNNING'].includes(x.status)&&x.dueAt&&new Date(x.dueAt).getTime()<Date.now());
+  if(overdue.length)brief+=overdue.length+' measurement'+(overdue.length===1?' is':'s are')+' overdue. ';
+  brief+='Outcome feedback can move ranking modestly, but cannot override governance or capital permission.';
+  set('outcome-brief',brief);
+
+  const economics=m.resolved.filter(x=>optionalNumber(x.revenue)!==null||optionalNumber(x.cost)!==null||optionalNumber(x.quantity)!==null);
+  set('unit-economics',economics.length?economics.slice(0,5).map(x=>{const rev=optionalNumber(x.revenue),cost=optionalNumber(x.cost),q=optionalNumber(x.quantity),roi=rev!==null&&cost!==null&&cost>0?(rev-cost)/cost*100:null;let s=outcomeEntityLabel(x)+': ';if(roi!==null)s+='ROI '+roi.toFixed(1)+'%. ';if(q!==null&&q>0&&rev!==null)s+='Revenue/unit '+(rev/q).toFixed(2)+' '+(x.currency||'')+'. ';if(q!==null&&q>0&&cost!==null)s+='Cost/unit '+(cost/q).toFixed(2)+' '+(x.currency||'')+'.';return s}).join(' '):'No resolved unit-economics observations yet. Revenue, cost and quantity remain optional evidence fields.');
+
+  refreshOutcomeEntitySelect();
+
+  const host=byId('outcome-list');if(host){
+    const rows=state.outcomes.slice().sort((a,b)=>String(b.updatedAt||b.createdAt).localeCompare(String(a.updatedAt||a.createdAt)));
+    host.innerHTML=rows.length?rows.map(x=>{const perf=outcomePerformance(x),acc=expectationAccuracy(x),actual=optionalNumber(x.actualValue);return '<article class="org-item"><div class="org-item-top"><div><div class="org-title">'+esc(x.title)+'</div><div class="org-meta">'+esc(x.entityType)+' · '+esc(outcomeEntityLabel(x))+' · '+esc(x.status)+'</div></div><div class="org-score">'+(perf==null?'?':Math.round(perf))+'</div></div><div class="org-meta">'+esc(x.metricName)+' · expected '+esc(x.expectedValue)+' '+esc(x.unit||'')+' · actual '+(actual===null?'—':esc(x.actualValue))+' '+esc(x.unit||'')+(acc==null?'':' · expectation accuracy '+acc.toFixed(0)+'%')+' · confidence '+esc(x.confidence)+'%'+(x.dueAt?' · due '+esc(new Date(x.dueAt).toLocaleString()):'')+'</div><div class="org-actions">'+(x.status==='PLANNED'?'<button class="cmd-btn mini" data-outcome-start="'+esc(x.id)+'">START</button>':'')+(!['RESOLVED','CANCELLED'].includes(x.status)?'<button class="cmd-btn mini" data-outcome-resolve="'+esc(x.id)+'">RESOLVE</button><button class="cmd-btn mini danger" data-outcome-cancel="'+esc(x.id)+'">CANCEL</button>':'')+'<button class="cmd-btn mini danger" data-outcome-delete="'+esc(x.id)+'">DELETE</button></div></article>'}).join(''):'<div class="empty">No outcomes frozen yet. Attach an expected result to a project, product, business, channel or allocation before reality arrives.</div>';
+  }
+
+  const learning=byId('learning-feed');if(learning){
+    const rows=m.resolved.slice().sort((a,b)=>String(b.resolvedAt).localeCompare(String(a.resolvedAt)));
+    learning.innerHTML=rows.length?rows.slice(0,10).map(x=>'<article class="org-item"><div class="org-title">'+esc(outcomeEntityLabel(x))+'</div><div class="org-meta">'+esc(x.metricName)+' · performance '+Math.round(outcomePerformance(x))+'/100 · accuracy '+Math.round(expectationAccuracy(x))+'%</div><div class="compression-copy">'+esc(x.lesson||((outcomePerformance(x)>=70?'Evidence supports the current thesis.':'Evidence weakens the current thesis. Review assumptions before allocating more resources.')))+'</div></article>').join(''):'<div class="empty">Learning feed activates when outcomes resolve.</div>';
+  }
+
+  document.querySelectorAll('[data-outcome-start]').forEach(btn=>btn.addEventListener('click',()=>{const x=state.outcomes.find(v=>v.id===btn.dataset.outcomeStart);if(!x)return;x.status='RUNNING';x.startedAt=x.startedAt||new Date().toISOString();x.updatedAt=new Date().toISOString();saveOutcomes();renderAll();void syncOutcomeItem(x)}));
+  document.querySelectorAll('[data-outcome-resolve]').forEach(btn=>btn.addEventListener('click',()=>{const x=state.outcomes.find(v=>v.id===btn.dataset.outcomeResolve);if(!x)return;let actual=optionalNumber(x.actualValue);if(actual===null){const raw=prompt('Actual measured value for '+x.metricName+':');if(raw===null||raw.trim()===''||!Number.isFinite(Number(raw)))return;actual=Number(raw);x.actualValue=String(actual)}const lesson=prompt('What did this outcome teach the system?')||x.lesson||'';x.lesson=lesson.trim();x.status='RESOLVED';x.resolvedAt=new Date().toISOString();x.updatedAt=x.resolvedAt;saveOutcomes();renderAll();void syncOutcomeItem(x)}));
+  document.querySelectorAll('[data-outcome-cancel]').forEach(btn=>btn.addEventListener('click',()=>{const x=state.outcomes.find(v=>v.id===btn.dataset.outcomeCancel);if(!x)return;x.status='CANCELLED';x.updatedAt=new Date().toISOString();saveOutcomes();renderAll();void syncOutcomeItem(x)}));
+  document.querySelectorAll('[data-outcome-delete]').forEach(btn=>btn.addEventListener('click',()=>{const id=btn.dataset.outcomeDelete;state.outcomes=state.outcomes.filter(x=>x.id!==id);saveOutcomes();renderAll();void deleteOutcomeCloud(id)}));
+}
+function setupOutcomeBrain(){
+  byId('outcome-entity-type')?.addEventListener('change',refreshOutcomeEntitySelect);
+  byId('sync-outcomes')?.addEventListener('click',()=>void syncOutcomeBrain());
+  byId('outcome-form')?.addEventListener('submit',e=>{e.preventDefault();const row=Object.fromEntries(new FormData(e.currentTarget).entries());if(!row.entityId)return;const now=new Date().toISOString();row.currency=row.currency?String(row.currency).toUpperCase():'';row.dueAt=row.dueAt?new Date(row.dueAt).toISOString():null;const item={...row,id:uid(),status:'PLANNED',lesson:'',startedAt:null,resolvedAt:null,createdAt:now,updatedAt:now};state.outcomes.push(item);saveOutcomes();e.currentTarget.reset();const c=e.currentTarget.querySelector('[name=confidence]');if(c)c.value='60';renderAll();void syncOutcomeItem(item)});
+}
+
 function textState(data,fallback='UNKNOWN'){
   const candidates=[data?.state,data?.status,data?.health?.state,data?.machine_state,data?.decision?.state,data?.watch?.state,data?.desk_state];
   return String(candidates.find(v=>v!==undefined&&v!==null&&String(v).trim())??fallback).toUpperCase();
@@ -545,6 +686,8 @@ function buildQueue(){
   state.biz.units.filter(x=>x.status==='ACTIVE').sort((a,b)=>businessScore(b)-businessScore(a)).slice(0,2).forEach(x=>add(Math.max(56,businessScore(x)),x.name,x.nextAction||'Highest-ranked active business unit.','BUSINESS · '+x.category));
   state.biz.products.filter(x=>x.status==='ACTIVE').sort((a,b)=>productScore(b)-productScore(a)).slice(0,2).forEach(x=>add(Math.max(54,productScore(x)),x.name,x.nextAction||'Highest-ranked active product.','PRODUCT · '+x.productType));
   state.allocations.filter(x=>x.status==='PROPOSED'&&!x.humanApproved).slice(0,3).forEach(x=>{const b=linkedBusiness(x.businessId),p=linkedProduct(x.productId);add(optionalNumber(x.amount)!==null?66:58,'Review resource proposal: '+(p?.name||b?.name||x.allocationType),x.rationale||'Human approval required before activation.','RESOURCE · HUMAN REVIEW')});
+  state.outcomes.filter(x=>['PLANNED','RUNNING'].includes(x.status)&&x.dueAt&&new Date(x.dueAt).getTime()<Date.now()).slice(0,3).forEach(x=>add(74,'Resolve overdue outcome: '+x.title,'Measurement window has passed. Record actual evidence or cancel the experiment.','OUTCOME · OVERDUE'));
+  state.outcomes.filter(x=>x.status==='RESOLVED'&&outcomePerformance(x)!==null&&outcomePerformance(x)<45).slice(0,3).forEach(x=>add(61,'Review weak outcome: '+x.title,'Observed performance scored '+Math.round(outcomePerformance(x))+'/100. Revisit assumptions before increasing resources.','LEARNING'));
   const seen=new Set();
   return items.sort((a,b)=>b.score-a.score).filter(x=>{const k=x.title.toLowerCase();if(seen.has(k))return false;seen.add(k);return true}).slice(0,12);
 }
@@ -625,11 +768,12 @@ function renderScenario(){
   copy+=blockers>0?blockers+' execution blockers remain, so the Architect-Steward removes constraints before adding complexity. ':'No execution blocker count is currently surfaced by the closure gate. ';
   if(candidate)copy+='A candidate is ready for human review, but review remains separate from capital permission. ';
   copy+='The decision ledger contains '+m.open+' open and '+m.resolved+' resolved decisions. The next state is reached by closing feedback loops until judgment becomes rarer and higher-value. Current authority remains '+g.action+' / '+g.capital+'. ';
+  const om=outcomeMetrics();copy+=' Execution learning contains '+om.running+' running and '+om.resolved.length+' resolved outcome'+(om.resolved.length===1?'':'s')+(om.accuracy==null?'. ':' with '+om.accuracy.toFixed(0)+'% expectation accuracy. ');
   copy+=queue[0]?'The highest-priority move is: '+queue[0].title+'.':'No urgent action is required. The system earns the right to stay quiet.';
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -650,6 +794,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain()]);setInterval(()=>void syncMachine(),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);
 }
 boot();
