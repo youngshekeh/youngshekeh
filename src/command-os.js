@@ -9,7 +9,7 @@ const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -921,14 +921,117 @@ function setupInterventions(){
 }
 async function runHeadlessExecutiveCycle(){
   const btn=byId('run-executive-cycle');
-  if(btn){btn.disabled=true;btn.textContent='RUNNING V174'}
+  if(btn){btn.disabled=true;btn.textContent='RUNNING V175'}
   try{
     await fetchJson('/api/executive-cycle',50000);
-    await Promise.allSettled([syncMachine(),syncInterventions()]);
+    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole()]);
     await runExecutiveCycle(true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='RUN EXECUTIVE CYCLE'}
   }
+}
+
+
+function renderRunbookCloudState(){
+  const badge=byId('runbook-cloud-state');if(!badge)return;
+  const mode=state.runbookCloud.state;
+  badge.className='cmd-badge '+(mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='CLOUD_ERROR'?'bad':'warn');
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':mode==='CLOUD_ERROR'?'CLOUD ERROR':'SIGN IN REQUIRED';
+}
+async function fetchRunbookTable(path){
+  const response=await fetch(SUPABASE+'/rest/v1/'+path,{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(12000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'runbook_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function syncRunbooksConsole(){
+  state.runbookCloud.state='SYNCING';renderRunbookCloudState();
+  if(!await verifyCloudSession()){
+    state.runbookCloud.state='LOCAL_ONLY';renderRunbookCloudState();renderRunbooks();return;
+  }
+  try{
+    const [runbooks,steps,runs,events]=await Promise.all([
+      fetchRunbookTable('command_runbooks?select=*&order=updated_at.desc'),
+      fetchRunbookTable('command_runbook_steps?select=*&order=runbook_id.asc,position.asc'),
+      fetchRunbookTable('command_action_runs?select=*&order=created_at.desc&limit=100'),
+      fetchRunbookTable('command_action_events?select=*&order=created_at.desc&limit=80')
+    ]);
+    state.runbooks=runbooks;state.runbookSteps=steps;state.actionRuns=runs;state.actionEvents=events;
+    state.runbookCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.runbookCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.runbookCloud.lastSync};
+  }
+  renderRunbookCloudState();renderRunbooks();
+}
+function capabilityClassName(value){
+  return String(value||'').replaceAll('_',' ');
+}
+function runbookBadge(status){
+  if(status==='COMPLETE')return'good';
+  if(status==='BLOCKED'||status==='CANCELLED')return'bad';
+  return'warn';
+}
+function stepBadge(step){
+  if(step.status==='SUCCEEDED')return'good';
+  if(step.status==='FAILED'||step.status==='BLOCKED'||step.capability_class==='FORBIDDEN')return step.capability_class==='FORBIDDEN'?'bad':'bad';
+  return'warn';
+}
+async function approveRunbook(id){
+  if(!await verifyCloudSession())return;
+  const runbook=state.runbooks.find(x=>x.id===id);if(!runbook||runbook.status!=='READY'||!runbook.approval_required)return;
+  const note=prompt('Approval note (optional). This approves only the bounded V175 internal runbook. It does not authorize trading, payments, fund movement, credentials, secrets or irreversible external action.','');
+  if(note===null)return;
+  state.runbookCloud.state='SYNCING';renderRunbookCloudState();
+  try{
+    const response=await fetch(SUPABASE+'/rest/v1/rpc/command_approve_runbook',{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({p_runbook_id:id,p_note:note.trim()}),
+      cache:'no-store',signal:AbortSignal.timeout(12000)
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||data?.hint||'runbook_approval_failed');
+    await syncRunbooksConsole();
+    await fetchJson('/api/executive-cycle',60000);
+    await Promise.allSettled([syncRunbooksConsole(),syncInterventions()]);
+  }catch(error){
+    state.runbookCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.runbookCloud.lastSync};
+    renderRunbookCloudState();alert('Runbook approval failed. No external action was performed.');
+  }
+}
+function renderRunbooks(){
+  const runbooks=state.runbooks||[],steps=state.runbookSteps||[],runs=state.actionRuns||[];
+  set('runbook-kpi',String(runbooks.length));
+  set('runbook-approval-kpi',String(runbooks.filter(x=>x.approval_required&&x.status==='READY').length));
+  set('runbook-success-kpi',String(runs.filter(x=>x.status==='SUCCEEDED').length));
+  set('runbook-blocked-kpi',String(runs.filter(x=>x.status==='BLOCKED'||x.capability_class==='FORBIDDEN').length));
+
+  const list=byId('runbook-list');
+  if(list){
+    list.innerHTML=runbooks.length?runbooks.map(r=>{
+      const child=steps.filter(s=>s.runbook_id===r.id).sort((a,b)=>num(a.position)-num(b.position));
+      const approve=r.approval_required&&r.status==='READY'?'<button class="cmd-btn primary" data-approve-runbook="'+esc(r.id)+'">APPROVE BOUNDED PLAN</button>':'';
+      const stepHtml=child.map(s=>'<div class="step-row"><div class="step-num">'+esc(String(s.position).padStart(2,'0'))+'</div><div><div class="step-title">'+esc(s.title)+'</div><div class="step-meta">'+esc(capabilityClassName(s.capability_class))+' · '+esc(s.action_kind.replaceAll('_',' '))+(s.requires_owner_approval?' · OWNER GATE':'')+'</div></div><span class="cmd-badge '+stepBadge(s)+'">'+esc(s.status)+'</span></div>').join('');
+      return '<article class="runbook-item"><div class="runbook-top"><div><div class="runbook-title">'+esc(r.title)+'</div><div class="runbook-meta">VERSION '+esc(r.version)+' · CEILING '+esc(capabilityClassName(r.capability_ceiling))+' · '+(r.approval_required?'OWNER APPROVAL REQUIRED':'SAFE INTERNAL AUTO PATH')+'</div></div><span class="cmd-badge '+runbookBadge(r.status)+'">'+esc(r.status)+'</span></div><div class="intervention-action">'+esc(r.objective||'Resolve the intervention with evidence.')+'</div><div class="step-stack">'+stepHtml+'</div><div class="runbook-meta">FINGERPRINT '+esc(r.source_fingerprint||'—')+(r.approved_at?' · APPROVED '+esc(new Date(r.approved_at).toLocaleString()):'')+'</div><div class="intervention-actions">'+approve+'</div></article>';
+    }).join(''):'<div class="route-item"><small>No runbooks yet. The next V175 cycle will compile them from open interventions.</small></div>';
+    list.querySelectorAll('[data-approve-runbook]').forEach(btn=>btn.addEventListener('click',()=>void approveRunbook(btn.dataset.approveRunbook)));
+  }
+
+  const receipts=byId('action-receipts');
+  if(receipts){
+    const titleById=new Map(runbooks.map(r=>[r.id,r.title]));
+    receipts.innerHTML=runs.length?runs.slice(0,18).map(a=>{
+      const cls=a.status==='SUCCEEDED'?'good':'bad';
+      const external=a.governance?.external_effects===true?'EXTERNAL EFFECT':'NO EXTERNAL EFFECT';
+      return '<div class="action-receipt"><strong>'+esc(a.status)+' · '+esc(capabilityClassName(a.capability_class))+'</strong>'+esc(titleById.get(a.runbook_id)||'Runbook')+'<br>'+esc(a.action_kind.replaceAll('_',' '))+' · '+esc(a.mode)+'<br>'+esc(external)+' · '+esc(new Date(a.created_at).toLocaleString())+'</div>';
+    }).join(''):'<div class="action-receipt">No action receipts yet.</div>';
+  }
+}
+function setupRunbooks(){
+  byId('sync-runbooks')?.addEventListener('click',()=>void syncRunbooksConsole());
 }
 
 function textState(data,fallback='UNKNOWN'){
@@ -1081,7 +1184,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -1102,6 +1205,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);
 }
 boot();
