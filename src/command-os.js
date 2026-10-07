@@ -9,7 +9,7 @@ const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],agents:[],agentAssignments:[],agentEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},agentCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -921,10 +921,10 @@ function setupInterventions(){
 }
 async function runHeadlessExecutiveCycle(){
   const btn=byId('run-executive-cycle');
-  if(btn){btn.disabled=true;btn.textContent='RUNNING V175'}
+  if(btn){btn.disabled=true;btn.textContent='RUNNING V176'}
   try{
-    await fetchJson('/api/executive-cycle',50000);
-    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole()]);
+    await fetchJson('/api/executive-cycle',65000);
+    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole()]);
     await runExecutiveCycle(true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='RUN EXECUTIVE CYCLE'}
@@ -996,7 +996,7 @@ async function approveRunbook(id){
     if(!response.ok)throw new Error(data?.message||data?.hint||'runbook_approval_failed');
     await syncRunbooksConsole();
     await fetchJson('/api/executive-cycle',60000);
-    await Promise.allSettled([syncRunbooksConsole(),syncInterventions()]);
+    await Promise.allSettled([syncRunbooksConsole(),syncInterventions(),syncAgentWorkforceConsole()]);
   }catch(error){
     state.runbookCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.runbookCloud.lastSync};
     renderRunbookCloudState();alert('Runbook approval failed. No external action was performed.');
@@ -1032,6 +1032,76 @@ function renderRunbooks(){
 }
 function setupRunbooks(){
   byId('sync-runbooks')?.addEventListener('click',()=>void syncRunbooksConsole());
+}
+
+
+function renderAgentCloudState(){
+  const badge=byId('agent-cloud-state');if(!badge)return;
+  const mode=state.agentCloud.state;
+  badge.className='cmd-badge '+(mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='CLOUD_ERROR'?'bad':'warn');
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':mode==='CLOUD_ERROR'?'CLOUD ERROR':'SIGN IN REQUIRED';
+}
+async function fetchAgentTable(path){
+  const response=await fetch(SUPABASE+'/rest/v1/'+path,{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(12000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'agent_workforce_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function syncAgentWorkforceConsole(){
+  state.agentCloud.state='SYNCING';renderAgentCloudState();
+  if(!await verifyCloudSession()){
+    state.agentCloud.state='LOCAL_ONLY';renderAgentCloudState();renderAgents();return;
+  }
+  try{
+    const [agents,assignments,events]=await Promise.all([
+      fetchAgentTable('command_agents?select=*&order=agent_key.asc'),
+      fetchAgentTable('command_agent_assignments?select=*&order=created_at.desc&limit=160'),
+      fetchAgentTable('command_agent_events?select=*&order=created_at.desc&limit=100')
+    ]);
+    state.agents=agents;state.agentAssignments=assignments;state.agentEvents=events;
+    state.agentCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.agentCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.agentCloud.lastSync};
+  }
+  renderAgentCloudState();renderAgents();
+}
+function agentStatusBadge(status){
+  if(status==='ACTIVE'||status==='COMPLETE')return'good';
+  if(status==='FAILED'||status==='BLOCKED'||status==='DEGRADED')return'bad';
+  return'warn';
+}
+function renderAgents(){
+  const agents=state.agents||[],assignments=state.agentAssignments||[];
+  const forbiddenKinds=new Set(['TRADE_ORDER','PAYMENT','FUND_TRANSFER','CREDENTIAL_CHANGE','SECRET_ACCESS','EXTERNAL_IRREVERSIBLE','OWNER_APPROVAL']);
+  set('agent-active-kpi',String(agents.filter(x=>x.status==='ACTIVE').length));
+  set('agent-complete-kpi',String(assignments.filter(x=>x.status==='COMPLETE').length));
+  set('agent-queued-kpi',String(assignments.filter(x=>x.status==='QUEUED'||x.status==='RUNNING').length));
+  set('agent-forbidden-kpi',String(assignments.filter(x=>forbiddenKinds.has(x.action_kind)||!['OBSERVE','PROPOSE','REVERSIBLE_EXECUTE'].includes(x.capability_class)).length));
+
+  const roster=byId('agent-roster');
+  if(roster){
+    roster.innerHTML=agents.length?agents.map(a=>{
+      const mine=assignments.filter(x=>x.agent_id===a.id),complete=mine.filter(x=>x.status==='COMPLETE').length,queued=mine.filter(x=>x.status==='QUEUED'||x.status==='RUNNING').length;
+      const allowed=Array.isArray(a.allowed_action_kinds)?a.allowed_action_kinds.map(x=>String(x).replaceAll('_',' ')).join(' · '):'—';
+      return '<article class="runbook-item"><div class="runbook-top"><div><div class="runbook-title">'+esc(a.name)+'</div><div class="runbook-meta">'+esc(a.domain)+' · CEILING '+esc(capabilityClassName(a.capability_ceiling))+' · MAX OPEN '+esc(a.max_open_assignments)+'</div></div><span class="cmd-badge '+agentStatusBadge(a.status)+'">'+esc(a.status)+'</span></div><div class="intervention-copy">'+esc(a.description||'Governed specialist agent.')+'</div><div class="runbook-meta">BUDGET · '+esc(allowed)+'</div><div class="runbook-meta">COMPLETE '+esc(complete)+' · QUEUED '+esc(queued)+'</div></article>';
+    }).join(''):'<div class="route-item"><small>No agent roster available yet.</small></div>';
+  }
+
+  const list=byId('agent-assignments');
+  if(list){
+    const agentById=new Map(agents.map(a=>[a.id,a]));
+    list.innerHTML=assignments.length?assignments.slice(0,24).map(x=>{
+      const a=agentById.get(x.agent_id),external=x.governance?.external_effects===true?'EXTERNAL EFFECT':'NO EXTERNAL EFFECT';
+      const summary=x.output?.verdict||x.output?.research_packet?.proposal||x.output?.operations_packet?.work_package?.next_action||x.work_order?.title||'Governed assignment';
+      return '<div class="action-receipt"><strong>'+esc(x.status)+' · '+esc(a?.name||'Agent')+'</strong>'+esc(capabilityClassName(x.capability_class))+' · '+esc(String(x.action_kind||'').replaceAll('_',' '))+'<br>'+esc(String(summary).slice(0,180))+'<br>'+esc(external)+' · '+esc(new Date(x.created_at).toLocaleString())+'</div>';
+    }).join(''):'<div class="action-receipt">No workforce assignments yet.</div>';
+  }
+}
+function setupAgents(){
+  byId('sync-agents')?.addEventListener('click',()=>void syncAgentWorkforceConsole());
 }
 
 function textState(data,fallback='UNKNOWN'){
@@ -1184,7 +1254,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -1205,6 +1275,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);
 }
 boot();
