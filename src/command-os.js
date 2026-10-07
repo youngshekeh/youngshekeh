@@ -9,7 +9,7 @@ const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],agents:[],agentAssignments:[],agentEvents:[],plans:[],planTasks:[],planDependencies:[],plannerEscalations:[],plannerEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},agentCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},plannerCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],runbooks:[],runbookSteps:[],actionRuns:[],actionEvents:[],agents:[],agentAssignments:[],agentEvents:[],plans:[],planTasks:[],planDependencies:[],plannerEscalations:[],plannerEvents:[],schedulerPolicies:[],scheduleItems:[],schedulerEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},runbookCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},agentCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},plannerCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},schedulerCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -921,10 +921,10 @@ function setupInterventions(){
 }
 async function runHeadlessExecutiveCycle(){
   const btn=byId('run-executive-cycle');
-  if(btn){btn.disabled=true;btn.textContent='RUNNING V177'}
+  if(btn){btn.disabled=true;btn.textContent='RUNNING V178'}
   try{
     await fetchJson('/api/executive-cycle',65000);
-    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole()]);
+    await Promise.allSettled([syncMachine(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole(),syncSchedulerConsole()]);
     await runExecutiveCycle(true);
   }finally{
     if(btn){btn.disabled=false;btn.textContent='RUN EXECUTIVE CYCLE'}
@@ -1164,7 +1164,7 @@ async function resolvePlannerEscalation(id){
     const data=await r.json().catch(()=>null);
     if(!r.ok)throw new Error(data?.message||data?.hint||'planner_escalation_resolution_failed');
     await fetchJson('/api/executive-cycle',65000);
-    await Promise.allSettled([syncPlannerConsole(),syncAgentWorkforceConsole(),syncRunbooksConsole(),syncInterventions()]);
+    await Promise.allSettled([syncPlannerConsole(),syncAgentWorkforceConsole(),syncRunbooksConsole(),syncInterventions(),syncSchedulerConsole()]);
   }catch(error){
     state.plannerCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.plannerCloud.lastSync};
     renderPlannerCloudState();alert('Planner decision could not be committed. The gate remains closed.');
@@ -1213,6 +1213,87 @@ function renderPlanner(){
 }
 function setupPlanner(){
   byId('sync-planner')?.addEventListener('click',()=>void syncPlannerConsole());
+}
+
+
+function renderSchedulerCloudState(){
+  const badge=byId('scheduler-cloud-state');if(!badge)return;
+  const mode=state.schedulerCloud.state;
+  badge.className='cmd-badge '+(mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='CLOUD_ERROR'?'bad':'warn');
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':mode==='CLOUD_ERROR'?'CLOUD ERROR':'SIGN IN REQUIRED';
+}
+async function fetchSchedulerTable(path){
+  const response=await fetch(SUPABASE+'/rest/v1/'+path,{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(12000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'scheduler_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function syncSchedulerConsole(){
+  state.schedulerCloud.state='SYNCING';renderSchedulerCloudState();
+  if(!await verifyCloudSession()){
+    state.schedulerCloud.state='LOCAL_ONLY';renderSchedulerCloudState();renderScheduler();return;
+  }
+  try{
+    const [policies,items,events]=await Promise.all([
+      fetchSchedulerTable('command_scheduler_policies?select=*&order=updated_at.desc'),
+      fetchSchedulerTable('command_schedule_items?select=*&order=urgency_score.desc,due_at.asc'),
+      fetchSchedulerTable('command_scheduler_events?select=*&order=created_at.desc&limit=120')
+    ]);
+    state.schedulerPolicies=policies;state.scheduleItems=items;state.schedulerEvents=events;
+    state.schedulerCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.schedulerCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.schedulerCloud.lastSync};
+  }
+  renderSchedulerCloudState();renderScheduler();
+}
+function scheduleBadge(item){
+  if(item.schedule_status==='DONE')return'good';
+  if(item.breach_state==='BREACHED')return'bad';
+  if(item.breach_state==='AT_RISK'||item.schedule_status==='WAITING_HUMAN'||item.capacity_state==='SATURATED')return'warn';
+  return'good';
+}
+function minutesLabel(v){
+  const n=Math.round(num(v)),sign=n<0?'-':'',x=Math.abs(n);
+  if(x>=1440)return sign+(x/1440).toFixed(x%1440?1:0)+'d';
+  if(x>=60)return sign+(x/60).toFixed(x%60?1:0)+'h';
+  return sign+x+'m';
+}
+function renderScheduler(){
+  const items=(state.scheduleItems||[]).filter(x=>x.schedule_status!=='STALE'),events=state.schedulerEvents||[];
+  set('scheduler-critical-kpi',String(items.filter(x=>x.critical_path&&x.schedule_status!=='DONE').length));
+  set('scheduler-risk-kpi',String(items.filter(x=>x.breach_state==='AT_RISK').length));
+  set('scheduler-breach-kpi',String(items.filter(x=>x.breach_state==='BREACHED').length));
+  set('scheduler-saturated-kpi',String(new Set(items.filter(x=>x.capacity_state==='SATURATED'&&x.assigned_agent_id).map(x=>x.assigned_agent_id)).size));
+
+  const taskById=new Map((state.planTasks||[]).map(x=>[x.id,x]));
+  const planById=new Map((state.plans||[]).map(x=>[x.id,x]));
+  const agentById=new Map((state.agents||[]).map(x=>[x.id,x]));
+  const list=byId('scheduler-list');
+  if(list){
+    const sorted=[...items].sort((a,b)=>num(b.urgency_score)-num(a.urgency_score)||new Date(a.due_at)-new Date(b.due_at));
+    list.innerHTML=sorted.length?sorted.slice(0,30).map(x=>{
+      const task=taskById.get(x.task_id),plan=planById.get(x.plan_id),agent=x.assigned_agent_id?agentById.get(x.assigned_agent_id):null;
+      const owner=task?.capability_class==='HUMAN_DECISION'?'ARCHITECT-STEWARD':(agent?.name||task?.domain||'SYSTEM');
+      const origin=String(x.deadline_origin||'INTERNAL_SLA').replaceAll('_',' ');
+      const real=x.deadline_origin!=='INTERNAL_SLA'?'SOURCE DEADLINE':'INTERNAL SLA TARGET';
+      const critical=x.critical_path&&x.schedule_status!=='DONE'?'<span class="critical-ribbon">CRITICAL PATH PRESSURE</span>':'';
+      return '<article class="schedule-item"><div class="schedule-top"><div><div class="schedule-title">'+esc(plan?.title||'Plan')+' · '+esc(task?.title||'Task')+'</div><div class="schedule-meta">'+esc(owner)+' · '+esc(x.schedule_status.replaceAll('_',' '))+' · URGENCY '+esc(x.urgency_score)+'/100</div></div><span class="cmd-badge '+scheduleBadge(x)+'">'+esc(x.breach_state.replaceAll('_',' '))+'</span></div><div class="schedule-metrics"><div class="schedule-metric"><strong>'+esc(minutesLabel(x.slack_minutes))+'</strong><small>START SLACK</small></div><div class="schedule-metric"><strong>'+esc(minutesLabel(x.age_minutes))+'</strong><small>TASK AGE</small></div><div class="schedule-metric"><strong>'+esc(minutesLabel(x.sla_minutes))+'</strong><small>TASK SLA</small></div><div class="schedule-metric"><strong>'+esc(x.capacity_state)+'</strong><small>CAPACITY</small></div></div><div class="deadline-origin">'+esc(real)+' · '+esc(origin)+' · DUE '+esc(new Date(x.due_at).toLocaleString())+'</div>'+critical+'</article>';
+    }).join(''):'<div class="route-item"><small>No active scheduled tasks yet.</small></div>';
+  }
+
+  const box=byId('scheduler-events');
+  if(box){
+    box.innerHTML=events.length?events.slice(0,18).map(e=>{
+      const task=taskById.get(e.task_id),plan=planById.get(e.plan_id);
+      return '<div class="action-receipt"><strong>'+esc(String(e.event_type||'').replaceAll('_',' '))+'</strong>'+esc(plan?.title||'Plan')+' · '+esc(task?.title||'Task')+'<br>'+esc(e.note||'')+'<br>'+esc(new Date(e.created_at).toLocaleString())+'</div>';
+    }).join(''):'<div class="action-receipt">No SLA or stall events yet.</div>';
+  }
+}
+function setupScheduler(){
+  byId('sync-scheduler')?.addEventListener('click',()=>void syncSchedulerConsole());
 }
 
 function textState(data,fallback='UNKNOWN'){
@@ -1365,7 +1446,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderScheduler();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();renderSchedulerCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -1386,6 +1467,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();setupPlanner();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);setInterval(()=>void syncPlannerConsole(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();setupPlanner();setupScheduler();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderScheduler();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();renderSchedulerCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole(),syncSchedulerConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);setInterval(()=>void syncPlannerConsole(),300000);setInterval(()=>void syncSchedulerConsole(),300000);
 }
 boot();
