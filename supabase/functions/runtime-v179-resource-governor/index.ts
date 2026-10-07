@@ -967,8 +967,8 @@ async function syncAdaptiveScheduler(userId:string,cycle:any,data:any){
       const predecessorsDone=preds.every((x:any)=>x.status==='COMPLETE');
       let dependency='READY';
       if(task.status==='COMPLETE')dependency='DONE';
-      else if(task.capability_class==='HUMAN_DECISION'&&task.status!=='COMPLETE')dependency='WAITING_HUMAN';
-      else if(!predecessorsDone)dependency='WAITING_DEPENDENCY';
+      else if(task.capability_class==='HUMAN_DECISION'&&task.status==='ESCALATED')dependency='WAITING_HUMAN';
+      else if(!predecessorsDone||task.capability_class==='HUMAN_DECISION')dependency='WAITING_DEPENDENCY';
 
       const agent:any=task.assigned_agent_id?agentById.get(task.assigned_agent_id):null;
       const capacity=task.capability_class==='HUMAN_DECISION'?'HUMAN':schedulerCapacity(agent,workforce,existing);
@@ -1172,9 +1172,9 @@ Deno.serve(async(req:Request)=>{
       const post_dispatch_scheduler=resource_governor.completed_this_cycle>0?await syncAdaptiveScheduler(owner.user_id,cycle,data):adaptive_scheduler;
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decision_count||cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner,adaptive_scheduler:post_dispatch_scheduler,resource_governor});
     }
-    return Response.json({ok:true,version:'v179-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:true,version:'v179.1-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }catch(error){
     console.error('V179_RESOURCE_GOVERNOR_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v179-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:false,version:'v179.1-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }
 });
