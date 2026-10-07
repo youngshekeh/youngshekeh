@@ -33,8 +33,8 @@
     .scenario{padding:19px;border-radius:18px;border:1px solid rgba(165,140,255,.18);background:radial-gradient(circle at 80% 0,rgba(165,140,255,.1),transparent 42%),rgba(165,140,255,.025);font-size:12px;line-height:1.7;color:#d7d2df}
     .section-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.empty{padding:26px;text-align:center;color:#77717e;border:1px dashed rgba(255,255,255,.08);border-radius:15px}
     .org-brief{padding:18px;border:1px solid rgba(114,240,173,.14);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(114,240,173,.08),transparent 36%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#d9d5df}.route-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.route-lane{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.13);min-height:120px}.route-lane strong{font-size:9px;letter-spacing:.11em}.route-item{margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.05);font-size:9px;line-height:1.5;color:#cfcad5}.route-item small{display:block;color:#77717e;margin-top:3px}
-    .org-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.biz-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.alloc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.alloc-reco{padding:14px;border:1px solid rgba(165,140,255,.14);border-radius:15px;background:rgba(165,140,255,.04)}.biz-brief{padding:18px;border:1px solid rgba(243,200,107,.16);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(243,200,107,.08),transparent 38%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#ddd7ca}.org-list{display:grid;gap:9px}.org-item{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.14)}.org-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.org-title{font-size:11px;font-weight:950}.org-score{font-size:18px;font-weight:1000;color:var(--cmd-gold)}.org-meta{font-size:8px;color:#7d7782;line-height:1.5;margin-top:6px}.org-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.org-form-title{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#99929f;margin-top:14px}
-    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid,.org-board,.biz-board,.alloc-grid{grid-template-columns:1fr}.route-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
+    .org-board{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.biz-board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}.alloc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.alloc-reco{padding:14px;border:1px solid rgba(165,140,255,.14);border-radius:15px;background:rgba(165,140,255,.04)}.outcome-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.outcome-panel{padding:15px;border:1px solid rgba(114,240,173,.14);border-radius:16px;background:rgba(114,240,173,.035)}.biz-brief{padding:18px;border:1px solid rgba(243,200,107,.16);border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(243,200,107,.08),transparent 38%),rgba(0,0,0,.12);font-size:11px;line-height:1.65;color:#ddd7ca}.org-list{display:grid;gap:9px}.org-item{padding:14px;border:1px solid rgba(255,255,255,.06);border-radius:15px;background:rgba(0,0,0,.14)}.org-item-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.org-title{font-size:11px;font-weight:950}.org-score{font-size:18px;font-weight:1000;color:var(--cmd-gold)}.org-meta{font-size:8px;color:#7d7782;line-height:1.5;margin-top:6px}.org-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.org-form-title{font-size:9px;font-weight:1000;letter-spacing:.1em;color:#99929f;margin-top:14px}
+    @media(max-width:980px){.cmd-hero{grid-template-columns:1fr}.span-8,.span-7,.span-6,.span-5,.span-4,.span-3{grid-column:span 12}.steward-grid,.module-grid,.org-board,.biz-board,.alloc-grid,.outcome-grid{grid-template-columns:1fr}.route-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cmd-form label,.cmd-form label.wide{grid-column:span 6}}
     @media(max-width:620px){.health-grid,.constitution,.route-grid{grid-template-columns:1fr}.cmd-form label,.cmd-form label.wide{grid-column:span 12}.cmd-hero-main{padding:23px}.priority-item{grid-template-columns:46px minmax(0,1fr)}.priority-type{grid-column:2}}
   </style>
 </head>
@@ -48,7 +48,7 @@
   <main class="wrap command-shell">
     <section class="cmd-hero">
       <article class="cmd-hero-main">
-        <div class="cmd-label">V171 · ARCHITECT-STEWARD + RESOURCE ALLOCATION BRAIN</div>
+        <div class="cmd-label">V172 · ARCHITECT-STEWARD + EXECUTION & OUTCOME BRAIN</div>
         <h1>See everything.<br><span>Decide little.</span></h1>
         <p>THE FATHER COMMAND OS compresses the machine into the few decisions worthy of human judgment. Intelligence flows upward. Permission flows downward. Every decision leaves evidence for the next version of the system.</p>
         <div class="cmd-badges">
@@ -263,6 +263,55 @@
           <section><div class="cmd-label">BUSINESS PORTFOLIO</div><div id="business-list" class="org-list"></div></section>
           <section><div class="cmd-label">PRODUCT STACK</div><div id="product-stack" class="org-list"></div></section>
           <section><div class="cmd-label">DISTRIBUTION STACK</div><div id="channel-stack" class="org-list"></div></section>
+        </div>
+      </article>
+
+      <article class="cmd-card span-12">
+        <div class="section-row">
+          <div><div class="cmd-label">EXECUTION & OUTCOME BRAIN · V1</div><h2>Prediction meets reality. Reality updates the machine.</h2></div>
+          <div class="cmd-actions"><span id="outcome-cloud-state" class="cmd-badge warn">LOCAL FALLBACK</span><button id="sync-outcomes" class="cmd-btn">SYNC OUTCOMES</button></div>
+        </div>
+        <div class="cmd-grid" style="margin-top:12px">
+          <div class="cmd-card span-3"><div class="cmd-label">RUNNING</div><div id="outcome-running-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">RESOLVED</div><div id="outcome-resolved-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">EXPECTATION ACCURACY</div><div id="outcome-accuracy-kpi" class="cmd-kpi">—</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">OBSERVED ROI</div><div id="outcome-roi-kpi" class="cmd-kpi">—</div></div>
+        </div>
+
+        <div class="outcome-grid">
+          <section class="outcome-panel">
+            <div class="cmd-label">FEEDBACK LOOP</div>
+            <div id="outcome-brief" class="compression-copy">No measured outcomes yet. Scores remain prior-driven until evidence arrives.</div>
+          </section>
+          <section class="outcome-panel">
+            <div class="cmd-label">UNIT ECONOMICS</div>
+            <div id="unit-economics" class="compression-copy">Revenue, cost and quantity can be recorded per outcome. Currency totals stay separated.</div>
+          </section>
+        </div>
+
+        <form id="outcome-form" class="cmd-form">
+          <label><span>ENTITY TYPE</span><select id="outcome-entity-type" name="entityType"><option>PROJECT</option><option>PRODUCT</option><option>BUSINESS</option><option>CHANNEL</option><option>ALLOCATION</option></select></label>
+          <label class="wide"><span>ENTITY</span><select id="outcome-entity" name="entityId" required><option value="">SELECT ENTITY</option></select></label>
+          <label class="wide"><span>OUTCOME / EXPERIMENT</span><input name="title" required placeholder="What result are we measuring?" /></label>
+          <label><span>METRIC</span><input name="metricName" required placeholder="MRR, listeners, conversion..." /></label>
+          <label><span>DIRECTION</span><select name="direction"><option>HIGHER_IS_BETTER</option><option>LOWER_IS_BETTER</option><option>TARGET</option></select></label>
+          <label><span>BASELINE</span><input name="baselineValue" type="number" step="0.000001" /></label>
+          <label><span>EXPECTED</span><input name="expectedValue" type="number" step="0.000001" required /></label>
+          <label><span>ACTUAL</span><input name="actualValue" type="number" step="0.000001" /></label>
+          <label><span>UNIT</span><input name="unit" placeholder="%, users, USD..." /></label>
+          <label><span>CONFIDENCE %</span><input name="confidence" type="number" min="0" max="100" value="60" required /></label>
+          <label><span>CURRENCY</span><input name="currency" maxlength="3" pattern="[A-Z]{3}" placeholder="USD" /></label>
+          <label><span>REVENUE</span><input name="revenue" type="number" min="0" step="0.01" /></label>
+          <label><span>COST</span><input name="cost" type="number" min="0" step="0.01" /></label>
+          <label><span>QUANTITY</span><input name="quantity" type="number" min="0" step="0.0001" /></label>
+          <label><span>DUE</span><input name="dueAt" type="datetime-local" /></label>
+          <label class="wide"><span>NEXT ACTION</span><input name="nextAction" placeholder="What happens before measurement?" /></label>
+          <div class="cmd-actions" style="grid-column:span 12"><button class="cmd-btn primary" type="submit">FREEZE EXPECTATION</button><span class="cmd-badge warn">EXPECTED VALUE FREEZES BEFORE OUTCOME</span></div>
+        </form>
+
+        <div class="outcome-grid">
+          <section><div class="cmd-label">OUTCOME LEDGER</div><div id="outcome-list" class="org-list"></div></section>
+          <section><div class="cmd-label">LEARNING FEED</div><div id="learning-feed" class="org-list"></div></section>
         </div>
       </article>
 
