@@ -48,5 +48,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/executive-cycle",
+      "schedule": "0 6 * * *"
+    }
   ]
 }
