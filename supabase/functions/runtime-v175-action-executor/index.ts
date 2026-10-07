@@ -44,6 +44,17 @@ async function patchRow(table:string,id:string,patch:any){
   const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,{method:'PATCH',headers:{...headers(),Prefer:'return=minimal'},body:JSON.stringify(patch),signal:AbortSignal.timeout(12000)});
   if(!r.ok)throw new Error(`patch_${table}_${r.status}`);
 }
+async function insertOnce(table:string,conflict:string,row:any){
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(conflict)}`,{
+    method:'POST',
+    headers:{...headers(),Prefer:'resolution=ignore-duplicates,return=representation'},
+    body:JSON.stringify(row),
+    signal:AbortSignal.timeout(12000)
+  });
+  const body=await r.json().catch(()=>[]);
+  if(!r.ok)throw new Error(`insert_once_${table}_${r.status}`);
+  return Array.isArray(body)&&body.length>0;
+}
 async function source(key:string,name:string,path:string,critical:boolean){
   const started=Date.now();
   try{
@@ -279,13 +290,14 @@ async function recordActionRun(userId:string,runbook:any,step:any,cycle:any,inte
     external_irreversible_action:false,
     external_effects:false
   };
-  await insertRows('command_action_runs',[{
+  const inserted=await insertOnce('command_action_runs','user_id,run_key',{
     id,user_id:userId,runbook_id:runbook.id,step_id:step.id,run_key:runKey,mode,
     capability_class:step.capability_class,action_kind:step.action_kind,status,
     input:{intervention_id:intervention.id,source_code:intervention.source_code,source_fingerprint:runbook.source_fingerprint},
     output,evidence:{intervention_status:intervention.status,signal_active:intervention.signal_active,source_fingerprint:runbook.source_fingerprint},
     governance,error:'',started_at:now,completed_at:now,created_at:now
-  }]);
+  });
+  if(!inserted)return{executed:false,status,run_key:runKey};
   await insertRows('command_action_events',[{
     user_id:userId,runbook_id:runbook.id,step_id:step.id,action_run_id:id,
     event_type:status==='BLOCKED'?'ACTION_BLOCKED':'ACTION_SUCCEEDED',actor:'SYSTEM',
@@ -490,9 +502,9 @@ Deno.serve(async(req:Request)=>{
       const runbook_sync=await syncRunbooks(owner.user_id,cycle);
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync});
     }
-    return Response.json({ok:true,version:'v175-action-executor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V175'}});
+    return Response.json({ok:true,version:'v175.1-action-executor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{planning_only:true,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V175'}});
   }catch(error){
     console.error('V175_ACTION_EXECUTOR_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v175-action-executor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V175'}});
+    return Response.json({ok:false,version:'v175.1-action-executor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V175'}});
   }
 });
