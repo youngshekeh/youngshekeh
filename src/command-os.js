@@ -9,7 +9,7 @@ const CYCLE_KEY='tfa.v173.executive-cycle.v1';
 const SUPABASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const SESSION_KEY='tfa_session';
-const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
+const state={ledger:loadLedger(),org:loadOrg(),biz:loadBiz(),allocations:loadAllocations(),outcomes:loadOutcomes(),executiveCycle:loadExecutiveCycle(),interventions:[],interventionEvents:[],sources:{},lastSync:null,cloud:{token:null,userId:null,state:'LOCAL_ONLY',lastError:null,lastSync:null},orgCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},bizCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},allocCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},outcomeCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},cycleCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null},interventionCloud:{state:'LOCAL_ONLY',lastError:null,lastSync:null}};
 const SOURCE_DEFS=[
   {key:'closure',name:'Production Closure',url:'/api/production-closure',critical:true},
   {key:'q4',name:'Q4 Readiness Watch',url:'/api/q4-machine-v9',critical:true},
@@ -790,7 +790,145 @@ function renderExecutiveCycle(){
   const h=byId('cycle-human-decisions');if(h)h.innerHTML=cycleListHtml(x.humanDecisions,'Nothing currently requires founder-level judgment.',r=>'<div class="route-item">'+esc(r.title)+'<small>priority '+esc(r.priority)+' · '+esc(r.copy)+'</small></div>');
 }
 function setupExecutiveCycle(){
-  byId('run-executive-cycle')?.addEventListener('click',()=>void runExecutiveCycle(true));
+  byId('run-executive-cycle')?.addEventListener('click',()=>void runHeadlessExecutiveCycle());
+}
+
+
+function renderInterventionCloudState(){
+  const badge=byId('intervention-cloud-state');if(!badge)return;
+  const mode=state.interventionCloud.state;
+  badge.className='cmd-badge '+(mode==='CLOUD_SYNCED'?'good':mode==='SYNCING'?'warn':mode==='CLOUD_ERROR'?'bad':'warn');
+  badge.textContent=mode==='CLOUD_SYNCED'?'CLOUD SYNCED':mode==='SYNCING'?'SYNCING':mode==='CLOUD_ERROR'?'CLOUD ERROR':'SIGN IN REQUIRED';
+}
+async function interventionRows(){
+  const response=await fetch(SUPABASE+'/rest/v1/command_interventions?select=*&order=priority.desc,updated_at.desc',{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'intervention_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function interventionEventRows(){
+  const response=await fetch(SUPABASE+'/rest/v1/command_intervention_events?select=*&order=created_at.desc&limit=40',{
+    headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,Accept:'application/json'},
+    cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+  const data=await response.json().catch(()=>[]);
+  if(!response.ok)throw new Error(data?.message||'intervention_event_read_failed');
+  return Array.isArray(data)?data:[];
+}
+async function syncInterventions(){
+  state.interventionCloud.state='SYNCING';renderInterventionCloudState();
+  if(!await verifyCloudSession()){state.interventionCloud.state='LOCAL_ONLY';renderInterventionCloudState();renderInterventions();return}
+  try{
+    const [items,events]=await Promise.all([interventionRows(),interventionEventRows()]);
+    state.interventions=items;state.interventionEvents=events;
+    state.interventionCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.interventionCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.interventionCloud.lastSync};
+  }
+  renderInterventionCloudState();renderInterventions();
+}
+function interventionNext(status){
+  return{
+    NEW:['ACKNOWLEDGED','DEFERRED'],
+    ACKNOWLEDGED:['APPROVED','DEFERRED','RESOLVED'],
+    APPROVED:['EXECUTING','DEFERRED','RESOLVED'],
+    DEFERRED:['ACKNOWLEDGED','RESOLVED'],
+    EXECUTING:['RESOLVED','DEFERRED'],
+    RESOLVED:['LEARNED','NEW'],
+    LEARNED:['NEW']
+  }[status]||[];
+}
+function transitionLabel(status){
+  return({ACKNOWLEDGED:'ACKNOWLEDGE',APPROVED:'APPROVE PLAN',DEFERRED:'DEFER',EXECUTING:'START WORK',RESOLVED:'RESOLVE',LEARNED:'CAPTURE LESSON',NEW:'REOPEN'})[status]||status;
+}
+async function transitionIntervention(id,toStatus){
+  if(!await verifyCloudSession())return;
+  const item=state.interventions.find(x=>x.id===id);if(!item)return;
+  if(!interventionNext(item.status).includes(toStatus))return;
+  let note='';
+  if(toStatus==='RESOLVED'){
+    const v=prompt('Resolution evidence / outcome:','');if(v===null)return;note=v.trim();
+    if(!note){alert('Add resolution evidence before closing the intervention.');return}
+  }else if(toStatus==='LEARNED'){
+    const v=prompt('What did the system learn?','');if(v===null)return;note=v.trim();
+    if(!note){alert('Capture a lesson before marking this learned.');return}
+  }else if(toStatus==='DEFERRED'){
+    const v=prompt('Why is this being deferred, or what condition should reopen it?','');if(v===null)return;note=v.trim();
+  }else if(toStatus==='APPROVED'){
+    const v=prompt('Approval note (optional). This approves the workflow plan only, not external capital or trading authority.','');if(v===null)return;note=v.trim();
+  }else if(toStatus==='NEW'){
+    const v=prompt('Reason for reopening (optional):','');if(v===null)return;note=v.trim();
+  }
+  state.interventionCloud.state='SYNCING';renderInterventionCloudState();
+  try{
+    const response=await fetch(SUPABASE+'/rest/v1/rpc/command_transition_intervention',{
+      method:'POST',
+      headers:{apikey:KEY,Authorization:'Bearer '+state.cloud.token,'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({p_intervention_id:id,p_to_status:toStatus,p_note:note}),
+      cache:'no-store',signal:AbortSignal.timeout(10000)
+    });
+    const data=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error(data?.message||data?.hint||'intervention_transition_failed');
+    await syncInterventions();
+  }catch(error){
+    state.interventionCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.interventionCloud.lastSync};
+    renderInterventionCloudState();alert('Workflow transition failed. The prior state is unchanged.');
+  }
+}
+function interventionFiltered(){
+  const filter=byId('intervention-filter')?.value||'OPEN',items=state.interventions.slice();
+  if(filter==='ALL')return items;
+  if(filter==='HUMAN')return items.filter(x=>x.approval_required&&!['RESOLVED','LEARNED'].includes(x.status));
+  if(filter==='CLEARED')return items.filter(x=>x.signal_active===false&&!['RESOLVED','LEARNED'].includes(x.status));
+  if(filter==='CLOSED')return items.filter(x=>['RESOLVED','LEARNED'].includes(x.status));
+  return items.filter(x=>!['RESOLVED','LEARNED'].includes(x.status));
+}
+function interventionClass(item){
+  if(['RESOLVED','LEARNED'].includes(item.status))return'good';
+  if(item.signal_active===false)return'warn';
+  if(item.severity>=90)return'bad';
+  if(item.approval_required||item.status==='NEW')return'warn';
+  return'good';
+}
+function renderInterventions(){
+  const items=state.interventions||[];
+  set('inbox-new-kpi',String(items.filter(x=>x.status==='NEW').length));
+  set('inbox-human-kpi',String(items.filter(x=>x.approval_required&&!['RESOLVED','LEARNED'].includes(x.status)).length));
+  set('inbox-active-kpi',String(items.filter(x=>['APPROVED','EXECUTING'].includes(x.status)).length));
+  set('inbox-closed-kpi',String(items.filter(x=>['RESOLVED','LEARNED'].includes(x.status)).length));
+  const list=byId('intervention-list');
+  if(list){
+    const rows=interventionFiltered();
+    list.innerHTML=rows.length?rows.map(x=>{
+      const next=interventionNext(x.status),signal=x.signal_active?'SIGNAL ACTIVE':'SIGNAL CLEARED',cls=interventionClass(x);
+      const buttons=next.map(s=>'<button class="cmd-btn'+(s==='APPROVED'?' primary':'')+'" data-intervention="'+esc(x.id)+'" data-next="'+esc(s)+'">'+esc(transitionLabel(s))+'</button>').join('');
+      return '<article class="intervention-item'+(x.signal_active?'':' signal-off')+'"><div class="intervention-top"><div><div class="intervention-title">'+esc(x.title)+'</div><div class="intervention-meta">'+esc(x.category)+' · PRIORITY '+esc(x.priority)+' · OCCURRENCE '+esc(x.occurrence_count)+' · '+esc(signal)+'</div></div><span class="cmd-badge '+cls+'">'+esc(x.status)+'</span></div><div class="intervention-copy">'+esc(x.summary||'')+'</div><div class="intervention-action">'+esc(x.recommended_action||'Review and decide next action.')+'</div><div class="intervention-meta">SOURCE '+esc(x.source_code||x.source)+' · LAST SEEN '+esc(x.last_seen_at?new Date(x.last_seen_at).toLocaleString():'—')+(x.approval_required?' · HUMAN APPROVAL REQUIRED':'')+'</div><div class="intervention-actions">'+buttons+'</div></article>';
+    }).join(''):'<div class="route-item"><small>No interventions match this filter.</small></div>';
+    list.querySelectorAll('[data-intervention][data-next]').forEach(btn=>btn.addEventListener('click',()=>void transitionIntervention(btn.dataset.intervention,btn.dataset.next)));
+  }
+  const events=byId('intervention-events');
+  if(events){
+    const titleById=new Map(items.map(x=>[x.id,x.title]));
+    events.innerHTML=state.interventionEvents.length?state.interventionEvents.slice(0,12).map(e=>'<div class="intervention-event"><strong>'+esc(e.event_type.replaceAll('_',' '))+'</strong>'+esc(titleById.get(e.intervention_id)||'Intervention')+'<br>'+esc((e.from_status||'—')+' → '+(e.to_status||'—'))+' · '+esc(e.actor)+' · '+esc(new Date(e.created_at).toLocaleString())+(e.note?'<br>'+esc(e.note):'')+'</div>').join(''):'<div class="intervention-event">No workflow events yet.</div>';
+  }
+}
+function setupInterventions(){
+  byId('sync-interventions')?.addEventListener('click',()=>void syncInterventions());
+  byId('intervention-filter')?.addEventListener('change',renderInterventions);
+}
+async function runHeadlessExecutiveCycle(){
+  const btn=byId('run-executive-cycle');
+  if(btn){btn.disabled=true;btn.textContent='RUNNING V174'}
+  try{
+    await fetchJson('/api/executive-cycle',50000);
+    await Promise.allSettled([syncMachine(),syncInterventions()]);
+    await runExecutiveCycle(true);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='RUN EXECUTIVE CYCLE'}
+  }
 }
 
 function textState(data,fallback='UNKNOWN'){
@@ -943,7 +1081,7 @@ function renderScenario(){
   set('future-scenario',copy);
 }
 
-function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState()}
+function renderAll(){renderExecutive();renderQueue();renderHealth();renderSteward();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderLedger();renderScenario();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState()}
 
 function setupLedger(){
   const form=byId('decision-form');
@@ -964,6 +1102,6 @@ async function syncMachine(){
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);
 }
 boot();
