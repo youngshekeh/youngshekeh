@@ -118,9 +118,9 @@ After a controlled restart:
 
 The recovery heartbeat is intentionally reduced from every five minutes to:
 
-`4-59/15 * * * *`
+`*/15 * * * *`
 
-This limits failed recovery connection attempts while Postgres is saturated. Restore the normal five-minute cadence only after the database is stable and the V180 kernel has produced healthy receipts.
+This canonical Vercel schedule limits failed recovery connection attempts while Postgres is saturated. Restore the normal five-minute cadence only after the database is stable and the V180 kernel has produced healthy receipts.
 
 ## Success criteria
 
