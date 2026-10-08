@@ -1384,8 +1384,24 @@ async function fetchKernelTable(path){
   return Array.isArray(data)?data:[];
 }
 async function syncKernelConsole(){
-  state.kernelPolicies=[];state.kernelRuns=[];state.kernelState=[];state.dispatchRetries=[];state.deadLetters=[];
-  state.kernelCloud={state:'LOCAL_ONLY',lastError:'V180_SECURITY_SEAL_PENDING',lastSync:new Date().toISOString()};
+  state.kernelCloud.state='SYNCING';renderKernelCloudState();
+  if(!await verifyCloudSession()){
+    state.kernelCloud.state='LOCAL_ONLY';renderKernelCloudState();renderKernel();return;
+  }
+  try{
+    const [policies,runs,kernelState,retries,deadLetters]=await Promise.all([
+      fetchKernelTable('command_ops_kernel_policies?select=*&order=updated_at.desc'),
+      fetchKernelTable('command_ops_kernel_runs?select=*&order=started_at.desc&limit=80'),
+      fetchKernelTable('command_ops_kernel_state?select=*'),
+      fetchKernelTable('command_dispatch_retries?select=*&order=updated_at.desc&limit=80'),
+      fetchKernelTable('command_ops_dead_letters?select=*&order=created_at.desc&limit=80')
+    ]);
+    state.kernelPolicies=policies;state.kernelRuns=runs;state.kernelState=kernelState;
+    state.dispatchRetries=retries;state.deadLetters=deadLetters;
+    state.kernelCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
+  }catch(error){
+    state.kernelCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.kernelCloud.lastSync};
+  }
   renderKernelCloudState();renderKernel();
 }
 function kernelBadge(v){
