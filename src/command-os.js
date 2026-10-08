@@ -1396,8 +1396,7 @@ async function syncKernelConsole(){
       fetchKernelTable('command_dispatch_retries?select=*&order=updated_at.desc&limit=80'),
       fetchKernelTable('command_ops_dead_letters?select=*&order=created_at.desc&limit=80')
     ]);
-    state.kernelPolicies=policies;state.kernelRuns=runs;state.kernelState=kernelState;
-    state.dispatchRetries=retries;state.deadLetters=deadLetters;
+    state.kernelPolicies=policies;state.kernelRuns=runs;state.kernelState=kernelState;state.dispatchRetries=retries;state.deadLetters=deadLetters;
     state.kernelCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};
   }catch(error){
     state.kernelCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.kernelCloud.lastSync};
