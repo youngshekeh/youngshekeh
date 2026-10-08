@@ -782,7 +782,7 @@ async function supabaseRpc(name,timeout=5000){
   try{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
       method:'POST',
-      headers:{apikey:INTERNAL_DB_KEY,Authorization:`Bearer ${INTERNAL_DB_KEY}`,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/116.0'},
+      headers:{apikey:INTERNAL_DB_KEY,Authorization:`Bearer ${INTERNAL_DB_KEY}`,'Content-Type':'application/json',Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS/116.1-PRESSURE-AWARE'},
       body:'{}',
       cache:'no-store',
       signal:AbortSignal.timeout(timeout)
@@ -865,6 +865,12 @@ async function releaseAttestation(){
 async function legacyHandler(req:any,res:any){
   if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({ok:false,error:'method_not_allowed'})}
 
+  const quotaAdmission=await read('/api/quota-probe',1500);
+  const dbAdmissionOpen=quotaAdmission.ok&&quotaAdmission.body?.restricted!==true;
+  const dbRpc=(name:string)=>dbAdmissionOpen
+    ? supabaseRpc(name,1200)
+    : Promise.resolve({ok:false,state:'DB_ADMISSION_GATED',source:`Supabase RPC ${name}`});
+
   // Mission Brief consumes research state. It does not run the full regression
   // suite internally; V78 is verified by a separate client-side channel.
   let [auto,day,liquidity,zones,confluence,breakout,tournament,quality,quota,marketAssets,macroEvidence,trendEvidence,cotGold,ratesEvidence,treasuryFunding,volEvidence,seasonality,forecastErrorState,executionQualityState,forecastSettlementState,benchmarkReputationState,calibrationStructureState,scenarioEvState,portfolioRiskState,forecastCoverageState,provenanceReceiptState,provenanceAttestationState,keyLifecycleState,checkpointState,externalAnchorRaw]=await Promise.all([
@@ -876,7 +882,7 @@ async function legacyHandler(req:any,res:any){
     read('/api/gold-breakout-acceptance',11000),
     read('/api/research-model-tournament'),
     read('/api/data-quality-sentinel'),
-    read('/api/quota-probe'),
+    Promise.resolve(quotaAdmission),
     Promise.all(MARKET_ASSETS.map(marketQuote)),
     Promise.all([
       worldBankLatest('WLD','NY.GDP.MKTP.KD.ZG','World GDP growth'),
@@ -912,18 +918,18 @@ async function legacyHandler(req:any,res:any){
       cboeVolIndex('SKEW','Cboe SKEW')
     ]),
     goldSeasonality(),
-    supabaseRpc('get_v96_forecast_error_state'),
-    supabaseRpc('get_v97_execution_quality_state'),
-    supabaseRpc('get_v101_forecast_settlement_state'),
-    supabaseRpc('get_v102_benchmark_reputation_state'),
-    supabaseRpc('get_v103_calibration_structure_state'),
-    supabaseRpc('get_v98_scenario_ev_state'),
-    supabaseRpc('get_v99_portfolio_risk_readiness'),
-    supabaseRpc('get_v104_forecast_coverage_governance_state'),
-    supabaseRpc('get_v107_provenance_ledger_state'),
-    supabaseRpc('get_v108_provenance_attestation_state'),
-    supabaseRpc('get_v109_attestation_key_lifecycle_state'),
-    supabaseRpc('get_v110_provenance_checkpoint_state'),
+    dbRpc('get_v96_forecast_error_state'),
+    dbRpc('get_v97_execution_quality_state'),
+    dbRpc('get_v101_forecast_settlement_state'),
+    dbRpc('get_v102_benchmark_reputation_state'),
+    dbRpc('get_v103_calibration_structure_state'),
+    dbRpc('get_v98_scenario_ev_state'),
+    dbRpc('get_v99_portfolio_risk_readiness'),
+    dbRpc('get_v104_forecast_coverage_governance_state'),
+    dbRpc('get_v107_provenance_ledger_state'),
+    dbRpc('get_v108_provenance_attestation_state'),
+    dbRpc('get_v109_attestation_key_lifecycle_state'),
+    dbRpc('get_v110_provenance_checkpoint_state'),
     githubExternalAnchor()
   ]);
 
@@ -931,7 +937,7 @@ async function legacyHandler(req:any,res:any){
   let accountabilityObservedAt=null;
   let accountabilityFallbackAgeMinutes=null;
   if(!forecastErrorState?.ok || !executionQualityState?.ok){
-    const edgeAccountability=await quantAccountabilityEdge();
+    const edgeAccountability=dbAdmissionOpen?await quantAccountabilityEdge(1500):null;
     if(edgeAccountability?.ok){
       forecastErrorState=edgeAccountability.forecast_error;
       executionQualityState=edgeAccountability.execution_latency;
