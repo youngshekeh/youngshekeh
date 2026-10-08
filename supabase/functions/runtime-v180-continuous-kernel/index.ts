@@ -25,6 +25,11 @@ async function rpc(name:string,body:any,timeout=20000){
   const b=await r.json().catch(()=>null);if(!r.ok)throw new Error(`rpc_${name}_${r.status}_${b?.message||''}`);
   return Array.isArray(b)?b[0]||null:b;
 }
+async function requireKernelSeal(){
+  const seal:any=await rpc('command_kernel_seal_status',{},10000);
+  if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
+  return seal;
+}
 function bucket(){const ms=300000,t=Math.floor(Date.now()/ms)*ms;return new Date(t).toISOString()}
 function n(v:any){const x=Number(v);return Number.isFinite(x)?x:0}
 async function ensurePolicy(userId:string){
@@ -53,9 +58,11 @@ Deno.serve(async(req:Request)=>{
 
   const trigger=(req.headers.get('x-tfa-trigger')||'RECOVERY').toUpperCase();
   const triggerSource=['VERCEL_CRON','MANUAL_PROBE','RECOVERY'].includes(trigger)?trigger:'RECOVERY';
-  let stage='LOAD_OWNERS';
+  let stage='KERNEL_SEAL';
 
   try{
+    const seal=await requireKernelSeal();
+    stage='LOAD_OWNERS';
     const owners=await dbRows('owner_users?active=eq.true&select=user_id&limit=20');
     if(!owners.length)throw new Error('no_active_owner');
 
@@ -112,10 +119,11 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.2-continuous-operations-kernel-v1',
+      version:'v180.3-continuous-operations-kernel-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
+      seal:{sealed:true,version:seal?.version||null,sealed_at:seal?.sealed_at||null},
       governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}
     },{
       status:failed?503:200,
@@ -124,7 +132,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.2-continuous-operations-kernel-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.3-continuous-operations-kernel-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
