@@ -48,7 +48,7 @@
   <main class="wrap command-shell">
     <section class="cmd-hero">
       <article class="cmd-hero-main">
-        <div class="cmd-label">V179 · ARCHITECT-STEWARD + RESOURCE GOVERNOR</div>
+        <div class="cmd-label">V180 · ARCHITECT-STEWARD + CONTINUOUS OPERATIONS</div>
         <h1>See everything.<br><span>Decide little.</span></h1>
         <p>THE FATHER COMMAND OS compresses the machine into the few decisions worthy of human judgment. Intelligence flows upward. Permission flows downward. Every decision leaves evidence for the next version of the system.</p>
         <div class="cmd-badges">
@@ -336,6 +336,42 @@
 
         <div class="workflow-path">V178 URGENCY → ATOMIC CLAIM → SPECIALIST LEASE → INTERNAL RECEIPT → COMPLETE → NEXT DEPENDENCY UNLOCKS</div>
         <div class="cmd-muted" style="margin-top:10px">V179 can dispatch only OBSERVE, PROPOSE and REVERSIBLE EXECUTE planner nodes. Human decisions, trading, payments, fund movement, credentials, secrets, publishing and irreversible external actions never enter this dispatcher.</div>
+      </article>
+    </section>
+
+    <section class="cmd-grid" style="margin-bottom:14px">
+      <article class="cmd-card span-12">
+        <div class="section-row">
+          <div>
+            <div class="cmd-label">CONTINUOUS OPERATIONS KERNEL · V180</div>
+            <h2>The machine keeps time, recovers bounded failures, and stops when governance says stop.</h2>
+          </div>
+          <div class="cmd-actions">
+            <span id="kernel-cloud-state" class="cmd-badge warn">SYNCING</span>
+            <button id="sync-kernel" class="cmd-btn">SYNC KERNEL</button>
+          </div>
+        </div>
+
+        <div class="cmd-grid" style="margin-top:12px">
+          <div class="cmd-card span-3"><div class="cmd-label">KERNEL HEALTH</div><div id="kernel-health-kpi" class="cmd-kpi">—</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">CONSECUTIVE FAILURES</div><div id="kernel-failures-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">DEAD LETTERS</div><div id="kernel-dead-kpi" class="cmd-kpi">0</div></div>
+          <div class="cmd-card span-3"><div class="cmd-label">NEXT RETRY</div><div id="kernel-retry-kpi" class="cmd-kpi">—</div></div>
+        </div>
+
+        <div class="runbook-grid">
+          <section>
+            <div class="cmd-label">RECENT HEARTBEATS</div>
+            <div id="kernel-runs" class="runbook-list" style="margin-top:10px"><div class="route-item"><small>Kernel state will appear after the V180 security seal is active.</small></div></div>
+          </section>
+          <aside>
+            <div class="cmd-label">RETRY + DEAD LETTER SUPERVISION</div>
+            <div id="kernel-recovery" class="action-receipts" style="margin-top:10px"></div>
+          </aside>
+        </div>
+
+        <div class="workflow-path">5-MIN HEARTBEAT → OVERLAP LOCK → LEASE RECOVERY → BOUNDED BACKOFF → V179 DISPATCH → HEALTH RECEIPT<br>RETRY BUDGET EXHAUSTED → DEAD LETTER → AUTONOMY HOLDS FOR REVIEW</div>
+        <div class="cmd-muted" style="margin-top:10px">V180 runs internal governed work only. A heartbeat cannot place trades, move funds, change credentials, bypass human gates, publish externally, or loosen WAIT / 0R.</div>
       </article>
     </section>
 
