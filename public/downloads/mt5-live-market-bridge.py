@@ -105,6 +105,9 @@ def capture(state,symbol):
     if not bool(getattr(terminal,"connected",False)):
         raise RuntimeError("MT5_TERMINAL_NOT_CONNECTED")
     bid=float(tick.bid);ask=float(tick.ask)
+    terminal_tick_ms=int(getattr(tick,"time_msc",0) or 0)
+    if terminal_tick_ms<=0 or abs(int(time.time()*1000)-terminal_tick_ms)>8000:
+        raise RuntimeError("STALE_OR_INVALID_TERMINAL_TICK")
     if bid<=0 or ask<bid:
         raise RuntimeError("INVALID_BROKER_TICK")
     payload={
