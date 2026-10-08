@@ -1,16 +1,16 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
-const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-emergency-scheduler-governor';
+const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-kernel-seal';
 
 export const config={maxDuration:90};
 
 function failClosed(res,status,error,detail){
-  console.error('V180_RECOVERY_HEARTBEAT_FAILED',{status,error,detail:detail?String(detail).slice(0,160):null,at:new Date().toISOString()});
+  console.error('V180_KERNEL_SEAL_HEARTBEAT_FAILED',{status,error,detail:detail?String(detail).slice(0,160):null,at:new Date().toISOString()});
   res.setHeader('Cache-Control','no-store');
-  res.setHeader('X-TFA-Engine','V180-RECOVERY');
+  res.setHeader('X-TFA-Engine','V180-SEAL');
   return res.status(status).json({
     ok:false,
-    version:'v180-recovery-heartbeat-v2',
+    version:'v180-kernel-seal-heartbeat-v1',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
@@ -38,7 +38,7 @@ export default async function handler(req,res){
   }
 
   const schedule=String(req.headers['x-vercel-cron-schedule']||'*/5 * * * *');
-  console.log('V180_RECOVERY_HEARTBEAT_ACCEPTED',{schedule,at:new Date().toISOString()});
+  console.log('V180_KERNEL_SEAL_HEARTBEAT_ACCEPTED',{schedule,at:new Date().toISOString()});
 
   let oidc='';
   try{oidc=await getVercelOidcToken();}catch(error){
@@ -52,7 +52,7 @@ export default async function handler(req,res){
       headers:{
         Authorization:`Bearer ${oidc}`,
         Accept:'application/json',
-        'User-Agent':'TFA-V180-RECOVERY-HEARTBEAT/2.0',
+        'User-Agent':'TFA-V180-KERNEL-SEAL-HEARTBEAT/1.0',
         'X-TFA-Cron-Schedule':schedule
       },
       cache:'no-store',
@@ -63,11 +63,10 @@ export default async function handler(req,res){
       return failClosed(res,response.status||503,body?.error||'scheduler_recovery_runtime_unavailable',body?.detail||body?.state);
     }
 
-    const plan=Array.isArray(body.plan)
-      ? body.plan.map(({command,...safe})=>safe)
-      : [];
+    const tables=Array.isArray(body.tables)?body.tables:[];
+    const functions=Array.isArray(body.functions)?body.functions:[];
 
-    console.log('V180_RECOVERY_HEARTBEAT_SUCCEEDED',{
+    console.log('V180_KERNEL_SEAL_HEARTBEAT_SUCCEEDED',{
       state:body.state,
       changed:body.changed||0,
       missing:Array.isArray(body.missing)?body.missing:[],
@@ -79,17 +78,15 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PUBLIC-CRON-SHELL-PRIVATE-BRAIN');
     res.setHeader('X-TFA-Auth','CRON_SECRET+VERCEL_OIDC');
-    res.setHeader('X-TFA-Engine','V180-RECOVERY');
+    res.setHeader('X-TFA-Engine','V180-SEAL');
     return res.status(200).json({
       ok:true,
-      version:'v180-recovery-heartbeat-v2',
+      version:'v180-kernel-seal-heartbeat-v1',
       generated_at:body.generated_at,
       state:body.state,
-      changed:body.changed||0,
-      missing:body.missing||[],
-      active_jobs:body.active_jobs??null,
       duration_ms:body.duration_ms??null,
-      plan,
+      tables,
+      functions,
       governance:body.governance
     });
   }catch(error){
