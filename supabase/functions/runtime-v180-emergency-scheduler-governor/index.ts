@@ -3,7 +3,7 @@ import postgres from "npm:postgres@3.4.7";
 const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const DB_URL=Deno.env.get('SUPABASE_DB_URL')||'';
-function pooledDbUrl(){const u=new URL(DB_URL);u.port='6543';return u.toString()}
+function pooledDbUrl(){const direct=new URL(DB_URL);const u=new URL('postgres://aws-0-eu-west-1.pooler.supabase.com:6543/postgres');u.username='postgres.mpcelmjiycjpdyyflisn';u.password=decodeURIComponent(direct.password);u.searchParams.set('sslmode','require');return u.toString()}
 
 function eq(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 async function authorized(req:Request){
@@ -95,14 +95,14 @@ Deno.serve(async(req:Request)=>{
     });
 
     return Response.json({
-      ok:true,version:'v180.1-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
+      ok:true,version:'v180.2-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
       duration_ms:Date.now()-started,...result,
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false,automatic_capital_promotion:false,rollback_snapshot_preserved:true}
     },{headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
   }catch(error){
     console.error('V180_EMERGENCY_SCHEDULER_ERROR',String(error).slice(0,500));
     return Response.json({
-      ok:false,version:'v180.1-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
+      ok:false,version:'v180.2-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
       error:'scheduler_load_shed_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false}
     },{status:503,headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
