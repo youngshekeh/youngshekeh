@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const WATCH='https://thefatheranalytics.com/api/gold-trigger-watch-v189';
-const VERSION='v191-gold-signal-event-capture-v1';
+const VERSION='v191.1-gold-signal-event-capture-fail-fast';
 
 function serverKey(){
   const bundle=Deno.env.get('SUPABASE_SECRET_KEYS');
@@ -15,7 +15,7 @@ async function sha256Hex(input:string){
   return Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 async function restRows(base:string,key:string,path:string){
-  const r=await fetch(base+'/rest/v1/'+path,{headers:{apikey:key,Authorization:`Bearer ${key}`,Accept:'application/json'},signal:AbortSignal.timeout(7000)});
+  const r=await fetch(base+'/rest/v1/'+path,{headers:{apikey:key,Authorization:`Bearer ${key}`,Accept:'application/json'},signal:AbortSignal.timeout(2500)});
   if(!r.ok)throw new Error('rest_'+r.status);
   const j=await r.json();return Array.isArray(j)?j:[];
 }
@@ -24,7 +24,7 @@ async function rpc(base:string,key:string,event:any){
     method:'POST',
     headers:{apikey:key,Authorization:`Bearer ${key}`,'Content-Type':'application/json',Accept:'application/json'},
     body:JSON.stringify({p_event:event}),
-    signal:AbortSignal.timeout(7000)
+    signal:AbortSignal.timeout(2500)
   });
   if(!r.ok)throw new Error('capture_rpc_'+r.status);
   return r.json();
@@ -87,7 +87,7 @@ Deno.serve(async(req:Request)=>{
     if(!token?.[0]?.token_hash||token[0].token_hash!==await sha256Hex(supplied))
       return Response.json({ok:false,error:'unauthorized'},{status:401});
 
-    const upstream=await fetch(WATCH,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-V191/1.0'},cache:'no-store',signal:AbortSignal.timeout(12000)});
+    const upstream=await fetch(WATCH,{headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-V191/1.0'},cache:'no-store',signal:AbortSignal.timeout(4000)});
     const watch=await upstream.json().catch(()=>null);
     if(!upstream.ok||watch?.ok!==true)
       return Response.json({ok:false,version:VERSION,state:'WATCH_UNAVAILABLE',capital_permission:'0R'},{status:503,headers:{'Cache-Control':'no-store'}});
