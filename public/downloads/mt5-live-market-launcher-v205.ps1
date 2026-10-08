@@ -11,7 +11,7 @@ function Stop-V205([string]$Message) {
   exit 2
 }
 
-if (-not $IsWindows) { Stop-V205 "Windows is required." }
+if ($env:OS -ne "Windows_NT" -and -not $IsWindows) { Stop-V205 "Windows is required." }
 if ([string]::IsNullOrWhiteSpace($env:TFA_LIVE_BRIDGE_ID)) { Stop-V205 "TFA_LIVE_BRIDGE_ID is missing." }
 if ([string]::IsNullOrWhiteSpace($env:TFA_LIVE_BRIDGE_KEY)) { Stop-V205 "TFA_LIVE_BRIDGE_KEY is missing." }
 if ([string]::IsNullOrWhiteSpace($env:TFA_MT5_SYMBOL)) { $env:TFA_MT5_SYMBOL = "XAUUSD" }
