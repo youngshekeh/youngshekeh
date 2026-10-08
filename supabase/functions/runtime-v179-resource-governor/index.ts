@@ -1151,12 +1151,11 @@ Deno.serve(async(req:Request)=>{
   if(!(await authorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401,headers:{'Cache-Control':'no-store'}});
   try{
     if(!SERVICE_ROLE)throw new Error('service_role_unavailable');
-    stage='SOURCE_AND_OWNER_LOAD';
-    const [sourceResults,owners]=await Promise.all([
-      Promise.all(SOURCES.map(x=>source(x[0] as string,x[1] as string,x[2] as string,x[3] as boolean))),
-      dbRows('owner_users?active=eq.true&select=user_id')
-    ]);
+    stage='OWNER_INDEX_LOAD';
+    const owners=await dbRows('owner_users?active=eq.true&select=user_id&limit=20');
     if(!owners.length)throw new Error('no_active_owner');
+    stage='SOURCE_LOAD';
+    const sourceResults=await Promise.all(SOURCES.map(x=>source(x[0] as string,x[1] as string,x[2] as string,x[3] as boolean)));
     const results:any[]=[];
     for(const owner of owners){
       stage='OWNER_STATE_LOAD';
@@ -1180,9 +1179,9 @@ Deno.serve(async(req:Request)=>{
       const post_dispatch_scheduler=resource_governor.completed_this_cycle>0?await syncAdaptiveScheduler(owner.user_id,cycle,data):adaptive_scheduler;
       results.push({user_id:owner.user_id,cycle_date:cycle.cycle_date,changed:cycle.changed,generation_count:cycle.generation_count,state_fingerprint:cycle.state_fingerprint,summary:cycle.summary,anomaly_count:cycle.anomalies.length,human_decision_count:cycle.human_decision_count||cycle.human_decisions.length,machine_health_pct:cycle.machine_health_pct,sovereign_action:cycle.sovereign_action,capital_permission:cycle.capital_permission,intervention_sync,runbook_sync,agent_workforce,multi_agent_planner,adaptive_scheduler:post_dispatch_scheduler,resource_governor});
     }
-    return Response.json({ok:true,version:'v179.3-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:true,version:'v179.6-resource-governor-runtime-v1',generated_at:new Date().toISOString(),owners_processed:results.length,results,governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}},{headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }catch(error){
     console.error('V179_RESOURCE_GOVERNOR_ERROR',stage,String(error).slice(0,300));
-    return Response.json({ok:false,version:'v179.3-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
+    return Response.json({ok:false,version:'v179.6-resource-governor-runtime-v1',state:'FAIL_CLOSED',error:'executive_cycle_runtime_unavailable',stage,detail:String(error).slice(0,180),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V179'}});
   }
 });
