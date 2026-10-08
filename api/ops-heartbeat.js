@@ -56,7 +56,7 @@ export default async function handler(req,res){
         'X-TFA-Cron-Schedule':schedule
       },
       cache:'no-store',
-      signal:AbortSignal.timeout(45000)
+      signal:AbortSignal.timeout(80000)
     });
     const body=await response.json().catch(()=>null);
     if(!response.ok||!body?.ok){
