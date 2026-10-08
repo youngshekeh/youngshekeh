@@ -52,7 +52,7 @@
   "crons": [
     {
       "path": "/api/ops-heartbeat",
-      "schedule": "* * * * *"
+      "schedule": "*/5 * * * *"
     }
   ]
 }
