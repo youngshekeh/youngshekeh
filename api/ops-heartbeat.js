@@ -1,19 +1,21 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
-const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-emergency-scheduler-governor';\n\nexport const config={maxDuration:90};
+const RUNTIME='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-emergency-scheduler-governor';
+
+export const config={maxDuration:90};
 
 function failClosed(res,status,error,detail){
+  console.error('V180_RECOVERY_HEARTBEAT_FAILED',{status,error,detail:detail?String(detail).slice(0,160):null,at:new Date().toISOString()});
   res.setHeader('Cache-Control','no-store');
-  res.setHeader('X-TFA-Engine','V180');
+  res.setHeader('X-TFA-Engine','V180-RECOVERY');
   return res.status(status).json({
     ok:false,
-    version:'v180-recovery-heartbeat-v1',
+    version:'v180-recovery-heartbeat-v2',
     state:'FAIL_CLOSED',
     error,
     detail:detail?String(detail).slice(0,180):undefined,
     governance:{
-      continuous_operations:true,
-      internal_execution_only:true,
+      recovery_mode:true,
       external_execution:false,
       action_permitted:'WAIT',
       capital_permission:'0R',
@@ -30,51 +32,67 @@ export default async function handler(req,res){
   }
 
   const cronSecret=process.env.CRON_SECRET||'';
-  const authHeader=req.headers.authorization||'';
+  const authHeader=String(req.headers.authorization||'');
   if(!cronSecret||authHeader!==`Bearer ${cronSecret}`){
     return failClosed(res,401,'unauthorized_cron_heartbeat');
   }
 
-  console.log('V180_HEARTBEAT_ACCEPTED',{schedule:String(req.headers['x-vercel-cron-schedule']||'unknown'),at:new Date().toISOString()});
+  const schedule=String(req.headers['x-vercel-cron-schedule']||'*/5 * * * *');
+  console.log('V180_RECOVERY_HEARTBEAT_ACCEPTED',{schedule,at:new Date().toISOString()});
 
   let oidc='';
-  try{oidc=await getVercelOidcToken();}catch{}
+  try{oidc=await getVercelOidcToken();}catch(error){
+    return failClosed(res,503,'vercel_workload_identity_unavailable',error);
+  }
   if(!oidc)return failClosed(res,503,'vercel_workload_identity_unavailable');
 
   try{
     const response=await fetch(RUNTIME,{
+      method:'GET',
       headers:{
         Authorization:`Bearer ${oidc}`,
         Accept:'application/json',
-        'User-Agent':'TFA-V180-RECOVERY-HEARTBEAT/1.0',
-        
-        'X-TFA-Cron-Schedule':String(req.headers['x-vercel-cron-schedule']||'*/5 * * * *')
+        'User-Agent':'TFA-V180-RECOVERY-HEARTBEAT/2.0',
+        'X-TFA-Cron-Schedule':schedule
       },
       cache:'no-store',
       signal:AbortSignal.timeout(45000)
     });
     const body=await response.json().catch(()=>null);
     if(!response.ok||!body?.ok){
-      return failClosed(res,response.status||503,body?.error||'private_runtime_unavailable',body?.detail);
+      return failClosed(res,response.status||503,body?.error||'scheduler_recovery_runtime_unavailable',body?.detail||body?.state);
     }
 
-    const plan=Array.isArray(body.plan)?body.plan.map(({command,...safe})=>safe):[];
+    const plan=Array.isArray(body.plan)
+      ? body.plan.map(({command,...safe})=>safe)
+      : [];
+
+    console.log('V180_RECOVERY_HEARTBEAT_SUCCEEDED',{
+      state:body.state,
+      changed:body.changed||0,
+      missing:Array.isArray(body.missing)?body.missing:[],
+      active_jobs:body.active_jobs??null,
+      duration_ms:body.duration_ms??null,
+      at:new Date().toISOString()
+    });
+
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PUBLIC-CRON-SHELL-PRIVATE-BRAIN');
     res.setHeader('X-TFA-Auth','CRON_SECRET+VERCEL_OIDC');
-    res.setHeader('X-TFA-Engine','V180');
-    console.log('V180_HEARTBEAT_SUCCEEDED',{owners_processed:body.owners_processed||0,at:new Date().toISOString()});
+    res.setHeader('X-TFA-Engine','V180-RECOVERY');
     return res.status(200).json({
       ok:true,
-      version:'v180-recovery-heartbeat-v1',
+      version:'v180-recovery-heartbeat-v2',
       generated_at:body.generated_at,
-      owners_processed:body.owners_processed,
-      owners_skipped:body.owners_skipped||0,
-      state:body.state||'ACTIVE',
-      results,
+      state:body.state,
+      changed:body.changed||0,
+      missing:body.missing||[],
+      active_jobs:body.active_jobs??null,
+      duration_ms:body.duration_ms??null,
+      plan,
       governance:body.governance
     });
   }catch(error){
-    return failClosed(res,503,'continuous_operations_bridge_unavailable',error);
+    return failClosed(res,503,'scheduler_recovery_bridge_unavailable',error);
   }
 }
