@@ -37,8 +37,8 @@ Deno.serve(async(req:Request)=>{
       const locked=await tx`select pg_try_advisory_xact_lock(hashtextextended('TFA:V180:EMERGENCY:SCHEDULER',0)) as locked`;
       if(!locked[0]?.locked)return{state:'ANOTHER_GOVERNOR_ACTIVE',changed:0,plan:[]};
 
+      await tx`create schema if not exists private`;
       await tx`
-        create schema if not exists private;
         create table if not exists private.v180_emergency_scheduler_baseline(
           jobid bigint primary key,
           jobname text,
@@ -94,14 +94,14 @@ Deno.serve(async(req:Request)=>{
     });
 
     return Response.json({
-      ok:true,version:'v180-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
+      ok:true,version:'v180.1-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
       duration_ms:Date.now()-started,...result,
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false,automatic_capital_promotion:false,rollback_snapshot_preserved:true}
     },{headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
   }catch(error){
     console.error('V180_EMERGENCY_SCHEDULER_ERROR',String(error).slice(0,500));
     return Response.json({
-      ok:false,version:'v180-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
+      ok:false,version:'v180.1-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
       error:'scheduler_load_shed_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false}
     },{status:503,headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
