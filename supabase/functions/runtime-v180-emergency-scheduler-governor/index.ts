@@ -3,6 +3,7 @@ import postgres from "npm:postgres@3.4.7";
 const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const DB_URL=Deno.env.get('SUPABASE_DB_URL')||'';
+function pooledDbUrl(){const u=new URL(DB_URL);u.port='6543';return u.toString()}
 
 function eq(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 async function authorized(req:Request){
@@ -29,7 +30,7 @@ Deno.serve(async(req:Request)=>{
   if(!(await authorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401});
   if(!DB_URL)return Response.json({ok:false,state:'FAIL_CLOSED',error:'db_url_unavailable'},{status:503});
 
-  const sql=postgres(DB_URL,{max:1,connect_timeout:15,idle_timeout:2,max_lifetime:60,prepare:false});
+  const sql=postgres(pooledDbUrl(),{max:1,connect_timeout:15,idle_timeout:2,max_lifetime:60,prepare:false});
   const started=Date.now();
   try{
     const result=await sql.begin(async tx=>{
