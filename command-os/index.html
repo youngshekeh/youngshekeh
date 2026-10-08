@@ -370,7 +370,7 @@
           </aside>
         </div>
 
-        <div class="workflow-path">5-MIN HEARTBEAT → OVERLAP LOCK → LEASE RECOVERY → BOUNDED BACKOFF → V179 DISPATCH → HEALTH RECEIPT<br>RETRY BUDGET EXHAUSTED → DEAD LETTER → AUTONOMY HOLDS FOR REVIEW</div>
+        <div class="workflow-path">GOVERNED HEARTBEAT · 5M NORMAL / 15M INCIDENT → OVERLAP LOCK → LEASE RECOVERY → BOUNDED BACKOFF → V179 DISPATCH → HEALTH RECEIPT<br>RETRY BUDGET EXHAUSTED → DEAD LETTER → AUTONOMY HOLDS FOR REVIEW</div>
         <div class="cmd-muted" style="margin-top:10px">V180 runs internal governed work only. A heartbeat cannot place trades, move funds, change credentials, bypass human gates, publish externally, or loosen WAIT / 0R.</div>
       </article>
     </section>
