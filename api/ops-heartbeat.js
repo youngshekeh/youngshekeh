@@ -3,6 +3,7 @@ import { getVercelOidcToken } from '@vercel/oidc';
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
 const GOVERNOR='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-emergency-scheduler-governor';
 const SEAL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-kernel-seal';
+const CRON_GATE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-cron-launch-gate';
 
 export const config={maxDuration:90};
 
@@ -17,7 +18,7 @@ function failClosed(res,status,state,error,detail,stages={}){
   res.setHeader('X-TFA-Engine','V180-SELF-RECOVERY');
   return res.status(status).json({
     ok:false,
-    version:'v180.6-self-recovering-heartbeat-v1',
+    version:'v180.7-self-recovering-heartbeat-v1',
     state,
     error,
     detail:safeDetail(detail),
@@ -106,7 +107,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V180-CONTINUOUS');
     return res.status(200).json({
       ok:true,
-      version:'v180.6-self-recovering-heartbeat-v1',
+      version:'v180.7-self-recovering-heartbeat-v1',
       state:'CONTINUOUS_KERNEL_ACTIVE',
       generated_at:kernel.body?.generated_at,
       owners_processed:kernel.body?.owners_processed??null,
@@ -121,8 +122,26 @@ export default async function handler(req,res){
     });
   }
 
+  const quiesce=await callPrivate(
+    CRON_GATE+'?mode=off',oidc,12000,'TFA-V180-CRON-GATE/1.0',
+    {'X-TFA-Cron-Schedule':schedule}
+  );
+
+  if(!quiesce.ok){
+    return failClosed(
+      res,503,'CRON_QUIESCE_BLOCKED','cron_launch_gate_unavailable',
+      quiesce.body?.detail||quiesce.body?.error||quiesce.body?.state,
+      {
+        kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
+        quiesce:{ok:false,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
+        recovery:{skipped:true},
+        seal:{skipped:true}
+      }
+    );
+  }
+
   const governor=await callPrivate(
-    GOVERNOR,oidc,25000,'TFA-V180-RECOVERY-HEARTBEAT/4.0',
+    GOVERNOR,oidc,25000,'TFA-V180-RECOVERY-HEARTBEAT/5.0',
     {'X-TFA-Cron-Schedule':schedule}
   );
 
@@ -132,6 +151,7 @@ export default async function handler(req,res){
       governor.body?.detail||governor.body?.error,
       {
         kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
+        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
         recovery:{ok:false,status:governor.status,error:governor.body?.error||'scheduler_recovery_unavailable',duration_ms:governor.duration_ms},
         seal:{skipped:true}
       }
@@ -149,12 +169,32 @@ export default async function handler(req,res){
       seal.body?.detail||seal.body?.error,
       {
         kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
+        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
         recovery:{
           ok:true,status:governor.status,state:governor.body?.state||null,
           changed:governor.body?.changed||0,missing:governor.body?.missing||[],
           duration_ms:governor.duration_ms
         },
         seal:{ok:false,status:seal.status,error:seal.body?.error||'kernel_security_seal_unavailable',duration_ms:seal.duration_ms}
+      }
+    );
+  }
+
+  const resume=await callPrivate(
+    CRON_GATE+'?mode=on',oidc,12000,'TFA-V180-CRON-GATE/1.0',
+    {'X-TFA-Cron-Schedule':schedule}
+  );
+
+  if(!resume.ok){
+    return failClosed(
+      res,503,'SEALED_CRON_QUIESCED','cron_resume_blocked',
+      resume.body?.detail||resume.body?.error||resume.body?.state,
+      {
+        kernel:{ok:false,status:kernel.status,duration_ms:kernel.duration_ms},
+        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
+        recovery:{ok:true,status:governor.status,state:governor.body?.state||null,changed:governor.body?.changed||0,duration_ms:governor.duration_ms},
+        seal:{ok:true,status:seal.status,state:seal.body?.state||null,duration_ms:seal.duration_ms},
+        resume:{ok:false,status:resume.status,state:resume.body?.state||null,duration_ms:resume.duration_ms}
       }
     );
   }
@@ -172,11 +212,12 @@ export default async function handler(req,res){
   res.setHeader('X-TFA-Engine','V180-SEALED');
   return res.status(200).json({
     ok:true,
-    version:'v180.6-self-recovering-heartbeat-v1',
+    version:'v180.7-self-recovering-heartbeat-v1',
     state:'SEALED_AWAITING_KERNEL_HEARTBEAT',
     generated_at:seal.body?.generated_at||new Date().toISOString(),
     stages:{
       kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_not_sealed',duration_ms:kernel.duration_ms},
+      quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
       recovery:{
         ok:true,status:governor.status,state:governor.body?.state||null,
         changed:governor.body?.changed||0,missing:governor.body?.missing||[],
@@ -185,7 +226,8 @@ export default async function handler(req,res){
       seal:{
         ok:true,status:seal.status,state:seal.body?.state||null,
         receipt:seal.body?.receipt||null,duration_ms:seal.duration_ms
-      }
+      },
+      resume:{ok:true,status:resume.status,state:resume.body?.state||null,duration_ms:resume.duration_ms}
     },
     governance:{
       recovery_mode:true,
