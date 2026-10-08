@@ -18,19 +18,19 @@ async function authorized(req:Request){
 }
 
 const TARGETS=[
-  {key:'CONTRACT_RESOLUTION',pattern:'%tfa_resolve_all_gold_contracts%',desired:'0-59/5 * * * *',lane:'CORE_STATE',reason:'Resolve bounded internal Gold contracts every five minutes during recovery.'},
-  {key:'EXPOSURE_REFRESH',pattern:'%tfa_refresh_gold_exposure_objects%',desired:'1-59/5 * * * *',lane:'CORE_STATE',reason:'Refresh exposure objects one minute after contract resolution.'},
-  {key:'PERMISSION_COMPILE',pattern:'%tfa_gold_compile_permission_v1%',desired:'1-59/2 * * * *',lane:'SAFETY',reason:'Keep permission compilation frequent and phase-separated; stale permission remains fail-closed.'},
-  {key:'V123_TRANSITIONS',pattern:'%detect_v123_gold_transitions%',desired:'0-59/2 * * * *',lane:'SIGNAL',reason:'Keep transition detection frequent on the opposite two-minute phase.'},
-  {key:'V191_EVENT_CAPTURE',pattern:'%runtime-v191-gold-signal-event-capture%',desired:'2-59/5 * * * *',lane:'EVENT_CAPTURE',reason:'Observational signal-event capture can run every five minutes during recovery.'},
+  {key:'CONTRACT_RESOLUTION',pattern:'%tfa_resolve_all_gold_contracts%',desired:'0-59/10 * * * *',lane:'CORE_STATE',reason:'Resolve bounded internal Gold contracts every five minutes during recovery.'},
+  {key:'EXPOSURE_REFRESH',pattern:'%tfa_refresh_gold_exposure_objects%',desired:'1-59/10 * * * *',lane:'CORE_STATE',reason:'Refresh exposure objects one minute after contract resolution.'},
+  {key:'PERMISSION_COMPILE',pattern:'%tfa_gold_compile_permission_v1%',desired:'2-59/10 * * * *',lane:'SAFETY',reason:'Keep permission compilation frequent and phase-separated; stale permission remains fail-closed.'},
+  {key:'V123_TRANSITIONS',pattern:'%detect_v123_gold_transitions%',desired:'8-59/10 * * * *',lane:'SIGNAL',reason:'Keep transition detection frequent on the opposite two-minute phase.'},
+  {key:'V191_EVENT_CAPTURE',pattern:'%runtime-v191-gold-signal-event-capture%',desired:'12-59/15 * * * *',lane:'EVENT_CAPTURE',reason:'Observational signal-event capture can run every five minutes during recovery.'},
 
-  {key:'V80_ENQUEUE',pattern:'%enqueue_v80_state_machine_probe%',desired:'0-59/2 * * * *',lane:'SAFETY',reason:'Critical state-machine capture remains two-minute.'},
-  {key:'V80_RECONCILE',pattern:'%reconcile_v80_state_machine_probes%',desired:'1-59/2 * * * *',lane:'SAFETY',reason:'Critical state-machine reconciliation is phase-separated.'},
-  {key:'V86_PERMISSION',pattern:'%refresh_v86_capital_permission%',desired:'1-59/3 * * * *',lane:'SAFETY',reason:'Capital permission remains frequent; stale state is conservative.'},
-  {key:'V119_ENQUEUE',pattern:'%enqueue_v119_gold_desk_probe%',desired:'0-59/2 * * * *',lane:'SAFETY',reason:'Gold Desk capture remains two-minute.'},
-  {key:'V119_RECONCILE',pattern:'%reconcile_v119_gold_desk_probes%',desired:'1-59/2 * * * *',lane:'SAFETY',reason:'Gold Desk reconciliation is phase-separated.'},
-  {key:'V136_FIREWALL',pattern:'%refresh_v136_gold_execution_firewall%',desired:'3-59/5 * * * *',lane:'SAFETY',reason:'Execution firewall stays frequent; stale state never grants execution.'},
-  {key:'V72_LOAD_SHED',pattern:'%enforce_v72_edge_load_shedding%',desired:'4-59/5 * * * *',lane:'SAFETY',reason:'Load-shedding supervision remains five-minute.'},
+  {key:'V80_ENQUEUE',pattern:'%enqueue_v80_state_machine_probe%',desired:'3-59/10 * * * *',lane:'SAFETY',reason:'Critical state-machine capture remains active on recovery cadence.'},
+  {key:'V80_RECONCILE',pattern:'%reconcile_v80_state_machine_probes%',desired:'4-59/10 * * * *',lane:'SAFETY',reason:'Critical state-machine reconciliation remains active and phase-separated.'},
+  {key:'V86_PERMISSION',pattern:'%refresh_v86_capital_permission%',desired:'5-59/10 * * * *',lane:'SAFETY',reason:'Capital permission remains frequent; stale state is conservative.'},
+  {key:'V119_ENQUEUE',pattern:'%enqueue_v119_gold_desk_probe%',desired:'6-59/10 * * * *',lane:'SAFETY',reason:'Gold Desk capture remains active on recovery cadence.'},
+  {key:'V119_RECONCILE',pattern:'%reconcile_v119_gold_desk_probes%',desired:'7-59/10 * * * *',lane:'SAFETY',reason:'Gold Desk reconciliation remains active and phase-separated.'},
+  {key:'V136_FIREWALL',pattern:'%refresh_v136_gold_execution_firewall%',desired:'9-59/10 * * * *',lane:'SAFETY',reason:'Execution firewall stays frequent; stale state never grants execution.'},
+  {key:'V72_LOAD_SHED',pattern:'%enforce_v72_edge_load_shedding%',desired:'14-59/15 * * * *',lane:'SAFETY',reason:'Load-shedding supervision remains five-minute.'},
 
   {key:'V84_RESEARCH_ENQUEUE',pattern:'%enqueue_v84_research_components%',desired:'0-59/10 * * * *',lane:'RESEARCH',reason:'Research capture can tolerate a ten-minute recovery cadence.'},
   {key:'V84_RESEARCH_RECONCILE',pattern:'%reconcile_v84_research_components%',desired:'1-59/10 * * * *',lane:'RESEARCH',reason:'Research reconciliation is staggered after capture.'},
@@ -136,14 +136,14 @@ Deno.serve(async(req:Request)=>{
     });
 
     return Response.json({
-      ok:true,version:'v180.4-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
+      ok:true,version:'v180.5-emergency-scheduler-governor-v1',generated_at:new Date().toISOString(),
       duration_ms:Date.now()-started,...result,
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false,automatic_capital_promotion:false,rollback_snapshot_preserved:true}
     },{headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
   }catch(error){
     console.error('V180_EMERGENCY_SCHEDULER_ERROR',String(error).slice(0,500));
     return Response.json({
-      ok:false,version:'v180.4-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
+      ok:false,version:'v180.5-emergency-scheduler-governor-v1',state:'FAIL_CLOSED',
       error:'scheduler_load_shed_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_routing:false,external_execution:false}
     },{status:503,headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180-RECOVERY'}});
