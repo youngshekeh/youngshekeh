@@ -40,7 +40,7 @@ Deno.serve(async(req)=>{
       if(!tableSeal||!fnSeal)throw new Error('v180_security_seal_verification_failed');
       await tx`
         insert into private.v180_kernel_seal_receipt(seal_key,version,sealed_at,details)
-        values('V180_KERNEL_SEAL','v180.5',now(),${tx.json({tables:5,required_functions:4,rls_required:true,owner_select_policy_required:true})})
+        values('V180_KERNEL_SEAL','v180.5',now(),jsonb_build_object('tables',5,'required_functions',4,'rls_required',true,'owner_select_policy_required',true))
         on conflict(seal_key) do update set version=excluded.version,sealed_at=excluded.sealed_at,details=excluded.details
       `;
       return{state:'SEALED',tables,functions:fnNames,receipt:{sealed:true,version:'v180.5'}};
