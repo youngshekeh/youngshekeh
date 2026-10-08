@@ -36,43 +36,62 @@ async function ensurePolicy(userId:string){
   });
 }
 async function invokeV179(){
-  const r=await fetch(V179,{method:'GET',headers:{Authorization:`Bearer ${SERVICE_ROLE}`,Accept:'application/json','User-Agent':'TFA-V180-CONTINUOUS-KERNEL/2.0'},signal:AbortSignal.timeout(65000)});
-  const b=await r.json().catch(()=>null);if(!r.ok||!b?.ok)throw new Error(`v179_${r.status}_${b?.stage||b?.error||'unavailable'}`);return b;
+  const r=await fetch(V179,{
+    method:'GET',
+    headers:{Authorization:`Bearer ${SERVICE_ROLE}`,Accept:'application/json','User-Agent':'TFA-V180-CONTINUOUS-KERNEL/2.0'},
+    signal:AbortSignal.timeout(65000)
+  });
+  const b=await r.json().catch(()=>null);
+  if(!r.ok||!b?.ok)throw new Error(`v179_${r.status}_${b?.stage||b?.error||'unavailable'}`);
+  return b;
 }
 
 Deno.serve(async(req:Request)=>{
   if(req.method!=='GET'&&req.method!=='POST')return Response.json({ok:false,error:'method_not_allowed'},{status:405});
   if(!(await authorized(req)))return Response.json({ok:false,error:'unauthorized_private_runtime'},{status:401});
   if(!SERVICE_ROLE)return Response.json({ok:false,state:'FAIL_CLOSED',error:'service_role_unavailable'},{status:503});
+
   const trigger=(req.headers.get('x-tfa-trigger')||'RECOVERY').toUpperCase();
   const triggerSource=['VERCEL_CRON','MANUAL_PROBE','RECOVERY'].includes(trigger)?trigger:'RECOVERY';
   let stage='LOAD_OWNERS';
+
   try{
     const owners=await dbRows('owner_users?active=eq.true&select=user_id&limit=20');
     if(!owners.length)throw new Error('no_active_owner');
+
     const runs:any[]=[];
     for(const owner of owners){
       const userId=owner.user_id;
       stage='POLICY';
       const policy=await ensurePolicy(userId);
+
       stage='LOCK';
       const run:any=await rpc('command_kernel_begin_run',{
-        p_user_id:userId,p_run_key:'KERNEL:'+bucket(),p_trigger_source:triggerSource,
+        p_user_id:userId,
+        p_run_key:'KERNEL:'+bucket(),
+        p_trigger_source:triggerSource,
         p_stale_run_minutes:Math.max(1,n(policy?.stale_run_minutes)||3)
       });
       if(!run?.id){runs.push({status:'SKIPPED_OVERLAP'});continue}
+
       try{
         stage='LEASE_RECOVERY';
         const recovery:any=await rpc('command_kernel_recover_dispatches',{
-          p_user_id:userId,p_max_attempts:Math.max(1,n(policy?.max_dispatch_attempts)||3),
+          p_user_id:userId,
+          p_max_attempts:Math.max(1,n(policy?.max_dispatch_attempts)||3),
           p_base_backoff_seconds:Math.max(30,n(policy?.base_backoff_seconds)||300)
         });
+
         let downstream:any=null,mode='EXECUTE';
         if(n(recovery?.open_dead_letters)>0)mode='DEAD_LETTER_HOLD';
         else if(n(recovery?.recovered)>0&&recovery?.next_retry_at&&new Date(recovery.next_retry_at).getTime()>Date.now())mode='RETRY_BACKOFF';
         else{stage='V179_EXECUTIVE_CYCLE';downstream=await invokeV179()}
+
         stage='FINISH';
-        const metrics={mode,recovery,downstream:{ok:downstream?.ok??null,version:downstream?.version||null,owners_processed:downstream?.owners_processed||0}};
+        const metrics={
+          mode,recovery,
+          downstream:{ok:downstream?.ok??null,version:downstream?.version||null,owners_processed:downstream?.owners_processed||0}
+        };
         const state:any=await rpc('command_kernel_finish_run',{
           p_user_id:userId,p_run_id:run.id,p_success:true,p_error_stage:null,p_error_detail:null,p_metrics:metrics,
           p_degraded_after:Math.max(1,n(policy?.degraded_after_failures)||2),
@@ -82,21 +101,34 @@ Deno.serve(async(req:Request)=>{
       }catch(error){
         const detail=String(error).slice(0,500);
         await rpc('command_kernel_finish_run',{
-          p_user_id:userId,p_run_id:run.id,p_success:false,p_error_stage:stage,p_error_detail:detail,
-          p_metrics:{mode:'FAILED'},p_degraded_after:Math.max(1,n(policy?.degraded_after_failures)||2),
+          p_user_id:userId,p_run_id:run.id,p_success:false,p_error_stage:stage,p_error_detail:detail,p_metrics:{mode:'FAILED'},
+          p_degraded_after:Math.max(1,n(policy?.degraded_after_failures)||2),
           p_fail_closed_after:Math.max(1,n(policy?.fail_closed_after_failures)||3)
         }).catch(()=>null);
         runs.push({status:'FAILED',run_id:run.id,stage,error:detail});
       }
     }
+
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
-      ok:!failed,version:'v180.2-continuous-operations-kernel-v1',generated_at:new Date().toISOString(),
-      owners_processed:owners.length,runs,
+      ok:!failed,
+      version:'v180.2-continuous-operations-kernel-v1',
+      generated_at:new Date().toISOString(),
+      owners_processed:owners.length,
+      runs,
       governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}
-    },{status:failed?503:200,headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V180'}});
+    },{
+      status:failed?503:200,
+      headers:{'Cache-Control':'no-store','X-TFA-Runtime':'PRIVATE_BRAIN','X-TFA-Engine':'V180'}
+    });
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
-    return Response.json({ok:false,version:'v180.2-continuous-operations-kernel-v1',state:'FAIL_CLOSED',stage,error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}},{status:503,headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180'}});
+    return Response.json({
+      ok:false,version:'v180.2-continuous-operations-kernel-v1',state:'FAIL_CLOSED',stage,
+      error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
+      governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
+    },{
+      status:503,headers:{'Cache-Control':'no-store','X-TFA-Engine':'V180'}
+    });
   }
 });
