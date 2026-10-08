@@ -82,7 +82,7 @@ export default async function handler(req,res){
     return failClosed(res,401,'FAIL_CLOSED','unauthorized_cron_heartbeat');
   }
 
-  const schedule=String(req.headers['x-vercel-cron-schedule']||'*/5 * * * *');
+  const schedule=String(req.headers['x-vercel-cron-schedule']||'4-59/15 * * * *');
   console.log('V180_HEARTBEAT_ACCEPTED',{schedule,mode:'SEALED_KERNEL_FIRST',at:new Date().toISOString()});
 
   let oidc='';
