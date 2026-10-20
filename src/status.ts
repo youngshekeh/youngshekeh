@@ -3,7 +3,7 @@ import { evaluateLaunchReadiness } from './launch-readiness.mjs';
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 
-const timeoutMs = 11_000;
+const timeoutMs = 7_000;
 const missing = () => ({ response: { ok: false, headers: { get: () => null } }, data: { ok: false, state: 'UNAVAILABLE' } });
 
 async function readEdge(path) {
@@ -62,6 +62,9 @@ async function load() {
     show('identity', gate.checks.workload_identity
       ? 'VERCEL OIDC · VERIFIED' : 'UNVERIFIED', gate.checks.workload_identity);
     show('billing', billing.data?.state || 'UNAVAILABLE', gate.checks.billing);
+    const kernel = qa.data?.continuous_kernel ?? qa.data?.runtime?.continuous_kernel ?? null;
+    show('kernel', gate.checks.continuous_kernel ? 'VERIFIED ACTIVE' : 'NOT VERIFIED',
+      gate.checks.continuous_kernel);
     show('launch-gate', gate.state, gate.ready);
     const provider = readiness.data?.runtime?.provider_rate_limit_status
       || auth.data?.provider_rate_limit?.status || 'UNVERIFIED_EXTERNALLY';
@@ -73,11 +76,12 @@ async function load() {
       'Launch blockers: ' + blockers +
       ' · Backend hard blockers: ' + remoteBlockers +
       ' · Provider verification: ' + provider +
+      ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
       ' · Trading permission: WAIT / 0R. No live orders authorized.';
     const at = document.getElementById('last-checked');
     if (at) at.textContent = 'Checked ' + new Date().toLocaleString() + ' · Independent probes · fail closed';
   } catch {
-    for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'launch-gate']) {
+    for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'kernel', 'launch-gate']) {
       show(id, id === 'launch-gate' ? 'LAUNCH HOLD' : 'UNAVAILABLE', false);
     }
     const detail = document.getElementById('detail');
