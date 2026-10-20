@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="robots" content="noindex,nofollow"/>
+<title>Secure Membership Checkout | THE FATHER ANALYTICS</title>
+<meta name="description" content="Evidence-gated THE FATHER ANALYTICS membership checkout. No charges when system or payment verification is unavailable."/>
+<link rel="stylesheet" href="../src/styles.css"/><link rel="stylesheet" href="../src/commercial.css"/>
+</head>
+<body class="commerce-body">
+<div class="commerce-shell">
+<header class="commerce-nav"><a class="commerce-brand" href="../">TF ✦ THE FATHER ANALYTICS</a><nav class="commerce-links"><a href="../pricing/">Memberships</a><a href="../member/">Sign in</a><a href="../status/">System status</a></nav></header>
+<main class="commerce-checkout">
+<div class="commerce-eyebrow">AUTHENTICATED CHECKOUT · FLUTTERWAVE</div>
+<h1 class="commerce-title">Payment only when ready.</h1>
+<p class="commerce-intro">This is a protected payment handoff, not a demo charge. We verify plan pricing, membership authentication, production acceptance and the private research kernel before allowing a paid subscription.</p>
+<section class="commerce-notice" role="status" aria-live="polite"><strong id="checkout-state">PAYMENT HOLD</strong><p id="checkout-detail">A live provider payment cannot begin until every required control is verified.</p></section>
+<div class="commerce-steps">
+<section class="commerce-step"><h2>01 · Selected plan</h2><p id="selected-plan">Checking your membership choice.</p></section>
+<section class="commerce-step"><h2>02 · Account and service integrity</h2><p id="account-state">You must be signed in. No password or payment credentials are accepted on this page.</p></section>
+<section class="commerce-step"><h2>03 · Payment provider</h2><p id="provider-state">Checkout is disabled until fresh provider price, signed-payment evidence and live operating acceptance pass.</p></section>
+</div>
+<div class="commerce-actions">
+<button class="commerce-button alt" id="verify-checkout" type="button">Verify launch and checkout</button>
+<button class="commerce-button" id="start-checkout" type="button" disabled>Continue securely to Flutterwave</button>
+</div>
+<p id="checkout-message" class="commerce-status">No payment has been initiated.</p>
+<p class="commerce-details">Only an explicit click on the enabled payment button may request a provider checkout. Final card or bank details are entered at the verified payment provider. Do not interpret a redirect or return screen as payment confirmation; active access depends on the verified subscription ledger. Read <a href="../terms/">terms</a> and <a href="../privacy/">privacy</a>.</p>
+<div class="commerce-actions"><a class="commerce-button alt" href="../member/">Member sign in</a><a class="commerce-button alt" href="mailto:thefatherintelligence@gmail.com?subject=THE%20FATHER%20ANALYTICS%20-%20Manual%20membership%20enquiry">Request manual assistance</a></div>
+</main></div>
+<script type="module" src="../src/checkout.ts"></script>
+</body></html>
