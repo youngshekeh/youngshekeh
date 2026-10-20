@@ -1,4 +1,4 @@
-import { evaluateLaunchReadiness } from './launch-readiness.mjs';
+import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -63,8 +63,24 @@ async function load() {
       ? 'VERCEL OIDC · VERIFIED' : 'UNVERIFIED', gate.checks.workload_identity);
     show('billing', billing.data?.state || 'UNAVAILABLE', gate.checks.billing);
     const kernel = qa.data?.continuous_kernel ?? qa.data?.runtime?.continuous_kernel ?? null;
-    show('kernel', gate.checks.continuous_kernel ? 'VERIFIED ACTIVE' : 'NOT VERIFIED',
+    const certifiedCycles = Number.isInteger(kernel?.consecutive_successes) ? kernel.consecutive_successes : 0;
+    const kernelObserved = kernel?.ok === true
+      && certifiedCycles > 0
+      && kernel?.capital_permission === '0R'
+      && kernel?.action_permitted === 'WAIT'
+      && freshEvidence(kernel?.last_succeeded_at);
+    show('kernel', gate.checks.continuous_kernel
+      ? '2+ CERTIFIED CYCLES'
+      : kernelObserved ? 'PROCESSING OBSERVED · NOT LAUNCH-CERTIFIED' : 'NOT VERIFIED',
       gate.checks.continuous_kernel);
+    // Distinguish a genuine merchant preflight from verified paid entitlement.
+    // A historical signed transaction is not current membership activation.
+    const partialBilling = !gate.checks.billing
+      && billing.data?.ok === true
+      && freshEvidence(billing.data?.generated_at)
+      && billing.data?.gates?.provider_plan_parity === 'PASS'
+      && billing.data?.gates?.signed_payment_evidence === 'PASS';
+    if(partialBilling)show('billing', 'PROVIDER PREFLIGHT · ENTITLEMENT PENDING', false);
     show('launch-gate', gate.state, gate.ready);
     const provider = readiness.data?.runtime?.provider_rate_limit_status
       || auth.data?.provider_rate_limit?.status || 'UNVERIFIED_EXTERNALLY';

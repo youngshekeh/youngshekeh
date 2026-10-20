@@ -1,0 +1,31 @@
+name: V220 Certified Commercial Launch Evidence
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/launch-readiness.mjs'
+      - 'src/commercial-gates.mjs'
+      - 'src/status.ts'
+      - 'tests/launch-readiness-gate.test.mjs'
+      - 'tests/v210-commercial-launch-guard.test.mjs'
+      - 'tests/v220-entitlement-launch-proof.test.mjs'
+      - '.github/workflows/v220-commercial-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fail-closed-launch-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify launch evidence syntax
+        run: |
+          node --check src/launch-readiness.mjs
+          node --check src/commercial-gates.mjs
+      - name: Run historical and new commercial launch tests
+        run: node --test tests/launch-readiness-gate.test.mjs tests/v210-commercial-launch-guard.test.mjs tests/v220-entitlement-launch-proof.test.mjs

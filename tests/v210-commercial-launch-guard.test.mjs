@@ -7,6 +7,7 @@ const now=Date.parse('2026-10-20T18:00:00.000Z');
 const acceptance=()=>({
   ok:true,generated_at:'2026-10-20T17:58:00Z',ready_for_checkout:true,
   live_flow_verified:true,state:'LIVE_FLOW_VERIFIED',
+  gates:{provider_plan_parity:'PASS',signed_payment_evidence:'PASS',active_entitlement_evidence:'PASS'},
   plans:[{plan_id:'pro',local_price_usd:29,currency:'USD',recurring:true,provider_verified:true}]
 });
 test('only the four established paid plans are eligible',()=>{
