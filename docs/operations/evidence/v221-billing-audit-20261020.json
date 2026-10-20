@@ -1,0 +1,21 @@
+{
+  "source": "supabase_management_readonly_aggregate",
+  "observed_at": "2026-10-20T23:29:24Z",
+  "successful_signed_events": 1,
+  "paid_checkout_intents": 1,
+  "matched_paid_checkouts": 1,
+  "matching_active_entitlements": 0,
+  "matching_past_due_entitlements": 1,
+  "unmatched_signed_payment_events": 0,
+  "active_memberships": 0,
+  "past_due_memberships": 1,
+  "latest_signed_payment_at": "2026-09-13T18:41:35Z",
+  "latest_membership_period_end": "2026-10-13T00:00:00Z",
+  "explicitly_not_certified": [
+    "webhook_replay_recovery",
+    "new_live_payment",
+    "renewal_fulfillment",
+    "refunds",
+    "entitlement_delivery"
+  ]
+}

@@ -1,0 +1,40 @@
+name: V221 Billing Entitlement Integrity
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/billing-entitlement-audit.mjs'
+      - 'scripts/v221-billing-audit.mjs'
+      - 'tests/v221-billing-entitlement-audit.test.mjs'
+      - 'docs/operations/evidence/v221-billing-audit-20261020.json'
+      - 'status/index.html'
+      - '.github/workflows/v221-billing-entitlement.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-entitlement-safeguards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Validate read-only source
+        run: |
+          node --check src/billing-entitlement-audit.mjs
+          node --check scripts/v221-billing-audit.mjs
+      - name: Reject payment replay and incomplete fulfilment
+        run: node --test tests/v221-billing-entitlement-audit.test.mjs
+      - name: Generate sanitized observed billing audit (expected launch hold)
+        shell: bash
+        run: |
+          set +e
+          node scripts/v221-billing-audit.mjs docs/operations/evidence/v221-billing-audit-20261020.json /tmp/v221-billing
+          status=$?
+          set -e
+          if [ "$status" -ne 1 ]; then echo "Unexpected evidence verdict: $status"; exit 1; fi
+          grep -q 'HISTORICAL_TERM_EXPIRED' /tmp/v221-billing/entitlement-audit.json
+          grep -q 'LAUNCH HOLD' /tmp/v221-billing/entitlement-audit.txt
