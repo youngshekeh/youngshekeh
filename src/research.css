@@ -1,0 +1,24 @@
+.research-benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:1000px;margin:38px 0 54px}
+.research-benefits>div{border:1px solid #45354d;border-radius:15px;background:rgba(35,24,46,.63);padding:19px}
+.research-benefits b,.research-benefits span{display:block}.research-benefits b{color:#d0b0ff;font-size:11px;letter-spacing:.14em;margin-bottom:11px}.research-benefits span{font-size:13px;color:#cfc6d8}
+.research-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr);gap:28px;align-items:start}
+.research-form-shell{border:1px solid #4c395b;border-radius:23px;padding:32px;background:linear-gradient(150deg,rgba(51,37,63,.78),rgba(12,10,18,.96))}
+.research-form-shell h2{font-size:37px;line-height:1.1;letter-spacing:-.04em;margin:12px 0 9px}
+.research-small{font-size:12px;color:#b4a7c3;line-height:1.7}
+#research-form{display:grid;gap:20px;margin-top:30px}
+#research-form label{display:grid;gap:9px;font-size:12px;font-weight:750;color:#eee8f1}
+#research-form input:not([type=checkbox]),#research-form select,#research-form textarea{background:#15111c;border:1px solid #62536c;color:#faf6ff;padding:13px 15px;border-radius:11px;font-family:inherit;font-size:14px;max-width:100%;min-width:0;width:100%;outline-offset:2px}
+#research-form textarea{resize:vertical;min-height:90px}
+#research-form input:focus,#research-form select:focus,#research-form textarea:focus{outline:2px solid #bd9fff}
+.research-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#research-form .research-consent{display:flex;align-items:flex-start;gap:12px;line-height:1.5}
+.research-consent input{width:18px;height:18px;flex:0 0 auto;accent-color:#aa83f8;margin-top:3px}
+.research-error{color:#ffafae;font-size:13px;min-height:10px}
+.research-preview{margin-top:26px;padding:22px;border:1px solid #735e89;border-radius:16px}
+.research-preview pre{font-family:ui-monospace,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;max-height:350px;overflow:auto;color:#ddd3e6;padding:14px;background:#0b0910;border-radius:10px;margin-top:20px}
+.research-sidebar>.commerce-notice{margin:0 0 18px}
+.research-sidebar .commerce-notice p{font-size:13px}
+.research-sidebar a{color:#c4a7ff}
+.research-service-list{display:flex;flex-direction:column;gap:10px}
+.research-service-list span{font-size:12px;padding:10px 12px;border-radius:9px;border:1px solid #4b3c57;color:#e6dced}
+@media(max-width:920px){.research-layout{grid-template-columns:1fr}.research-sidebar{max-width:100%}}@media(max-width:610px){.research-benefits,.research-two{grid-template-columns:1fr}.research-benefits{margin:26px 0}.research-form-shell{padding:19px}}
