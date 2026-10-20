@@ -1,0 +1,35 @@
+name: V217 Database Incident Acceptance
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/db-incident-acceptance.mjs'
+      - 'scripts/v217-db-incident.mjs'
+      - 'tests/v217-db-incident-acceptance.test.mjs'
+      - 'docs/operations/evidence/v217-*'
+      - '.github/workflows/v217-db-incident.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  incident-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/db-incident-acceptance.mjs
+      - run: node --check scripts/v217-db-incident.mjs
+      - run: node --test tests/v217-db-incident-acceptance.test.mjs
+      - name: Generate redacted provider incident packet (expected launch hold)
+        run: |
+          set +e
+          node scripts/v217-db-incident.mjs docs/operations/evidence/v217-20261020-redacted-snapshot.json /tmp/tfa-incident
+          status=$?
+          set -e
+          if [ "$status" -ne 1 ]; then echo "Unexpected incident acceptance code: $status"; exit 1; fi
+          grep -q "PGRST002" /tmp/tfa-incident/support-summary.md
+          grep -q '"state": "LAUNCH_HOLD"' /tmp/tfa-incident/launch-verdict.json
