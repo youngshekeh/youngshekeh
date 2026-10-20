@@ -1,5 +1,6 @@
 // Private-by-default, client-only research enquiry builder.
 // This module does not send, store, or transmit contact details.
+import {scopeAnnex} from './research-scope.mjs';
 export const ENQUIRY_DESTINATION='thefatherintelligence@gmail.com';
 export const SERVICE_IDS=Object.freeze([
   'macro-market-research',
@@ -35,6 +36,8 @@ export function validateEnquiry(values){
 export function buildEnquiry(values){
   const result=validateEnquiry(values);
   if(!result.ok)return Object.freeze({ok:false,errors:result.errors});
+  const scope=scopeAnnex(values);
+  if(!scope.ok)return Object.freeze({ok:false,errors:scope.errors});
   const service=clean(values.service);
   const name=clean(values.name,90);
   const email=clean(values.email,180);
@@ -57,6 +60,8 @@ export function buildEnquiry(values){
     'Preferred timeline: '+timeline,
     'Indicative budget (not a quote): '+budget,
     'Additional context: '+notes,
+    '',
+    ...scope.lines,
     '',
     'Please confirm feasibility, deliverables, timeline, confidentiality and a quotation before any payment.',
     'This enquiry is not a subscription purchase, trade order or guaranteed service commitment.'
