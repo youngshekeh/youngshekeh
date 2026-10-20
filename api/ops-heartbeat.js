@@ -15,7 +15,7 @@ function failClosed(res,status,state,error,detail,stages={}){
   res.setHeader('X-TFA-Engine','V180-SEALED-KERNEL');
   return res.status(status).json({
     ok:false,
-    version:'v181.0-nondisruptive-ops-heartbeat-v1',
+    version:'v207.0-bounded-kernel-heartbeat-v1',
     state,
     error,
     detail:safeDetail(detail),
@@ -83,7 +83,7 @@ export default async function handler(req,res){
   if(!oidc)return failClosed(res,503,'FAIL_CLOSED','vercel_workload_identity_unavailable');
 
   const kernel=await callPrivate(
-    KERNEL,oidc,22000,'TFA-V180-CONTINUOUS-HEARTBEAT/5.0',
+    KERNEL,oidc,70000,'TFA-V180-CONTINUOUS-HEARTBEAT/5.0',
     {'X-TFA-Trigger':'VERCEL_CRON','X-TFA-Cron-Schedule':schedule}
   );
 
