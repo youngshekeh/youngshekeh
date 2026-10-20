@@ -98,7 +98,50 @@ async function loadOwners(){
 
 function bucket(){const ms=300000,t=Math.floor(Date.now()/ms)*ms;return new Date(t).toISOString()}
 function n(v:any){const x=Number(v);return Number.isFinite(x)?x:0}
+// Existing policy read is data-only. No RLS policies, DB rows or permissions are mutated.
+// A genuine missing policy continues through V180's original authenticated REST upsert.
+function validPolicy(policy:any,userId:string){
+  return policy?.user_id===userId&&policy?.policy_key==='DEFAULT_V180'
+    &&[policy.stale_run_minutes,policy.max_dispatch_attempts,policy.base_backoff_seconds,
+       policy.degraded_after_failures,policy.fail_closed_after_failures]
+      .every(v=>Number.isInteger(Number(v))&&Number(v)>0);
+}
+async function readExistingPolicy(userId:string){
+  if(!DB_URL)throw new Error('policy_pooler_not_configured');
+  const client=postgres(sealPoolerUrl(),{
+    max:1,prepare:false,fetch_types:false,connect_timeout:4,idle_timeout:1,max_lifetime:15
+  });
+  let timer:number|undefined;
+  try{
+    const rows:any=await Promise.race([
+      client`select user_id,policy_key,stale_run_minutes,max_dispatch_attempts,
+        base_backoff_seconds,degraded_after_failures,fail_closed_after_failures
+        from public.command_ops_kernel_policies
+        where user_id=${userId} and policy_key='DEFAULT_V180' limit 1`,
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('policy_pooler_deadline')),9000)})
+    ]);
+    if(!Array.isArray(rows))throw new Error('policy_pooler_invalid_response');
+    if(rows.length===0)return null;
+    const policy=rows[0];
+    if(!validPolicy(policy,userId))throw new Error('v215_policy_integrity_failed');
+    return policy;
+  }finally{
+    if(timer!==undefined)clearTimeout(timer);
+    await client.end({timeout:1}).catch(()=>null);
+  }
+}
 async function ensurePolicy(userId:string){
+  if(DB_URL){
+    try{
+      const policy=await readExistingPolicy(userId);
+      if(policy)return policy;
+    }catch(error){
+      // A malformed or mismatched policy is a security failure, not a transport
+      // outage; never replace it silently with permissive defaults.
+      if(String(error).includes('v215_policy_integrity_failed'))throw error;
+      console.warn('V215_POLICY_POOLER_FALLBACK',{reason:error instanceof Error?error.name:'pooler_unavailable'});
+    }
+  }
   return await upsert('command_ops_kernel_policies','user_id,policy_key',{
     user_id:userId,policy_key:'DEFAULT_V180',heartbeat_minutes:5,stale_run_minutes:3,
     max_dispatch_attempts:3,base_backoff_seconds:300,degraded_after_failures:2,fail_closed_after_failures:3,
@@ -185,7 +228,7 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.6-direct-seal-and-owner-isolation-v1',
+      version:'v180.7-existing-policy-sql-read-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
@@ -198,7 +241,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.6-direct-seal-and-owner-isolation-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.7-existing-policy-sql-read-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
