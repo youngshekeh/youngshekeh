@@ -12,7 +12,7 @@ test('only Vercel-authenticated cron may trigger the kernel', () => {
 });
 
 test('the private kernel must succeed before the heartbeat reports success', () => {
-  assert.match(source, /if\(kernel\.ok\)\{/);
+  assert.match(source, /if\(kernel\.ok&&proof\?\.verified\)\{/);
   assert.match(source, /state:'CONTINUOUS_KERNEL_ACTIVE'/);
   assert.match(source, /KERNEL_UNAVAILABLE_NON_DISRUPTIVE/);
   assert.match(source, /private_kernel_unhealthy/);
