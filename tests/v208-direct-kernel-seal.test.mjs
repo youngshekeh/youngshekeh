@@ -20,7 +20,7 @@ test('both paths require actual database seal, not a cached flag',()=>{
 });
 test('pooler query remains deadline-bound and does not accumulate connections',()=>{
  assert.match(source,/seal_pooler_deadline/);
- assert.match(source,/},9000\)/);
+ assert.match(source,/setTimeout\(\(\)=>reject\(new Error\('seal_pooler_deadline'\)\),9000\)/);
  assert.match(source,/clearTimeout\(timer\)/);
  assert.match(shell,/KERNEL,oidc,70000/);
 });
