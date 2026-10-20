@@ -7,6 +7,7 @@ on:
       - 'tests/ops-heartbeat-guard.test.mjs'
       - 'tests/v207-kernel-deadline.test.mjs'
       - 'tests/v208-direct-kernel-seal.test.mjs'
+      - 'tests/v209-direct-owner-read.test.mjs'
       - 'supabase/functions/runtime-v180-continuous-kernel/index.ts'
       - '.github/workflows/ops-heartbeat-guard.yml'
   workflow_dispatch:
@@ -25,4 +26,4 @@ jobs:
       - name: Verify heartbeat syntax
         run: node --check api/ops-heartbeat.js
       - name: Verify scheduler continuity, auth and risk locks
-        run: node --test tests/ops-heartbeat-guard.test.mjs tests/v207-kernel-deadline.test.mjs tests/v208-direct-kernel-seal.test.mjs
+        run: node --test tests/ops-heartbeat-guard.test.mjs tests/v207-kernel-deadline.test.mjs tests/v208-direct-kernel-seal.test.mjs tests/v209-direct-owner-read.test.mjs
