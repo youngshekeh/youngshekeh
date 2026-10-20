@@ -22,3 +22,13 @@
 .research-service-list{display:flex;flex-direction:column;gap:10px}
 .research-service-list span{font-size:12px;padding:10px 12px;border-radius:9px;border:1px solid #4b3c57;color:#e6dced}
 @media(max-width:920px){.research-layout{grid-template-columns:1fr}.research-sidebar{max-width:100%}}@media(max-width:610px){.research-benefits,.research-two{grid-template-columns:1fr}.research-benefits{margin:26px 0}.research-form-shell{padding:19px}}
+
+
+.scope-fieldset{border:1px solid #574361;border-radius:16px;padding:18px 19px;margin:0;min-width:0}
+.scope-fieldset legend{padding:0 8px;color:#e9dafe;font-size:14px;font-weight:750}
+.scope-fieldset legend small{color:#b8a6cb;font-weight:500;font-size:11px}
+.scope-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:15px}
+#research-form .scope-option{display:flex;align-items:flex-start;gap:11px;background:#171120;border:1px solid #4f3f5d;border-radius:10px;padding:13px;font-size:12px;font-weight:600;line-height:1.5;cursor:pointer}
+#research-form .scope-option:hover{border-color:#9779c4}
+.scope-option input[type=checkbox]{flex:0 0 auto;width:18px;height:18px;accent-color:#ab8cf8}
+@media(max-width:610px){.scope-options{grid-template-columns:1fr}.scope-fieldset{padding:15px}}
