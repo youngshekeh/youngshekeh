@@ -91,6 +91,6 @@ test('public checkout remains hard-sealed until the verified backend guard is li
   assert.match(source,/const CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
   assert.match(source,/async function verifyCheckout\(\)\{\s*if\(!CHECKOUT_SERVER_GUARD_DEPLOYED\)/);
   assert.match(source,/async function startCheckout\(\)\{\s*if\(!CHECKOUT_SERVER_GUARD_DEPLOYED\)/);
-  assert.match(source,/server-side charge protection has not been confirmed deployed/);
+  assert.match(source,/server-side charge protection has not been confirmed deployed/i);
   assert.match(source,/btn\.disabled=true/);
 });
