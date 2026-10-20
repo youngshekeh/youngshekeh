@@ -7,6 +7,9 @@ on:
       - 'src/research*'
       - 'pricing/index.html'
       - 'sitemap.xml'
+      - 'public/sitemap.xml'
+      - 'public/robots.txt'
+      - 'tests/v213-static-seo.test.mjs'
       - 'robots.txt'
       - 'vite.config.ts'
       - 'tests/v212-research-intake.test.mjs'
@@ -25,4 +28,4 @@ jobs:
         with:
           node-version: '22'
       - run: node --check src/research-enquiry.mjs
-      - run: node --test tests/v212-research-intake.test.mjs
+      - run: node --test tests/v212-research-intake.test.mjs tests/v213-static-seo.test.mjs
