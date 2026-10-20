@@ -20,6 +20,9 @@ export function planEligible(plan,acceptance,now=Date.now()){
     &&acceptance?.ready_for_checkout===true
     &&acceptance?.live_flow_verified===true
     &&acceptance?.state==='LIVE_FLOW_VERIFIED'
+    &&acceptance?.gates?.provider_plan_parity==='PASS'
+    &&acceptance?.gates?.signed_payment_evidence==='PASS'
+    &&acceptance?.gates?.active_entitlement_evidence==='PASS'
     &&priceFor(plan,acceptance,now)!==null;
 }
 export function validProviderCheckout(value){
