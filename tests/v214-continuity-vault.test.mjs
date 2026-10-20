@@ -36,7 +36,7 @@ test('recovery notes preserve live-money and billing firewall',()=>{
   assert.match(doc,/WAIT \/ 0R/);
   assert.match(doc,/Supabase.*Backups/);
   assert.match(doc,/signed webhook/);
-  assert.match(doc,/do not.*secrets/i);
+  assert.match(doc,/Never store in public logs\/artifacts|Store encrypted credentials only/i);
   const checkout=read('src/checkout.ts');
   assert.match(checkout,/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
   assert.match(read('api/ops-heartbeat.js'),/database_scheduler:\{changed:false/);
