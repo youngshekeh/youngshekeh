@@ -1,0 +1,55 @@
+{
+  "observed_at": "2026-10-20T19:37:35.000Z",
+  "events": [
+    {
+      "timestamp": "2026-10-20T19:37:28.548Z",
+      "event_message": "Failed to load the schema cache using db-schemas=public,graphql_public. code 57014 statement timeout"
+    },
+    {
+      "timestamp": "2026-10-20T19:36:57.365Z",
+      "event_message": "PGRST002 Could not query database for schema cache"
+    },
+    {
+      "timestamp": "2026-10-20T19:35:32.790Z",
+      "event_message": "V180_HEARTBEAT_FAIL_CLOSED KERNEL_SEAL"
+    },
+    {
+      "timestamp": "2026-10-20T19:13:21.917Z",
+      "event_message": "cron job 33 job startup timeout"
+    },
+    {
+      "timestamp": "2026-10-20T19:13:21.909Z",
+      "event_message": "cron job 61 job startup timeout"
+    },
+    {
+      "timestamp": "2026-10-20T19:12:24.653Z",
+      "event_message": "canceling statement due to statement timeout"
+    },
+    {
+      "timestamp": "2026-10-20T19:10:00.000Z",
+      "event_message": "Connection terminated due to connection timeout"
+    }
+  ],
+  "management_sql": {
+    "ok": true,
+    "observed_at": "2026-10-20T19:37:18Z"
+  },
+  "postgrest_probe": {
+    "ok": false,
+    "schema_cache_ready": false,
+    "observed_at": "2026-10-20T19:37:28Z"
+  },
+  "cron": {
+    "active_jobs": 58,
+    "enabled": "on",
+    "recent_startup_timeouts": 2,
+    "observed_at": "2026-10-20T19:37:18Z"
+  },
+  "heartbeat_runs": [],
+  "payment": {
+    "full_live_acceptance": false,
+    "signed_webhook_verified": false,
+    "entitlement_verified": false,
+    "observed_at": "2026-10-20T19:37:00Z"
+  }
+}
