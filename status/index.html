@@ -1,45 +1,48 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="robots" content="noindex,nofollow" />
-    <title>Status | THE FATHER ANALYTICS</title>
-    <link rel="stylesheet" href="/src/styles.css" />
-  </head>
-  <body>
-    <main class="wrap">
-      <div class="label">THE FATHER ANALYTICS · STATUS</div>
-      <h1>Production status.</h1>
-      <section class="grid">
-        <article class="card">
-          <div class="label">Auth runtime</div>
-          <div id="auth" class="value wait">CHECKING</div>
-        </article>
-        <article class="card">
-          <div class="label">Final readiness</div>
-          <div id="ready" class="value wait">CHECKING</div>
-        </article>
-        <article class="card">
-          <div class="label">Private Brain QA</div>
-          <div id="brain" class="value wait">CHECKING</div>
-        </article>
-        <article class="card">
-          <div class="label">Workload identity</div>
-          <div id="identity" class="value wait">CHECKING</div>
-        </article>
-        <article class="card">
-          <div class="label">Commercial acceptance</div>
-          <div id="billing" class="value wait">CHECKING</div>
-        </article>
-      </section>
-      <section class="card status-box">
-        <div id="detail" class="muted">Loading runtime observations...</div>
-      </section>
-      <div class="row" style="margin-top: 14px">
-        <a class="secondary" href="../access/">Access Gateway</a>
-      </div>
-    </main>
-    <script type="module" src="/src/status.ts"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#08060b" />
+  <title>Launch Readiness & System Status | THE FATHER ANALYTICS</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div class="ambient-grid" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="../"><span class="brand-mark">TF</span><span><strong>THE FATHER</strong><small>ANALYTICS</small></span></a>
+    <nav class="topnav"><a href="../live-markets/">Markets</a><a href="../gold-live/">Gold</a><a href="../intelligence/">Intelligence</a><a class="nav-cta" href="../access/">Mission Control</a></nav>
+  </header>
+  <main class="wrap command-main">
+    <div class="eyebrow">OPERATIONS · V183 LAUNCH TRUTH GATE</div>
+    <h1 class="command-title">The system, <span>without the guesswork.</span></h1>
+    <p class="command-lede">This page distinguishes a deployed website from verified autonomous operations. Unknown, stale, or unreachable data never counts as a successful check. Financial execution remains under human governance.</p>
+    <section class="command-strip" aria-label="Launch status">
+      <article><span>PUBLIC RELEASE MODE</span><strong id="launch-mode" role="status" aria-live="polite">CHECKING</strong></article>
+      <article><span>LAST OBSERVATION</span><strong id="last-observation">NOT YET VERIFIED</strong></article>
+      <article><span>CAPITAL PERMISSION</span><strong id="capital-permission">WAIT / 0R</strong></article>
+    </section>
+    <section class="grid" aria-label="Independent launch gates">
+      <article class="card"><div class="label">Authentication</div><div id="auth" class="value wait">CHECKING</div></article>
+      <article class="card"><div class="label">Public readiness</div><div id="ready" class="value wait">CHECKING</div></article>
+      <article class="card"><div class="label">Private Brain QA</div><div id="brain" class="value wait">CHECKING</div></article>
+      <article class="card"><div class="label">Workload identity</div><div id="identity" class="value wait">CHECKING</div></article>
+      <article class="card"><div class="label">Commercial acceptance</div><div id="billing" class="value wait">CHECKING</div></article>
+      <article class="card"><div class="label">Continuous V180 kernel</div><div id="kernel" class="value wait">NOT VERIFIED</div></article>
+    </section>
+    <section class="card status-box" aria-live="polite">
+      <div class="label">Release assessment</div>
+      <p id="detail" class="muted">Checking recent evidence. An HTTP 200 alone never counts as launch acceptance.</p>
+      <p id="evidence" class="muted">Source evidence: awaiting observations.</p>
+    </section>
+    <div class="hero-actions">
+      <a class="secondary" href="../live-markets/">Public Market Dashboard</a>
+      <a class="secondary" href="../gold-live/">Gold Intelligence</a>
+      <a class="secondary" href="../access/">Access Gateway</a>
+    </div>
+    <p class="muted">Publication status is informational. Prices may be delayed or unavailable. No investment recommendation, trading authorization, or guaranteed performance is implied.</p>
+  </main>
+  <script type="module" src="/src/status.ts"></script>
+</body>
 </html>
