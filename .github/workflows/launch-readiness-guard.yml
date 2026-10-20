@@ -1,0 +1,25 @@
+name: Launch readiness truth guard
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/status.ts'
+      - 'status/index.html'
+      - 'index.html'
+      - 'tests/launch-status-truth.test.mjs'
+      - '.github/workflows/launch-readiness-guard.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  status-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify launch-state transitions
+        run: node --test tests/launch-status-truth.test.mjs
