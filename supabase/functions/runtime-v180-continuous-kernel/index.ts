@@ -102,9 +102,12 @@ function n(v:any){const x=Number(v);return Number.isFinite(x)?x:0}
 // A genuine missing policy continues through V180's original authenticated REST upsert.
 function validPolicy(policy:any,userId:string){
   return policy?.user_id===userId&&policy?.policy_key==='DEFAULT_V180'
-    &&[policy.stale_run_minutes,policy.max_dispatch_attempts,policy.base_backoff_seconds,
-       policy.degraded_after_failures,policy.fail_closed_after_failures]
-      .every(v=>Number.isInteger(Number(v))&&Number(v)>0);
+    &&Number(policy.heartbeat_minutes)===5
+    &&Number(policy.stale_run_minutes)===3
+    &&Number(policy.max_dispatch_attempts)===3
+    &&Number(policy.base_backoff_seconds)===300
+    &&Number(policy.degraded_after_failures)===2
+    &&Number(policy.fail_closed_after_failures)===3;
 }
 async function readExistingPolicy(userId:string){
   if(!DB_URL)throw new Error('policy_pooler_not_configured');
@@ -114,7 +117,7 @@ async function readExistingPolicy(userId:string){
   let timer:number|undefined;
   try{
     const rows:any=await Promise.race([
-      client`select user_id,policy_key,stale_run_minutes,max_dispatch_attempts,
+      client`select user_id,policy_key,heartbeat_minutes,stale_run_minutes,max_dispatch_attempts,
         base_backoff_seconds,degraded_after_failures,fail_closed_after_failures
         from public.command_ops_kernel_policies
         where user_id=${userId} and policy_key='DEFAULT_V180' limit 1`,
