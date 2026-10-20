@@ -71,6 +71,31 @@ async function requireKernelSeal(){
   if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
   return {...seal,transport:'POSTGREST_VERIFIED'};
 }
+// Read only the same active owners as V180 REST. The SQL credentials stay private.
+// If transport fails, the original PostgREST owner lookup remains mandatory.
+async function loadOwners(){
+  if(DB_URL){
+    const client=postgres(sealPoolerUrl(),{
+      max:1,prepare:false,fetch_types:false,connect_timeout:4,idle_timeout:1,max_lifetime:15
+    });
+    let timer:number|undefined;
+    try{
+      const owners:any=await Promise.race([
+        client`select user_id from public.owner_users where active=true limit 20`,
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('owner_pooler_deadline')),9000)})
+      ]);
+      if(!Array.isArray(owners))throw new Error('owner_pooler_invalid_response');
+      return owners;
+    }catch(error){
+      console.warn('V209_OWNER_POOLER_FALLBACK',{reason:error instanceof Error?error.name:'pooler_unavailable'});
+    }finally{
+      if(timer!==undefined)clearTimeout(timer);
+      await client.end({timeout:1}).catch(()=>null);
+    }
+  }
+  return await dbRows('owner_users?active=eq.true&select=user_id&limit=20');
+}
+
 function bucket(){const ms=300000,t=Math.floor(Date.now()/ms)*ms;return new Date(t).toISOString()}
 function n(v:any){const x=Number(v);return Number.isFinite(x)?x:0}
 async function ensurePolicy(userId:string){
@@ -104,7 +129,7 @@ Deno.serve(async(req:Request)=>{
   try{
     const seal=await requireKernelSeal();
     stage='LOAD_OWNERS';
-    const owners=await dbRows('owner_users?active=eq.true&select=user_id&limit=20');
+    const owners=await loadOwners();
     if(!owners.length)throw new Error('no_active_owner');
 
     const runs:any[]=[];
@@ -160,7 +185,7 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.5-direct-seal-pooler-fail-closed-v1',
+      version:'v180.6-direct-seal-and-owner-isolation-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
@@ -173,7 +198,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.5-direct-seal-pooler-fail-closed-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.6-direct-seal-and-owner-isolation-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
