@@ -9,6 +9,7 @@ on:
       - 'tests/v208-direct-kernel-seal.test.mjs'
       - 'tests/v209-direct-owner-read.test.mjs'
       - 'tests/v215-kernel-policy-read.test.mjs'
+      - 'tests/v218-seal-transport-pressure.test.mjs'
       - 'tests/v216-kernel-receipt.test.mjs'
       - 'src/kernel-receipt-gate.mjs'
       - 'supabase/functions/runtime-v180-continuous-kernel/index.ts'
