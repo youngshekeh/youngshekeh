@@ -16,6 +16,7 @@ export default defineConfig({
         home: resolve(root, 'index.html'),
         access: resolve(root, 'access/index.html'),
         pricing: resolve(root, 'pricing/index.html'),
+        research: resolve(root, 'research/index.html'),
         checkout: resolve(root, 'checkout/index.html'),
         member: resolve(root, 'member/index.html'),
         owner: resolve(root, 'owner/index.html'),
