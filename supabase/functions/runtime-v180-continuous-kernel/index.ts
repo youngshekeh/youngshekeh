@@ -1,6 +1,8 @@
+import postgres from "npm:postgres@3.4.7";
 const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 const SUPABASE_URL=Deno.env.get('SUPABASE_URL')||'https://mpcelmjiycjpdyyflisn.supabase.co';
 const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+const DB_URL=Deno.env.get('SUPABASE_DB_URL')||'';
 const V179=SUPABASE_URL+'/functions/v1/runtime-v179-resource-governor';
 // Bound PostgREST latency without disabling the security seal or changing database state.
 const REST_DEADLINE_MS=25000;
@@ -28,10 +30,46 @@ async function rpc(name:string,body:any,timeout=REST_DEADLINE_MS){
   const b=await r.json().catch(()=>null);if(!r.ok)throw new Error(`rpc_${name}_${r.status}_${b?.message||''}`);
   return Array.isArray(b)?b[0]||null:b;
 }
+// Verify the SAME database seal using a single existing private SQL pooler lane.
+// If the pooler is unavailable, retain the original mandatory PostgREST check.
+// Neither lane may assert sealed without the database function returning sealed=true.
+function sealPoolerUrl(){
+  const direct=new URL(DB_URL);
+  const pooler=new URL('postgres://aws-1-eu-west-1.pooler.supabase.com:6543/postgres');
+  pooler.username='postgres.mpcelmjiycjpdyyflisn';
+  pooler.password=decodeURIComponent(direct.password);
+  pooler.searchParams.set('sslmode','require');
+  return pooler.toString();
+}
+async function verifySealViaPooler(){
+  if(!DB_URL)throw new Error('seal_pooler_not_configured');
+  const client=postgres(sealPoolerUrl(),{
+    max:1,prepare:false,fetch_types:false,connect_timeout:4,idle_timeout:1,max_lifetime:15
+  });
+  let timer:number|undefined;
+  try{
+    const rows:any=await Promise.race([
+      client`select public.command_kernel_seal_status() as seal`,
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('seal_pooler_deadline')),9000)})
+    ]);
+    const seal=rows?.[0]?.seal;
+    if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
+    return {...seal,transport:'SQL_POOLER_VERIFIED'};
+  }finally{
+    if(timer!==undefined)clearTimeout(timer);
+    await client.end({timeout:1}).catch(()=>null);
+  }
+}
 async function requireKernelSeal(){
+  try{return await verifySealViaPooler()}
+  catch(error){
+    // Explicit negative seal verdict is not a transport fault and cannot fall back.
+    if(String(error).includes('v180_kernel_security_seal_missing'))throw error;
+    console.warn('V208_SEAL_POOLER_FALLBACK',{reason:error instanceof Error?error.name:'pooler_unavailable'});
+  }
   const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
   if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
-  return seal;
+  return {...seal,transport:'POSTGREST_VERIFIED'};
 }
 function bucket(){const ms=300000,t=Math.floor(Date.now()/ms)*ms;return new Date(t).toISOString()}
 function n(v:any){const x=Number(v);return Number.isFinite(x)?x:0}
@@ -122,11 +160,11 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.4-bounded-rest-deadline-v1',
+      version:'v180.5-direct-seal-pooler-fail-closed-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
-      seal:{sealed:true,version:seal?.version||null,sealed_at:seal?.sealed_at||null},
+      seal:{sealed:true,version:seal?.version||null,sealed_at:seal?.sealed_at||null,transport:seal?.transport||'UNVERIFIED'},
       governance:{internal_execution_only:true,external_execution:false,action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false,human_approval_bypassed:false}
     },{
       status:failed?503:200,
@@ -135,7 +173,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.4-bounded-rest-deadline-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.5-direct-seal-pooler-fail-closed-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
