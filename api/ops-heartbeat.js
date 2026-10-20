@@ -1,4 +1,5 @@
 import { getVercelOidcToken } from '@vercel/oidc';
+import { certifyKernelReceipt } from '../src/kernel-receipt-gate.mjs';
 
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
 
@@ -87,10 +88,24 @@ export default async function handler(req,res){
     {'X-TFA-Trigger':'VERCEL_CRON','X-TFA-Cron-Schedule':schedule}
   );
 
-  if(kernel.ok){
+  // Verified execution receipts, not a successful HTTP request, authorize a green
+  // heartbeat. The V180 Edge function can return ok=true with only overlap or
+  // backoff notices; those must never clear an incident or launch hold.
+  const proof=kernel.ok?certifyKernelReceipt(kernel.body):null;
+  if(kernel.ok&&!proof?.verified){
+    return failClosed(res,503,'KERNEL_UNAVAILABLE_NON_DISRUPTIVE','kernel_receipts_uncertified',
+      proof?.reason||'NO_VERIFIED_RUN_RECEIPT',{
+        kernel:{ok:false,status:kernel.status,duration_ms:kernel.duration_ms},
+        receipt:{verified:false,reason:proof?.reason||'UNAVAILABLE',counts:proof?.counts||{}},
+        database_scheduler:{changed:false,reason:'preserve_unrelated_cron_jobs'},
+        recovery:{skipped:true,reason:'explicit_approved_runbook_required'}
+      });
+  }
+  if(kernel.ok&&proof?.verified){
     const runs=Array.isArray(kernel.body?.runs)?kernel.body.runs.map(({user_id,...safe})=>safe):[];
     console.log('V180_KERNEL_HEARTBEAT_SUCCEEDED',{
-      owners_processed:kernel.body?.owners_processed??null,
+      owners_processed:proof.counts.owners,
+      successful_runs:proof.counts.successful_runs,
       duration_ms:kernel.duration_ms,
       at:new Date().toISOString()
     });
@@ -100,10 +115,11 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V180-CONTINUOUS');
     return res.status(200).json({
       ok:true,
-      version:'v181.0-nondisruptive-ops-heartbeat-v1',
+      version:'v216.0-receipt-certified-ops-heartbeat-v1',
       state:'CONTINUOUS_KERNEL_ACTIVE',
       generated_at:kernel.body?.generated_at,
-      owners_processed:kernel.body?.owners_processed??null,
+      owners_processed:proof.counts.owners,
+      run_receipt_certification:{verified:true,successful_runs:proof.counts.successful_runs,method:'FRESH_SEALED_HEALTHY_EXECUTION'},
       runs,
       seal:kernel.body?.seal||null,
       stages:{
