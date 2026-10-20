@@ -32,3 +32,6 @@ Date: 2026-10-20 UTC. Target: https://thefatheranalytics.com.
 - Prior Edge create-checkout v8 may be restored from previous deployed revision, keeping verify_jwt=true.
 - A CI-reviewed Vercel commit can remove V210 sales routes if necessary.
 - No DB schema, global scheduler, order routing or capital permissions changed by V210.
+
+## V211 release safety note
+The reviewed server-side create-checkout deployment was blocked by platform safety checks on 20 October. GitHub source is ahead of the deployed Supabase Edge v8; the unverified server-side guard MUST NOT be assumed active. V211 hard-disables the public browser payment action regardless of green provider/status probes. Commercial enquiries and research requests remain available. Do not change CHECKOUT_SERVER_GUARD_DEPLOYED until independent Supabase deployment and controlled payment acceptance are completed. Never treat the checked-in source as proof of deployed production code.
