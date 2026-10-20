@@ -5,9 +5,12 @@ const preview=document.getElementById('research-preview');
 const previewText=document.getElementById('research-preview-text');
 const link=document.getElementById('research-email-link') as HTMLAnchorElement;
 const copy=document.getElementById('research-copy') as HTMLButtonElement;
+const download=document.getElementById('research-download') as HTMLButtonElement;
 let draft:string|null=null;
 function collect(){
-  const values=Object.fromEntries(new FormData(form).entries()) as Record<string,string|boolean>;
+  const data=new FormData(form);
+  const values=Object.fromEntries(data.entries()) as Record<string,string|string[]|boolean>;
+  values.deliverables=data.getAll('deliverables').map(String);
   values.consent=(form.elements.namedItem('consent') as HTMLInputElement)?.checked===true;
   return values;
 }
@@ -15,6 +18,7 @@ function reset(){
   draft=null;
   if(preview)preview.hidden=true;
   if(copy)copy.disabled=true;
+  if(download)download.disabled=true;
   if(error)error.textContent='';
 }
 form?.addEventListener('input',reset);
@@ -29,6 +33,7 @@ form?.addEventListener('submit',(event)=>{
   draft=enquiry.copyText||'';
   if(previewText)previewText.textContent=draft;
   if(copy)copy.disabled=false;
+  if(download)download.disabled=false;
   if(preview)preview.hidden=false;
   if(link){
     const canOpen=Number(enquiry.mailtoLength)<1800;
@@ -46,4 +51,18 @@ copy?.addEventListener('click',async()=>{
   }catch{
     if(error)error.textContent='Clipboard access was denied. Select and copy the visible brief below manually.';
   }
+});
+
+download?.addEventListener('click',()=>{
+  // All personal details remain on the visitor's device. A click creates one
+  // text file locally; no browser storage or network call is performed.
+  if(!draft)return;
+  const blob=new Blob([draft],{type:'text/plain;charset=utf-8'});
+  const objectUrl=URL.createObjectURL(blob);
+  const anchor=document.createElement('a');
+  anchor.href=objectUrl;
+  anchor.download='the-father-research-enquiry.txt';
+  anchor.click();
+  setTimeout(()=>URL.revokeObjectURL(objectUrl),1500);
+  if(error)error.textContent='Your brief was prepared as a local text file. It has not been sent. Email it to the research team to request a quotation.';
 });
