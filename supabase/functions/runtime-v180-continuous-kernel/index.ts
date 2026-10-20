@@ -6,7 +6,7 @@ const DB_URL=Deno.env.get('SUPABASE_DB_URL')||'';
 const V179=SUPABASE_URL+'/functions/v1/runtime-v179-resource-governor';
 // Bound PostgREST latency without disabling the security seal or changing database state.
 const REST_DEADLINE_MS=25000;
-const SEAL_DEADLINE_MS=22000;
+const SEAL_DEADLINE_MS=8000; // V218: bounded REST fallback; 9s SQL pooler + 8s REST max.
 
 function eq(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 async function authorized(req:Request){
@@ -60,12 +60,22 @@ async function verifySealViaPooler(){
     await client.end({timeout:1}).catch(()=>null);
   }
 }
+// Operational classifications only. Never put raw database errors, URLs,
+// credential strings or provider payloads into application event logs.
+function safePoolerFailureClass(error:unknown){
+  const msg=error instanceof Error?error.name+' '+error.message:'';
+  if(/seal_pooler_deadline/.test(msg))return 'POOLER_QUERY_DEADLINE';
+  if(/authenticat|08006/i.test(msg))return 'POOLER_AUTH_TIMEOUT_OR_REJECTED';
+  if(/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH/i.test(msg))return 'POOLER_NETWORK_UNAVAILABLE';
+  if(/timeout|ETIMEDOUT/i.test(msg))return 'POOLER_CONNECT_TIMEOUT';
+  return 'POOLER_UNAVAILABLE';
+}
 async function requireKernelSeal(){
   try{return await verifySealViaPooler()}
   catch(error){
     // Explicit negative seal verdict is not a transport fault and cannot fall back.
     if(String(error).includes('v180_kernel_security_seal_missing'))throw error;
-    console.warn('V208_SEAL_POOLER_FALLBACK',{reason:error instanceof Error?error.name:'pooler_unavailable'});
+    console.warn('V218_SEAL_POOLER_FALLBACK',{reason:safePoolerFailureClass(error),rest_fallback_budget_ms:SEAL_DEADLINE_MS});
   }
   const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
   if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
@@ -231,7 +241,7 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.7-existing-policy-sql-read-v1',
+      version:'v180.8-bounded-seal-transport-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
@@ -244,7 +254,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.7-existing-policy-sql-read-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.8-bounded-seal-transport-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
