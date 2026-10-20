@@ -93,7 +93,6 @@ async function startCheckout(){
     if(!token||!validPlan)throw new Error('Sign in and verify your plan again.');
     // Short-lived verification: rerun all checks at the actual intent point.
     verified=false;
-    const previous=btn.disabled;
     await verifyAcceptanceBeforeCharge(token);
     const response=await fetch(BASE+'/functions/v1/create-checkout',{
       method:'POST',
