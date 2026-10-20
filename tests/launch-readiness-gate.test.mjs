@@ -9,10 +9,10 @@ const valid = () => {
   return {
     auth: {response:{ok:true},data:{ok:true,generated_at:time,state:'PASSWORD_AUTH_READY',auth_health:{ok:true},auth_settings:{email_password:true}}},
     readiness: {response:{ok:true},data:{ok:true,generated_at:time,state:'FULL_ACCEPTANCE_READY',database_incident:{active:false},hard_blockers:[],acceptance_pending:[],external_unknowns:[]}},
-    billing: {response:{ok:true},data:{ok:true,generated_at:time,state:'LIVE_FLOW_VERIFIED',ready_for_checkout:true,live_flow_verified:true}},
+    billing: {response:{ok:true},data:{ok:true,generated_at:time,state:'LIVE_FLOW_VERIFIED',ready_for_checkout:true,live_flow_verified:true,gates:{provider_plan_parity:'PASS',signed_payment_evidence:'PASS',active_entitlement_evidence:'PASS'}}},
     qa: {response:{ok:true,headers:{get:key=>key==='x-tfa-auth'?'VERCEL_OIDC':null}},data:{
       ok:true,summary:{total:10,passed:10,failed:0},
-      continuous_kernel:{ok:true,last_succeeded_at:time,capital_permission:'0R',action_permitted:'WAIT'}
+      continuous_kernel:{ok:true,last_succeeded_at:time,consecutive_successes:2,capital_permission:'0R',action_permitted:'WAIT'}
     }},
   };
 };
