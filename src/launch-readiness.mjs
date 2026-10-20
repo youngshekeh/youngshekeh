@@ -35,16 +35,28 @@ export function evaluateLaunchReadiness({ auth, readiness, billing, qa } = {}, n
   const identityReady = qaReady
     && qa?.response?.headers?.get?.('x-tfa-auth') === 'VERCEL_OIDC';
 
+  // Historical signed payments and provider plan matching do not prove the
+  // current subscription ledger has granted access. Entitlement evidence must
+  // be explicitly positive before any public launch-ready assessment.
   const billingReady = billing?.response?.ok === true && b.ok === true
     && freshEvidence(b.generated_at, now)
-    && b.ready_for_checkout === true && b.live_flow_verified === true;
+    && b.ready_for_checkout === true && b.live_flow_verified === true
+    && b.state === 'LIVE_FLOW_VERIFIED'
+    && b.gates?.provider_plan_parity === 'PASS'
+    && b.gates?.signed_payment_evidence === 'PASS'
+    && b.gates?.active_entitlement_evidence === 'PASS';
 
   // A passing QA matrix is not sufficient evidence that the V180 continuous
   // kernel is running. Require its own recent authenticated success receipt.
   const kernel = q.continuous_kernel ?? q.runtime?.continuous_kernel ?? null;
+  // The private runtime may return one healthy receipt while subsequent
+  // cycles fail. Require the explicitly independently counted consecutive
+  // successful executions already demanded by checkout verification.
   const kernelReady = qaReady && identityReady
     && kernel?.ok === true
     && freshEvidence(kernel?.last_succeeded_at, now)
+    && Number.isInteger(kernel?.consecutive_successes)
+    && kernel.consecutive_successes >= 2
     && kernel?.capital_permission === '0R'
     && kernel?.action_permitted === 'WAIT';
 
