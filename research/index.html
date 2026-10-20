@@ -66,12 +66,41 @@
 <option value="Above USD 10000">Above USD 10,000</option>
 </select></label>
 </div>
+<fieldset class="scope-fieldset">
+<legend>Proposed research deliverables <small>(optional, choose up to four)</small></legend>
+<p class="research-small">Choose what you want quoted. These are requests for scoping, not promises of delivery, dataset availability, or a fixed price.</p>
+<div class="scope-options">
+<label class="scope-option"><input type="checkbox" name="deliverables" value="executive-decision-memo"/>Executive decision memo</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="sources-methodology-register"/>Sources and methodology register</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="market-data-tables"/>Market and sector data tables</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="scenario-risk-matrix"/>Scenario and risk matrix</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="forecast-validation"/>Forecast assumptions and validation</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="dashboard-prototype"/>Research dashboard prototype</label>
+<label class="scope-option"><input type="checkbox" name="deliverables" value="stakeholder-briefing"/>Stakeholder briefing materials</label>
+</div>
+</fieldset>
+<div class="research-two">
+<label>Data access expectations
+<select name="dataAccess"><option value="to-agree">To agree during scoping</option>
+<option value="public-sources-only">Public sources only</option><option value="client-supplied-data">Client-provided data (permissions required)</option>
+<option value="research-discovery">Researcher to identify available datasets</option></select></label>
+<label>Confidentiality needs
+<select name="confidentiality"><option value="standard">Standard pre-contract enquiry</option>
+<option value="nda-requested">Request confidentiality agreement first</option></select></label>
+</div>
+<label>Requested output format
+<select name="deliveryFormat"><option value="to-agree">To be agreed</option>
+<option value="written-report">Written report / decision memo</option>
+<option value="data-workbook">Data workbook</option>
+<option value="dashboard-concept">Dashboard concept / prototype</option>
+<option value="presentation">Stakeholder presentation</option></select></label>
 <label>Additional information (optional)<textarea name="notes" rows="3" maxlength="650" placeholder="Desired output, datasets, constraints, confidentiality requirements"></textarea></label>
 <label class="research-consent"><input name="consent" type="checkbox" required/><span>I want to prepare a research enquiry and understand that my email app must send it. No order, charge or delivery promise is created by this form.</span></label>
 <div id="research-error" class="research-error" role="alert" aria-live="polite"></div>
 <div class="commerce-actions">
 <button type="submit" class="commerce-button">Prepare email brief</button>
 <button type="button" id="research-copy" class="commerce-button alt" disabled>Copy full brief</button>
+<button type="button" id="research-download" class="commerce-button alt" disabled>Download brief (.txt)</button>
 </div>
 </form>
 <section id="research-preview" class="research-preview" aria-live="polite" hidden>
@@ -96,7 +125,7 @@
 <section class="commerce-notice"><strong>Trust and delivery</strong>
 <p>Quotes, timing, licensing rights and confidentiality are confirmed before engagement. Research does not include automatic trading, personalized financial advice or guaranteed investment performance.</p>
 <p>For recurring subscriptions, <a href="../status/">review platform status</a>. Self-service payments remain unavailable until the backend is independently verified.</p></section>
-<div class="research-small">No tracking form and no database dependency. If your mail application is not configured, use <b>Copy full brief</b> and send it from your own mailbox. <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></div>
+<div class="research-small">No tracking form and no database dependency. If your mail application is not configured, use <b>Copy full brief</b> or <b>Download brief</b> and send it from your own mailbox. <a href="../privacy/">Privacy</a> · <a href="../terms/">Terms</a></div>
 </aside>
 </div>
 </main>
