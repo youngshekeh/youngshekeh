@@ -5,7 +5,7 @@ const file=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const src=file('supabase/functions/runtime-v180-continuous-kernel/index.ts');
 test('read-only existing V180 policy is owner-bound and bounded',()=>{
  assert.match(src,/async function readExistingPolicy\(userId:string\)/);
- assert.match(src,/client\x60select user_id,policy_key,stale_run_minutes,max_dispatch_attempts,/);
+ assert.match(src,/client\x60select user_id,policy_key,heartbeat_minutes,stale_run_minutes,max_dispatch_attempts,/);
  assert.match(src,/from public\.command_ops_kernel_policies\s+where user_id=\$\{userId\} and policy_key='DEFAULT_V180' limit 1/);
  assert.match(src,/max:1,prepare:false,fetch_types:false,connect_timeout:4/);
  assert.match(src,/policy_pooler_deadline/);
@@ -13,9 +13,9 @@ test('read-only existing V180 policy is owner-bound and bounded',()=>{
 });
 test('policy identity and every numeric safety threshold are checked',()=>{
  assert.match(src,/policy\?\.user_id===userId&&policy\?\.policy_key==='DEFAULT_V180'/);
- assert.match(src,/stale_run_minutes,policy\.max_dispatch_attempts,policy\.base_backoff_seconds,/);
- assert.match(src,/degraded_after_failures,policy\.fail_closed_after_failures/);
- assert.match(src,/Number\.isInteger\(Number\(v\)\)&&Number\(v\)>0/);
+ for(const [field,value] of [['heartbeat_minutes',5],['stale_run_minutes',3],['max_dispatch_attempts',3],['base_backoff_seconds',300],['degraded_after_failures',2],['fail_closed_after_failures',3]]) {
+   assert.ok(src.includes('Number(policy.'+field+')==='+value),field);
+ }
  assert.match(src,/v215_policy_integrity_failed/);
  assert.match(src,/if\(String\(error\)\.includes\('v215_policy_integrity_failed'\)\)throw error/);
 });
