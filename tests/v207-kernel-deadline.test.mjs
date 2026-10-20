@@ -4,9 +4,9 @@ import test from 'node:test';
 const edge=readFileSync(new URL('../supabase/functions/runtime-v180-continuous-kernel/index.ts',import.meta.url),'utf8');
 const shell=readFileSync(new URL('../api/ops-heartbeat.js',import.meta.url),'utf8');
 
-test('private edge seal has a bounded 22s evidence deadline',()=>{
+test('private edge seal has a bounded 8s REST fallback deadline',()=>{
   assert.match(edge,/const REST_DEADLINE_MS=25000/);
-  assert.match(edge,/const SEAL_DEADLINE_MS=22000/);
+  assert.match(edge,/const SEAL_DEADLINE_MS=8000/);
   assert.match(edge,/rpc\('command_kernel_seal_status',\{\},SEAL_DEADLINE_MS\)/);
   assert.match(edge,/if\(!seal\?\.sealed\)throw new Error/);
 });
