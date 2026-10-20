@@ -1,9 +1,6 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
-const GOVERNOR='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-emergency-scheduler-governor';
-const SEAL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-kernel-seal';
-const CRON_GATE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-cron-launch-gate';
 
 export const config={maxDuration:90};
 
@@ -18,7 +15,7 @@ function failClosed(res,status,state,error,detail,stages={}){
   res.setHeader('X-TFA-Engine','V180-SEALED-KERNEL');
   return res.status(status).json({
     ok:false,
-    version:'v180.9-sealed-kernel-heartbeat-v1',
+    version:'v181.0-nondisruptive-ops-heartbeat-v1',
     state,
     error,
     detail:safeDetail(detail),
@@ -64,12 +61,6 @@ async function callPrivate(url,token,timeout,userAgent,extraHeaders={}){
     };
   }
 }
-async function resumeCron(oidc,schedule){
-  return await callPrivate(
-    CRON_GATE+'?mode=on',oidc,12000,'TFA-V180-CRON-GATE/2.0',
-    {'X-TFA-Cron-Schedule':schedule}
-  );
-}
 export default async function handler(req,res){
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
@@ -109,7 +100,7 @@ export default async function handler(req,res){
     res.setHeader('X-TFA-Engine','V180-CONTINUOUS');
     return res.status(200).json({
       ok:true,
-      version:'v180.9-sealed-kernel-heartbeat-v1',
+      version:'v181.0-nondisruptive-ops-heartbeat-v1',
       state:'CONTINUOUS_KERNEL_ACTIVE',
       generated_at:kernel.body?.generated_at,
       owners_processed:kernel.body?.owners_processed??null,
@@ -126,107 +117,18 @@ export default async function handler(req,res){
     });
   }
 
-  const quiesce=await callPrivate(
-    CRON_GATE+'?mode=off',oidc,12000,'TFA-V180-CRON-GATE/3.0',
-    {'X-TFA-Cron-Schedule':schedule}
-  );
-
-  if(!quiesce.ok){
-    return failClosed(
-      res,503,'RECOVERY_QUIESCE_BLOCKED','cron_launch_gate_unavailable',
-      quiesce.body?.detail||quiesce.body?.error||quiesce.body?.state,
-      {
-        kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
-        quiesce:{ok:false,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms}
-      }
-    );
-  }
-
-  const governor=await callPrivate(
-    GOVERNOR,oidc,25000,'TFA-V180-RECOVERY-HEARTBEAT/6.0',
-    {'X-TFA-Cron-Schedule':schedule}
-  );
-
-  if(!governor.ok){
-    return failClosed(
-      res,503,'RECOVERY_BLOCKED_CRON_QUIESCED','scheduler_recovery_unavailable',
-      governor.body?.detail||governor.body?.error,
-      {
-        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
-        kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
-        recovery:{ok:false,status:governor.status,error:governor.body?.error||'scheduler_recovery_unavailable',duration_ms:governor.duration_ms},
-        seal:{skipped:true},
-        resume:{skipped:true}
-      }
-    );
-  }
-
-  const seal=await callPrivate(
-    SEAL,oidc,30000,'TFA-V180-KERNEL-SEAL-HEARTBEAT/3.0',
-    {'X-TFA-Cron-Schedule':schedule}
-  );
-
-  if(!seal.ok){
-    return failClosed(
-      res,503,'SECURITY_SEAL_PENDING_CRON_QUIESCED','kernel_security_seal_unavailable',
-      seal.body?.detail||seal.body?.error,
-      {
-        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
-        kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_unavailable',duration_ms:kernel.duration_ms},
-        recovery:{ok:true,status:governor.status,state:governor.body?.state||null,changed:governor.body?.changed||0,missing:governor.body?.missing||[],duration_ms:governor.duration_ms},
-        seal:{ok:false,status:seal.status,error:seal.body?.error||'kernel_security_seal_unavailable',duration_ms:seal.duration_ms},
-        resume:{skipped:true}
-      }
-    );
-  }
-
-  const resume=await resumeCron(oidc,schedule);
-  if(!resume.ok){
-    return failClosed(
-      res,503,'SEALED_CRON_QUIESCED','cron_resume_blocked',
-      resume.body?.detail||resume.body?.error||resume.body?.state,
-      {
-        quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
-        kernel:{ok:false,status:kernel.status,duration_ms:kernel.duration_ms},
-        recovery:{ok:true,status:governor.status,state:governor.body?.state||null,changed:governor.body?.changed||0,duration_ms:governor.duration_ms},
-        seal:{ok:true,status:seal.status,state:seal.body?.state||null,duration_ms:seal.duration_ms},
-        resume:{ok:false,status:resume.status,state:resume.body?.state||null,duration_ms:resume.duration_ms}
-      }
-    );
-  }
-
-  console.log('V180_RECOVERY_AND_SEAL_SUCCEEDED',{
-    recovery_state:governor.body?.state,
-    changed:governor.body?.changed||0,
-    seal_state:seal.body?.state,
-    at:new Date().toISOString()
-  });
-
-  res.setHeader('Cache-Control','no-store');
-  res.setHeader('X-TFA-Runtime','PUBLIC-CRON-SHELL-PRIVATE-BRAIN');
-  res.setHeader('X-TFA-Auth','CRON_SECRET+VERCEL_OIDC');
-  res.setHeader('X-TFA-Engine','V180-SEALED');
-  return res.status(200).json({
-    ok:true,
-    version:'v180.9-sealed-kernel-heartbeat-v1',
-    state:'SEALED_AWAITING_KERNEL_HEARTBEAT',
-    generated_at:seal.body?.generated_at||new Date().toISOString(),
-    stages:{
-      quiesce:{ok:true,status:quiesce.status,state:quiesce.body?.state||null,duration_ms:quiesce.duration_ms},
-      kernel:{ok:false,status:kernel.status,error:kernel.body?.error||kernel.body?.stage||'kernel_not_sealed',duration_ms:kernel.duration_ms},
-      recovery:{ok:true,status:governor.status,state:governor.body?.state||null,changed:governor.body?.changed||0,missing:governor.body?.missing||[],duration_ms:governor.duration_ms},
-      seal:{ok:true,status:seal.status,state:seal.body?.state||null,receipt:seal.body?.receipt||null,duration_ms:seal.duration_ms},
-      resume:{ok:true,status:resume.status,state:resume.body?.state||null,duration_ms:resume.duration_ms}
-    },
-    governance:{
-      recovery_mode:true,
-      internal_execution_only:true,
-      external_execution:false,
-      action_permitted:'WAIT',
-      capital_permission:'0R',
-      funds_moved:false,
-      trades_sent:false,
-      human_release_required:true
+  // Recovery must never pause pg_cron globally because a failed private call
+  // is not evidence that unrelated scheduled jobs should be stopped.
+  // The sealed private kernel owns its own bounded retries and dispatch leases.
+  return failClosed(
+    res,503,'KERNEL_UNAVAILABLE_NON_DISRUPTIVE','private_kernel_unhealthy',
+    kernel.body?.stage||kernel.body?.error||'private_kernel_request_failed',
+    {
+      kernel:{ok:false,status:kernel.status,duration_ms:kernel.duration_ms},
+      database_scheduler:{changed:false,reason:'preserve_unrelated_cron_jobs'},
+      recovery:{skipped:true,reason:'explicit_approved_runbook_required'},
+      seal:{skipped:true},
+      resume:{skipped:true}
     }
-  });
+  );
 }
