@@ -2,6 +2,9 @@ const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-
 const SUPABASE_URL=Deno.env.get('SUPABASE_URL')||'https://mpcelmjiycjpdyyflisn.supabase.co';
 const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
 const V179=SUPABASE_URL+'/functions/v1/runtime-v179-resource-governor';
+// Bound PostgREST latency without disabling the security seal or changing database state.
+const REST_DEADLINE_MS=25000;
+const SEAL_DEADLINE_MS=22000;
 
 function eq(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 async function authorized(req:Request){
@@ -11,22 +14,22 @@ async function authorized(req:Request){
 }
 function headers(){return{apikey:SERVICE_ROLE,Authorization:`Bearer ${SERVICE_ROLE}`,Accept:'application/json','Content-Type':'application/json'}}
 async function dbRows(path:string){
-  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:headers(),signal:AbortSignal.timeout(15000)});
+  const r=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{headers:headers(),signal:AbortSignal.timeout(REST_DEADLINE_MS)});
   const b=await r.json().catch(()=>[]);if(!r.ok)throw new Error(`db_${r.status}_${path.split('?')[0]}`);return Array.isArray(b)?b:[];
 }
 async function upsert(table:string,conflict:string,row:any){
   const r=await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(conflict)}`,{
-    method:'POST',headers:{...headers(),Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(row),signal:AbortSignal.timeout(15000)
+    method:'POST',headers:{...headers(),Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(row),signal:AbortSignal.timeout(REST_DEADLINE_MS)
   });
   const b=await r.json().catch(()=>[]);if(!r.ok)throw new Error(`upsert_${table}_${r.status}`);return Array.isArray(b)?b[0]||null:b;
 }
-async function rpc(name:string,body:any,timeout=20000){
+async function rpc(name:string,body:any,timeout=REST_DEADLINE_MS){
   const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:headers(),body:JSON.stringify(body),signal:AbortSignal.timeout(timeout)});
   const b=await r.json().catch(()=>null);if(!r.ok)throw new Error(`rpc_${name}_${r.status}_${b?.message||''}`);
   return Array.isArray(b)?b[0]||null:b;
 }
 async function requireKernelSeal(){
-  const seal:any=await rpc('command_kernel_seal_status',{},10000);
+  const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
   if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
   return seal;
 }
@@ -119,7 +122,7 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.3-continuous-operations-kernel-v1',
+      version:'v180.4-bounded-rest-deadline-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
@@ -132,7 +135,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.3-continuous-operations-kernel-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.4-bounded-rest-deadline-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
