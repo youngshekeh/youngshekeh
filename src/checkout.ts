@@ -5,6 +5,9 @@ const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const params=new URLSearchParams(window.location.search);
 const plan=String(params.get('plan')||'').toLowerCase();
 const validPlan=ALLOWED_PLANS.includes(plan);
+// Keep checkout sealed until the reviewed server-side pre-charge guard is verifiably deployed.
+// Production Edge create-checkout is currently older; this is deliberately not auto-unlocked.
+const CHECKOUT_SERVER_GUARD_DEPLOYED=false;
 const $=(id:string)=>document.getElementById(id);
 const btn=$('start-checkout') as HTMLButtonElement;
 const verify=$('verify-checkout') as HTMLButtonElement;
@@ -42,6 +45,11 @@ async function validateMember(token:string){
   return response.ok&&data?.ok!==false&&data?.access_state!=='denied';
 }
 async function verifyCheckout(){
+  if(!CHECKOUT_SERVER_GUARD_DEPLOYED){
+    lock('Membership payments are not released. Server-side charge protection has not been confirmed deployed. Request commercial access or a research quote instead.');
+    put('provider-state','PAYMENT HOLD · Server-side acceptance guard deployment pending.');
+    return;
+  }
   if(verifying||charging)return;
   verifying=true;verify.disabled=true;lock('Running independent, bounded, read-only acceptance checks. No charge is being created.');
   try{
@@ -85,6 +93,10 @@ async function verifyCheckout(){
   }finally{verifying=false;verify.disabled=false}
 }
 async function startCheckout(){
+  if(!CHECKOUT_SERVER_GUARD_DEPLOYED){
+    lock('No payment can be initiated while the server-side charge guard is unverified.');
+    return;
+  }
   if(!verified||btn.disabled||charging)return;
   charging=true;btn.disabled=true;verify.disabled=true;
   put('checkout-message','Creating a hosted provider checkout. No card or bank details are entered here.');
@@ -122,5 +134,9 @@ async function verifyAcceptanceBeforeCharge(token:string){
 }
 put('selected-plan',validPlan?plan.toUpperCase():'INVALID PLAN');
 if(!validPlan)lock('Unknown plan. Return to pricing and choose an available membership.');
+else if(!CHECKOUT_SERVER_GUARD_DEPLOYED){
+  lock('Paid subscriptions are not yet available. Server-side safety deployment must be verified first.');
+  put('provider-state','SELF-SERVICE PAYMENT DISABLED · Commercial research enquiries remain open.');
+}
 verify.addEventListener('click',()=>{void verifyCheckout()});
 btn.addEventListener('click',()=>{void startCheckout()});
