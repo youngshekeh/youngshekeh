@@ -1,6 +1,20 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-autonomous-qa';
+// V225: one expensive private QA evaluation per Vercel worker instance.
+// Unhealthy responses open a bounded local cooldown, never a cached green QA.
+// Cross-instance admission control still requires a provider-backed design.
+const QA_NEGATIVE_COOLDOWN_MS=60_000;
+let qaBusy=false, qaRetryAt=0;
+function denied(res,reason){
+  res.setHeader('Cache-Control','no-store');
+  res.setHeader('CDN-Cache-Control','no-store');
+  res.setHeader('Vercel-CDN-Cache-Control','no-store');
+  res.setHeader('X-TFA-QA-Pressure',reason);
+  res.setHeader('Retry-After','60');
+  return res.status(503).json({ok:false,state:'INCOMPLETE',error:'private_qa_temporarily_unavailable',
+    reason,governance:{action_permitted:'WAIT',capital_permission:'0R'}});
+}
 
 export default async function handler(req,res){
   if(req.method!=='GET'){
@@ -8,12 +22,17 @@ export default async function handler(req,res){
     return res.status(405).json({ok:false,error:'method_not_allowed'});
   }
 
+  if(Date.now()<qaRetryAt)return denied(res,'NEGATIVE_COOLDOWN');
+  if(qaBusy)return denied(res,'IN_PROGRESS');
+  qaBusy=true;
+  try{
   let oidcToken='';
   try{
     oidcToken=await getVercelOidcToken();
   }catch{}
 
   if(!oidcToken){
+    qaRetryAt=Date.now()+QA_NEGATIVE_COOLDOWN_MS;
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({ok:false,error:'vercel_workload_identity_unavailable'});
   }
@@ -32,6 +51,8 @@ export default async function handler(req,res){
       signal:AbortSignal.timeout(30000)
     });
     const body=await upstream.json().catch(()=>null);
+    if(!upstream.ok||body?.ok!==true)qaRetryAt=Date.now()+QA_NEGATIVE_COOLDOWN_MS;
+    else qaRetryAt=0;
     const pressureOpen=body?.transport?.pressure_circuit?.open===true;
     // Keep browsers uncached. Only a truthful pressure-open result is shared at Vercel's CDN
     // for the current five-minute URL bucket to suppress cross-client diagnostic amplification.
@@ -48,9 +69,11 @@ export default async function handler(req,res){
     }
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
-    return res.status(upstream.ok?200:upstream.status).json(body??{ok:false,error:'private_runtime_unavailable'});
+    return res.status(!body?503:upstream.ok?200:upstream.status).json(body??{ok:false,error:'private_runtime_unavailable'});
   }catch{
+    qaRetryAt=Date.now()+QA_NEGATIVE_COOLDOWN_MS;
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({ok:false,error:'private_runtime_unavailable'});
   }
+  }finally{qaBusy=false;}
 }

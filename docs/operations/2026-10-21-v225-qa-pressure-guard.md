@@ -1,0 +1,11 @@
+# V225 | Bounded private QA relay under ongoing database pressure
+
+Date: 2026-10-21 UTC. Production diagnosis before change: 0c0c7d54 V224 READY at 05:00:04Z; V180 heartbeat at 05:00:20Z failed KERNEL_SEAL. Management SQL failed with connection timeout. Scoped Supabase 04:40–05:15 UTC returned 3 PostgREST 57014, 0 PGRST002 in that sample, and 34 pg_cron startup timeout events. Public Gold 05:04:41Z HTTP 503. Private QA 05:12:44Z reported 42/107 pass, 65 fail (INCOMPLETE). None of this proves provider recovery.
+
+V224 stopped ordinary public status views from running private QA when mandatory launch prerequisites are unhealthy; however direct /api/autonomous-qa-matrix remained callable. V225 adds one in-flight expensive QA per Vercel function instance and returns 503 for overlapping requests without sharing authenticated QA content. Any bad, incomplete, missing, or HTTP-failed QA observation causes a one-minute per-instance negative cooldown, returning sanitized no-store HTTP 503 for repeated calls. Real successful healthy QA stays no-store and is reverified on each invocation. Existing Vercel OIDC verification, private-runtime target, cache directives for actual pressure-open evidence, method restriction and 30-second deadline remain intact.
+
+Limitations: Memory state is per worker, not distributed: this does NOT guarantee a global QA rate limit or solve Supabase CPU/IO, schema-cache failures, scheduler worker startup timeouts, or pooler authentication. It cannot promote old or failed QA evidence to a PASS. It may temporarily defer a healthy retry for up to 60 seconds after an unhealthy observation.
+
+Verification: node --test tests/v225-qa-pressure-guard.test.mjs tests/v181-shared-qa-pressure-cache.test.mjs tests/v224-deferred-private-qa.test.mjs; require full PR Actions passing, reviewed merge and Vercel commit READY. Production continuity archive triggered automatically by push.
+
+No Supabase changes, no DB migrations, no cron edits, no entitlement or billing acceptance, no payments, trades or credential changes. Capital remains WAIT / 0R. Escalate PGRST002/57014 and pg_cron startup failures to Supabase with redacted V217 incident packet; human-reviewed provider recovery still required.
