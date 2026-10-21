@@ -1,0 +1,25 @@
+name: V229 Gold latency and price provenance
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/public-gold-read.js'
+      - 'src/gold-read-budget.mjs'
+      - 'src/public-gold-launch.mjs'
+      - 'tests/v229-gold-read-budget.test.mjs'
+      - '.github/workflows/v229-gold-latency-proof.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gold-data-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check api/public-gold-read.js && node --check src/gold-read-budget.mjs
+      - run: node --test tests/v229-gold-read-budget.test.mjs tests/v228-queryless-gold.test.mjs tests/v222-public-gold-launch.test.mjs
