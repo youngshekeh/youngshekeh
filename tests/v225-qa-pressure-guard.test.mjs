@@ -43,8 +43,8 @@ test('a running private QA does not admit overlapping requests or expose its res
  assert.equal(second.payload.error,'private_qa_temporarily_unavailable');
  assert.equal(second.headers.get('x-tfa-qa-pressure'),'IN_PROGRESS');
  f.release();assert.equal((await first).code,200);assert.equal(f.calls(),1);
- assert.equal((await f.run()).code,200);assert.equal(f.calls(),2);
- f.release();
+ const third=f.run();await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ f.release();assert.equal((await third).code,200);assert.equal(f.calls(),2);
 });
 test('healthy QA stays current and is never served from negative cache',async()=>{
  const f=fixture({body:{ok:true,state:'PASS'}});
