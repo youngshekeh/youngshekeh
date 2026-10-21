@@ -1,5 +1,6 @@
 import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
+import {assessQaAdmission} from './qa-admission.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -50,19 +51,25 @@ async function load() {
       readEdge('public-auth-runtime-check'),
       readEdge('public-final-readiness'),
       readEdge('public-billing-acceptance'),
-      readSite('/api/autonomous-qa-matrix?status_surface=1'),
       readSite('/api/market-feed?feed=public-gold-live-xauusd'),
     ]);
-    const [auth, readiness, billing, qa, gold] = results.map(completed);
+    const [auth, readiness, billing, gold] = results.map(completed);
+    // Do not amplify a known database incident with 107 independent private
+    // QA probes. Defer the expensive OIDC relay until cheap launch inputs pass.
+    // A deferred matrix is unverified, never a green QA or identity verdict.
+    const qaAdmission = assessQaAdmission({auth, readiness, billing, gold});
+    const qa = qaAdmission.admitted
+      ? await readSite('/api/autonomous-qa-matrix?status_surface=1').catch(missing)
+      : missing();
     const gate = evaluateLaunchReadiness({ auth, readiness, billing, qa, gold });
     show('auth', auth.data?.state || 'UNAVAILABLE', gate.checks.auth);
     show('ready', readiness.data?.state || 'UNAVAILABLE', gate.checks.final_acceptance);
     const summary = qa.data?.summary;
     show('brain', gate.checks.private_qa
       ? 'PASS ' + summary.passed + '/' + summary.total
-      : (qa.data?.state || 'UNVERIFIED'), gate.checks.private_qa);
+      : (qaAdmission.admitted ? (qa.data?.state || 'UNVERIFIED') : 'DEFERRED · PREREQUISITES UNHEALTHY'), gate.checks.private_qa);
     show('identity', gate.checks.workload_identity
-      ? 'VERCEL OIDC · VERIFIED' : 'UNVERIFIED', gate.checks.workload_identity);
+      ? 'VERCEL OIDC · VERIFIED' : (qaAdmission.admitted ? 'UNVERIFIED' : 'DEFERRED · NOT CERTIFIED'), gate.checks.workload_identity);
     show('billing', billing.data?.state || 'UNAVAILABLE', gate.checks.billing);
     const kernel = qa.data?.continuous_kernel ?? qa.data?.runtime?.continuous_kernel ?? null;
     const certifiedCycles = Number.isInteger(kernel?.consecutive_successes) ? kernel.consecutive_successes : 0;
@@ -98,6 +105,7 @@ async function load() {
       'Launch blockers: ' + blockers +
       ' · Backend hard blockers: ' + remoteBlockers +
       ' · Provider verification: ' + provider +
+      ' · Private QA: ' + (qaAdmission.admitted ? 'REQUESTED AFTER PRECHECK PASS' : 'DEFERRED WITHOUT MAKING A PRIVATE QA REQUEST') +
       ' · Public Gold: ' + (gate.checks.public_gold_data ? 'FRESH BROKER TICK' : 'FRESH BROKER TICK NOT VERIFIED') +
       ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
       ' · Trading permission: WAIT / 0R. No live orders authorized.';
