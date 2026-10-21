@@ -16,7 +16,10 @@ export function curatePublicGold({broker,reference}={},now=Date.now()){
      source:'public-gold-live-xauusd',observed_at:q.observed_at,governance:wait});
  }
  // Do not pass through a stale/falsely live claim from an upstream provider.
- const candidates=[source?.feed?.gold_spot,reference?.data?.feed?.gold_spot];
+ const candidates=[
+   broker?.httpOk===true&&source?.ok===true?source.feed?.gold_spot:null,
+   reference?.httpOk===true&&reference?.data?.ok===true?reference.data.feed?.gold_spot:null
+ ];
  const spot=candidates.find(item=>{
    const price=item?.price,age=Date.parse(String(item?.market_time||''));
    return item?.symbol==='XAUUSD'&&item?.currency==='USD'
