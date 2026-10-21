@@ -1,4 +1,5 @@
 import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
+import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -50,9 +51,10 @@ async function load() {
       readEdge('public-final-readiness'),
       readEdge('public-billing-acceptance'),
       readSite('/api/autonomous-qa-matrix?status_surface=1'),
+      readSite('/api/market-feed?feed=public-gold-live-xauusd'),
     ]);
-    const [auth, readiness, billing, qa] = results.map(completed);
-    const gate = evaluateLaunchReadiness({ auth, readiness, billing, qa });
+    const [auth, readiness, billing, qa, gold] = results.map(completed);
+    const gate = evaluateLaunchReadiness({ auth, readiness, billing, qa, gold });
     show('auth', auth.data?.state || 'UNAVAILABLE', gate.checks.auth);
     show('ready', readiness.data?.state || 'UNAVAILABLE', gate.checks.final_acceptance);
     const summary = qa.data?.summary;
@@ -81,6 +83,10 @@ async function load() {
       && billing.data?.gates?.provider_plan_parity === 'PASS'
       && billing.data?.gates?.signed_payment_evidence === 'PASS';
     if(partialBilling)show('billing', 'PROVIDER PREFLIGHT · ENTITLEMENT PENDING', false);
+    const goldProof = verifyPublicGoldQuote(gold);
+    show('gold', goldProof.verified
+      ? 'BROKER LIVE · ' + goldProof.observed_at + ' UTC VERIFIED'
+      : 'NOT LIVE-VERIFIED · ' + goldProof.reason, goldProof.verified);
     show('launch-gate', gate.state, gate.ready);
     const provider = readiness.data?.runtime?.provider_rate_limit_status
       || auth.data?.provider_rate_limit?.status || 'UNVERIFIED_EXTERNALLY';
@@ -92,12 +98,13 @@ async function load() {
       'Launch blockers: ' + blockers +
       ' · Backend hard blockers: ' + remoteBlockers +
       ' · Provider verification: ' + provider +
+      ' · Public Gold: ' + (gate.checks.public_gold_data ? 'FRESH BROKER TICK' : 'FRESH BROKER TICK NOT VERIFIED') +
       ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
       ' · Trading permission: WAIT / 0R. No live orders authorized.';
     const at = document.getElementById('last-checked');
     if (at) at.textContent = 'Checked ' + new Date().toLocaleString() + ' · Independent probes · fail closed';
   } catch {
-    for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'kernel', 'launch-gate']) {
+    for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'kernel', 'gold', 'launch-gate']) {
       show(id, id === 'launch-gate' ? 'LAUNCH HOLD' : 'UNAVAILABLE', false);
     }
     const detail = document.getElementById('detail');
