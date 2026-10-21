@@ -10,6 +10,7 @@ const valid = () => {
     auth: {response:{ok:true},data:{ok:true,generated_at:time,state:'PASSWORD_AUTH_READY',auth_health:{ok:true},auth_settings:{email_password:true}}},
     readiness: {response:{ok:true},data:{ok:true,generated_at:time,state:'FULL_ACCEPTANCE_READY',database_incident:{active:false},hard_blockers:[],acceptance_pending:[],external_unknowns:[]}},
     billing: {response:{ok:true},data:{ok:true,generated_at:time,state:'LIVE_FLOW_VERIFIED',ready_for_checkout:true,live_flow_verified:true,gates:{provider_plan_parity:'PASS',signed_payment_evidence:'PASS',active_entitlement_evidence:'PASS'}}},
+    gold: {response:{ok:true},data:{ok:true,live_broker:{state:'BROKER_LIVE',quote:{observed_at:time,age_seconds:0,bid:4200,mid:4200.5,ask:4201}}}},
     qa: {response:{ok:true,headers:{get:key=>key==='x-tfa-auth'?'VERCEL_OIDC':null}},data:{
       ok:true,summary:{total:10,passed:10,failed:0},
       continuous_kernel:{ok:true,last_succeeded_at:time,consecutive_successes:2,capital_permission:'0R',action_permitted:'WAIT'}
@@ -19,7 +20,7 @@ const valid = () => {
 
 test('no evidence cannot authorize a launch',()=>{
   const r=evaluateLaunchReadiness();
-  assert.equal(r.ready,false);assert.equal(r.state,'LAUNCH HOLD');assert.equal(r.blockers.length,6);
+  assert.equal(r.ready,false);assert.equal(r.state,'LAUNCH HOLD');assert.equal(r.blockers.length,7);
 });
 test('synthetic fully qualified current receipts pass all independent checks',()=>{
   const r=evaluateLaunchReadiness(valid());

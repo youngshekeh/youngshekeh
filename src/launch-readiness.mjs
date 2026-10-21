@@ -1,3 +1,5 @@
+import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
+
 // Fail-closed public launch assessment. HTTP success is not product certification.
 // The source date must be recent; fresh browser probes without server timestamps
 // are acceptable only for the read-only QA lane, not a historical kernel receipt.
@@ -7,7 +9,7 @@ export function freshEvidence(value, now = Date.now()) {
   return Number.isFinite(timestamp) && timestamp <= now + 60000
     && now - timestamp <= MAX_EVIDENCE_AGE_MS;
 }
-export function evaluateLaunchReadiness({ auth, readiness, billing, qa } = {}, now = Date.now()) {
+export function evaluateLaunchReadiness({ auth, readiness, billing, qa, gold } = {}, now = Date.now()) {
   const a = auth?.data ?? {};
   const r = readiness?.data ?? {};
   const b = billing?.data ?? {};
@@ -60,6 +62,10 @@ export function evaluateLaunchReadiness({ auth, readiness, billing, qa } = {}, n
     && kernel?.capital_permission === '0R'
     && kernel?.action_permitted === 'WAIT';
 
+  // A publicly deployed page or fresh indicative reference is not a live Gold quote.
+  // Require an independently checked, current, read-only MT5 bid/ask observation.
+  const goldReady = verifyPublicGoldQuote(gold, now).verified;
+
   const checks = {
     auth: authReady,
     final_acceptance: finalReady,
@@ -67,6 +73,7 @@ export function evaluateLaunchReadiness({ auth, readiness, billing, qa } = {}, n
     workload_identity: identityReady,
     billing: billingReady,
     continuous_kernel: kernelReady,
+    public_gold_data: goldReady,
   };
   const blockers = Object.entries(checks).filter(([, passed]) => !passed).map(([name]) => name);
   return Object.freeze({

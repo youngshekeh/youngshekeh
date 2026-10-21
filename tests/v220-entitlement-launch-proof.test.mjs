@@ -12,6 +12,7 @@ const record=()=>({
   billing:{response:{ok:true},data:{ok:true,generated_at:fresh,state:'LIVE_FLOW_VERIFIED',ready_for_checkout:true,live_flow_verified:true,
     gates:{provider_plan_parity:'PASS',signed_payment_evidence:'PASS',active_entitlement_evidence:'PASS'},
     plans:[{plan_id:'pro',local_price_usd:79,currency:'USD',recurring:true,provider_verified:true}]}},
+  gold:{response:{ok:true},data:{ok:true,live_broker:{state:'BROKER_LIVE',quote:{observed_at:fresh,age_seconds:1,bid:4200,mid:4200.5,ask:4201}}}},
   qa:{response:{ok:true,headers:{get:key=>key==='x-tfa-auth'?'VERCEL_OIDC':null}},data:{
     ok:true,summary:{total:9,passed:9,failed:0},
     continuous_kernel:{ok:true,last_succeeded_at:fresh,consecutive_successes:2,capital_permission:'0R',action_permitted:'WAIT'}
