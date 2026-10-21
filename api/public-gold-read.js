@@ -34,7 +34,7 @@ export default async function handler(req,res){
    return res.status(405).json({ok:false,error:'method_not_allowed',
      governance:{action_permitted:'WAIT',capital_permission:'0R'}});
  }
- // No req.url, user parameters, tokens, cookies, or arbitrary target hosts
+ // No incoming URL, user parameters, tokens, cookies, or arbitrary target hosts
  // are ever sent upstream. Provider URL is a fixed, allowlisted slug.
  const result=await feed.observe(GOLD_FEED);
  res.setHeader('X-TFA-Gold-Pressure',result.mode);
