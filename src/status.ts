@@ -51,7 +51,7 @@ async function load() {
       readEdge('public-auth-runtime-check'),
       readEdge('public-final-readiness'),
       readEdge('public-billing-acceptance'),
-      readSite('/api/market-feed?feed=public-gold-live-xauusd'),
+      readSite('/api/public-gold-read'),
     ]);
     const [auth, readiness, billing, gold] = results.map(completed);
     // Do not amplify a known database incident with 107 independent private

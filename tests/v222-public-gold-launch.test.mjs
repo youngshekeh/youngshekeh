@@ -44,7 +44,7 @@ test('production status fetches Gold independently while paid checkout remains l
   const html=readFileSync(new URL('../status/index.html',import.meta.url),'utf8');
   const checkout=readFileSync(new URL('../src/checkout.ts',import.meta.url),'utf8');
   assert.match(status,/Promise\.allSettled/);
-  assert.match(status,/market-feed\?feed=public-gold-live-xauusd/);
+  assert.match(status,/\/api\/public-gold-read/);
   assert.match(status,/evaluateLaunchReadiness\(\{ auth, readiness, billing, qa, gold \}\)/);
   assert.match(html,/id="gold"/);
   assert.match(checkout,/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);

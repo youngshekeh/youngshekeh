@@ -28,7 +28,7 @@ test('Gold stale after private QA cannot authorize checkout',()=>{
 });
 test('both checkout verifier functions recheck Gold after QA',()=>{
  const code=read('src/checkout.ts');
- assert.match(code,/const GOLD_PROOF_URL='\/api\/market-feed\?feed=public-gold-live-xauusd'/);
+ assert.match(code,/const GOLD_PROOF_URL='\/api\/public-gold-read'/);
  assert.equal((code.match(/const latestGold=/g)||[]).length,2);
  assert.equal((code.match(/evaluateLaunchReadiness\(\{auth:a,readiness:r,billing:b,qa:q,gold:latestGold\}\)/g)||[]).length,2);
  assert.equal((code.match(/assessQaAdmission\(\{auth:a,readiness:r,billing:b,gold:g\}\)/g)||[]).length,2);
