@@ -1,15 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {createFeedPressureGate} from '../src/public-feed-pressure.mjs';
 const source=(await readFile(new URL('../api/market-feed.js',import.meta.url),'utf8'))
+  .replace(/^import \{createFeedPressureGate\} from '\.\.\/src\/public-feed-pressure\.mjs';\n/, '')
   .replace('export default async function handler','async function handler');
 
 function fixture(fetchImpl = async () => Response.json({ok:true,market_status:'DELAYED_LIVE'})) {
   let clock=0, calls=0; const timers=new Map(), requests=[];
   const Clock=class extends Date {static now(){return clock;}};
-  const handler=new Function('fetch','Date','setTimeout','clearTimeout',`${source}\nreturn handler;`)(
+  const handler=new Function('fetch','Date','setTimeout','clearTimeout','createFeedPressureGate',`${source}\nreturn handler;`)(
     async (url,options) => {calls++; requests.push({url,options}); return fetchImpl(url,options);},Clock,
-    (callback,delay) => {const id=timers.size+1; timers.set(id,{callback,delay}); return id;},id=>timers.delete(id));
+    (callback,delay) => {const id=timers.size+1; timers.set(id,{callback,delay}); return id;},id=>timers.delete(id),
+    options=>createFeedPressureGate({...options,now:()=>clock}));
   async function run(url='/api/market-feed?feed=public-live-markets-api',method='GET',extra={}) {
     const headers=new Map(); let statusCode=200;
     const res={setHeader:(name,value)=>headers.set(name.toLowerCase(),value),
@@ -63,12 +66,12 @@ test('paper quotes are always re-read so the bridge cannot extend their expiry',
 test('malformed JSON, arrays and HTTP failures stay fail-closed and uncached', async () => {
   for (const make of [() => new Response('not json'),() => Response.json([]),() => Response.json({ok:true},{status:500})]) {
     const ctx=fixture(async () => make());
-    assert.equal((await ctx.run()).status,503); assert.equal((await ctx.run()).status,503); assert.equal(ctx.calls(),2);
+    assert.equal((await ctx.run()).status,503); assert.equal((await ctx.run()).status,503); assert.equal(ctx.calls(),1);
   }
 });
 test('the deadline aborts upstream work and never retries it', async () => {
   const ctx=fixture((url,options) => new Promise((resolve,reject) => options.signal.addEventListener('abort',() => reject(new Error('aborted')))));
   const pending=ctx.run(); const timer=[...ctx.timers.values()][0];
-  assert.equal(timer.delay,10_000); timer.callback();
+  assert.equal(timer.delay,7_500); timer.callback();
   assert.equal((await pending).status,503); assert.equal(ctx.calls(),1); assert.equal(ctx.timers.size,0);
 });

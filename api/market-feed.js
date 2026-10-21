@@ -1,3 +1,5 @@
+import {createFeedPressureGate} from '../src/public-feed-pressure.mjs';
+
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 // Only existing anonymous read endpoints. No private runtimes, writes, or caller URLs.
 const FEEDS=new Set([
@@ -14,36 +16,30 @@ const FEEDS=new Set([
   'public-forecast-governance','public-forecast-accountability','public-forecast-error-attribution',
   'paper-broker-quote-intake'
 ]);
-const pending=new Map(), cached=new Map();
-const TTL=15_000;
-
-async function observe(feed){
-  const old=cached.get(feed);
-  if(old && Date.now()-old.at<TTL)return old.value;
-  if(pending.has(feed))return pending.get(feed);
-  const request=(async()=>{
+// Reduce avoidable read traffic under provider pressure. Vercel instances do not
+// share in-memory state, so this does not replace database/cron recovery.
+const feeds=createFeedPressureGate({
+  async read(feed){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),10_000);
+    const timer=setTimeout(()=>controller.abort(),7500);
     try{
       const response=await fetch(BASE+feed,{
-        headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-V182-PUBLIC-READ/1.0'},
+        headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-V223-BOUNDED-READ/1.0'},
         signal:controller.signal,cache:'no-store',redirect:'error'
       });
-      const body=await response.json();
-      if(!response.ok || !body || typeof body!=='object' || Array.isArray(body))throw new Error('feed_unavailable');
-      const value={body};
-      if(body.ok===true && !['paper-broker-quote-intake','public-gold-live-xauusd'].includes(feed))cached.set(feed,{at:Date.now(),value});
-      return value;
+      const body=await response.json().catch(()=>null);
+      if(!response.ok || !body || typeof body!=='object' || Array.isArray(body)
+        || body.ok===false)throw new Error('feed_unavailable');
+      return body;
     }finally{clearTimeout(timer);}
-  })().finally(()=>pending.delete(feed));
-  pending.set(feed,request);
-  return request;
-}
+  }
+});
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Monitor','V182');
   res.setHeader('X-TFA-Live-XAUUSD','V186');
+  res.setHeader('X-TFA-Feed-Pressure-Version','V223');
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return res.status(405).json({ok:false,state:'UNAVAILABLE',error:'method_not_allowed'});
@@ -53,11 +49,9 @@ export default async function handler(req,res){
   if(!FEEDS.has(feed) || url.searchParams.getAll('feed').length!==1 || [...url.searchParams.keys()].some(key=>key!=='feed')){
     return res.status(400).json({ok:false,state:'UNAVAILABLE',error:'unknown_public_feed'});
   }
-  try{
-    const {body}=await observe(feed);
-    return res.status(200).json(body);
-  }catch{
-    return res.status(503).json({ok:false,state:'UNAVAILABLE',error:'public_feed_unavailable',
-      governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_submission_enabled:false}});
-  }
+  const observed=await feeds.observe(feed);
+  res.setHeader('X-TFA-Feed-Pressure',observed.mode);
+  if(observed.ok)return res.status(200).json(observed.body);
+  return res.status(503).json({ok:false,state:'UNAVAILABLE',error:'public_feed_unavailable',
+    governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_submission_enabled:false}});
 }

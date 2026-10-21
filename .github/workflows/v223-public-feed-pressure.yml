@@ -1,0 +1,24 @@
+name: V223 public feed pressure safety
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/market-feed.js'
+      - 'src/public-feed-pressure.mjs'
+      - 'tests/v223-public-feed-pressure.test.mjs'
+      - '.github/workflows/v223-public-feed-pressure.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bounded-public-market-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check api/market-feed.js && node --check src/public-feed-pressure.mjs
+      - run: node --test tests/v223-public-feed-pressure.test.mjs tests/v222-public-gold-launch.test.mjs tests/launch-readiness-gate.test.mjs
