@@ -1,0 +1,104 @@
+{
+  "schema": "TFA-PROVIDER-INCIDENT-V227",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "region": "eu-west-1",
+  "capture_kind": "READ_ONLY_AGGREGATED_LOGS",
+  "window_start_utc": "2026-10-21T05:15:00.000Z",
+  "window_end_utc": "2026-10-21T06:00:00.000Z",
+  "sources": {
+    "postgrest": {
+      "pgrst002": 0,
+      "sqlstate_57014": 4,
+      "latest_event_at": "2026-10-21T05:44:32.469372Z"
+    },
+    "pg_cron": {
+      "startup_timeouts": 72,
+      "latest_event_at": "2026-10-21T05:46:10.357Z"
+    },
+    "supavisor": {
+      "auth_timeouts": 20,
+      "checkout_failures": 5,
+      "events": 82,
+      "latest_event_at": "2026-10-21T05:51:23.436562Z"
+    }
+  },
+  "other_checks": {
+    "management_sql": {
+      "status": "CONNECTION_TIMEOUT"
+    },
+    "performance_advisors": {
+      "status": "READ_TIMEOUT"
+    },
+    "v180_kernel": {
+      "status": "KERNEL_SEAL_FAILED",
+      "observed_at": "2026-10-21T05:35:18.940Z"
+    },
+    "gold": {
+      "status": "UNAVAILABLE",
+      "http_status": 503,
+      "observed_at": "2026-10-21T05:51:17Z"
+    }
+  },
+  "cron_job_hotspots": [
+    {
+      "job_id": 13,
+      "failures": 7,
+      "latest_event_at": "2026-10-21T05:52:48.185Z"
+    },
+    {
+      "job_id": 16,
+      "failures": 7,
+      "latest_event_at": "2026-10-21T05:52:47.788Z"
+    },
+    {
+      "job_id": 17,
+      "failures": 6,
+      "latest_event_at": "2026-10-21T05:52:48.324Z"
+    },
+    {
+      "job_id": 39,
+      "failures": 6,
+      "latest_event_at": "2026-10-21T05:52:48.285Z"
+    },
+    {
+      "job_id": 21,
+      "failures": 5,
+      "latest_event_at": "2026-10-21T05:52:48.944Z"
+    },
+    {
+      "job_id": 33,
+      "failures": 5,
+      "latest_event_at": "2026-10-21T05:53:10.025Z"
+    },
+    {
+      "job_id": 22,
+      "failures": 4,
+      "latest_event_at": "2026-10-21T05:52:48.432Z"
+    },
+    {
+      "job_id": 20,
+      "failures": 4,
+      "latest_event_at": "2026-10-21T05:52:47.485Z"
+    },
+    {
+      "job_id": 79,
+      "failures": 3,
+      "latest_event_at": "2026-10-21T05:52:36.444Z"
+    },
+    {
+      "job_id": 95,
+      "failures": 3,
+      "latest_event_at": "2026-10-21T05:52:48.448Z"
+    },
+    {
+      "job_id": 41,
+      "failures": 3,
+      "latest_event_at": "2026-10-21T05:52:47.856Z"
+    },
+    {
+      "job_id": 62,
+      "failures": 3,
+      "latest_event_at": "2026-10-21T05:44:10.281Z"
+    }
+  ]
+}
