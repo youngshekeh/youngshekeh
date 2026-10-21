@@ -1,5 +1,6 @@
 import {ALLOWED_PLANS,planEligible,priceFor,validProviderCheckout} from './commercial-gates.mjs';
 import {evaluateLaunchReadiness} from './launch-readiness.mjs';
+import {assessQaAdmission} from './qa-admission.mjs';
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const params=new URLSearchParams(window.location.search);
@@ -14,6 +15,8 @@ const verify=$('verify-checkout') as HTMLButtonElement;
 let verified=false;
 let verifying=false;
 let charging=false;
+const missingProof=()=>({response:{ok:false,headers:{get:()=>null}},data:{ok:false}});
+const GOLD_PROOF_URL='/api/market-feed?feed=public-gold-live-xauusd';
 function put(id:string,value:string){const el=$(id);if(el)el.textContent=value}
 function lock(reason:string){verified=false;btn.disabled=true;put('checkout-state','PAYMENT HOLD');put('checkout-detail',reason)}
 function sessionToken(){
@@ -56,19 +59,27 @@ async function verifyCheckout(){
     if(!validPlan)throw new Error('Select a valid plan from the membership page.');
     const token=sessionToken();
     if(!token)throw new Error('Sign in through the Member Portal first, then return to checkout.');
-    const [auth,readiness,billing,qa,member]=await Promise.allSettled([
+    // Check prerequisites before running expensive private QA.
+    const [auth,readiness,billing,gold,member]=await Promise.allSettled([
       edge('public-auth-runtime-check'),
       edge('public-final-readiness'),
       edge('public-billing-acceptance'),
-      local('/api/autonomous-qa-matrix?commercial_acceptance=1'),
+      local(GOLD_PROOF_URL,4500),
       validateMember(token)
     ]);
-    const good=(x:any)=>x.status==='fulfilled'?x.value:{response:{ok:false,headers:{get:()=>null}},data:{ok:false}};
-    const a=good(auth),r=good(readiness),b=good(billing),q=good(qa);
+    const good=(x:any)=>x.status==='fulfilled'?x.value:missingProof();
+    const a=good(auth),r=good(readiness),b=good(billing),g=good(gold);
     const loggedIn=member.status==='fulfilled'&&member.value===true;
     put('account-state',loggedIn?'Authenticated member session verified':'A current authenticated member session could not be verified.');
-    const gate=evaluateLaunchReadiness({auth:a,readiness:r,billing:b,qa:q});
+    const preflight=assessQaAdmission({auth:a,readiness:r,billing:b,gold:g});
     const planOk=planEligible(plan,b.data);
+    const canCheckPrivate=loggedIn&&preflight.admitted&&planOk;
+    const q=canCheckPrivate
+      ? await local('/api/autonomous-qa-matrix?commercial_acceptance=1').catch(missingProof)
+      : missingProof();
+    // Private QA may outlast a five-second Gold tick; recheck after QA.
+    const latestGold=canCheckPrivate ? await local(GOLD_PROOF_URL,4500).catch(missingProof) : g;
+    const gate=evaluateLaunchReadiness({auth:a,readiness:r,billing:b,qa:q,gold:latestGold});
     const cycles=q.data?.continuous_kernel?.consecutive_successes
       ??q.data?.runtime?.continuous_kernel?.consecutive_successes??0;
     const cyclesOk=Number.isInteger(cycles)&&cycles>=2;
@@ -120,18 +131,24 @@ async function startCheckout(){
   }finally{charging=false;verify.disabled=false;btn.disabled=true}
 }
 async function verifyAcceptanceBeforeCharge(token:string){
-  // A prior green browser label is not authorization for a new purchase.
-  const [a,r,b,q,member]=await Promise.all([
+  // A prior green browser label cannot authorize payment intent.
+  const [a,r,b,g,member]=await Promise.all([
     edge('public-auth-runtime-check'),edge('public-final-readiness'),
-    edge('public-billing-acceptance'),local('/api/autonomous-qa-matrix?commercial_acceptance=1'),
+    edge('public-billing-acceptance'),local(GOLD_PROOF_URL,4500),
     validateMember(token)
   ]);
-  const gate=evaluateLaunchReadiness({auth:a,readiness:r,billing:b,qa:q});
+  const preflight=assessQaAdmission({auth:a,readiness:r,billing:b,gold:g});
+  if(!member||!preflight.admitted||!planEligible(plan,b.data))
+    throw new Error('Precharge prerequisites unavailable. Checkout remains on hold.');
+  const q=await local('/api/autonomous-qa-matrix?commercial_acceptance=1');
+  const latestGold=await local(GOLD_PROOF_URL,4500);
+  const gate=evaluateLaunchReadiness({auth:a,readiness:r,billing:b,qa:q,gold:latestGold});
   const cycles=q.data?.continuous_kernel?.consecutive_successes
     ??q.data?.runtime?.continuous_kernel?.consecutive_successes??0;
-  if(!member||!gate.ready||!planEligible(plan,b.data)||!Number.isInteger(cycles)||cycles<2)
+  if(!gate.ready||!Number.isInteger(cycles)||cycles<2)
     throw new Error('Payment readiness changed. Checkout remains on hold.');
 }
+
 put('selected-plan',validPlan?plan.toUpperCase():'INVALID PLAN');
 if(!validPlan)lock('Unknown plan. Return to pricing and choose an available membership.');
 else if(!CHECKOUT_SERVER_GUARD_DEPLOYED){
