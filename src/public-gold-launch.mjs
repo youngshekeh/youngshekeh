@@ -1,7 +1,7 @@
 import './public-gold-launch.css';
 
 // Public research surface. It cannot submit trades, elevate permission or infer a live quote.
-const GOLD_ENDPOINT = '/api/market-feed?feed=public-gold-live-xauusd';
+const GOLD_ENDPOINT = '/api/public-gold-read';
 const MAX_BROKER_AGE_SECONDS = 5;
 const MAX_REFERENCE_AGE_SECONDS = 900;
 const fmt = (value) => Number.isFinite(Number(value)) && Number(value) > 0

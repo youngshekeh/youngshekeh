@@ -16,7 +16,7 @@ let verified=false;
 let verifying=false;
 let charging=false;
 const missingProof=()=>({response:{ok:false,headers:{get:()=>null}},data:{ok:false}});
-const GOLD_PROOF_URL='/api/market-feed?feed=public-gold-live-xauusd';
+const GOLD_PROOF_URL='/api/public-gold-read';
 function put(id:string,value:string){const el=$(id);if(el)el.textContent=value}
 function lock(reason:string){verified=false;btn.disabled=true;put('checkout-state','PAYMENT HOLD');put('checkout-detail',reason)}
 function sessionToken(){

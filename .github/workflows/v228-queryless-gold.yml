@@ -1,0 +1,29 @@
+name: V228 Queryless Gold market data
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/public-gold-read.js'
+      - 'src/public-gold-curation.mjs'
+      - 'src/public-gold-launch.mjs'
+      - 'src/status.ts'
+      - 'src/checkout.ts'
+      - 'tests/v228-queryless-gold.test.mjs'
+      - 'tests/v222-public-gold-launch.test.mjs'
+      - 'tests/v226-checkout-gold-consistency.test.mjs'
+      - '.github/workflows/v228-queryless-gold.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-gold-data-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check api/public-gold-read.js && node --check src/public-gold-curation.mjs
+      - run: node --test tests/v228-queryless-gold.test.mjs tests/v222-public-gold-launch.test.mjs tests/v226-checkout-gold-consistency.test.mjs tests/v223-public-feed-pressure.test.mjs
