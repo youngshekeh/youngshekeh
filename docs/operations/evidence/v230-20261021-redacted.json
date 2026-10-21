@@ -1,0 +1,45 @@
+{
+  "schema": "TFA-V230-PROVIDER-TRIAGE",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "captured_at": "2026-10-21T14:18:03.000Z",
+  "window_start": "2026-10-21T13:00:00.000Z",
+  "window_end": "2026-10-21T14:18:03.000Z",
+  "sources": {
+    "postgrest": {
+      "pgrst002": 0,
+      "sqlstate57014": 5,
+      "latest_event_at": "2026-10-21T14:14:34.854354Z"
+    },
+    "supavisor": {
+      "authentication_timeouts": 20,
+      "latest_event_at": "2026-10-21T14:17:16.921502Z"
+    },
+    "pg_cron": {
+      "startup_timeouts": 149,
+      "latest_event_at": "2026-10-21T14:16:14.538000Z"
+    }
+  },
+  "direct_checks": {
+    "sql": {
+      "state": "CONNECTION_TIMEOUT"
+    },
+    "kernel": {
+      "state": "KERNEL_SEAL_FAILED",
+      "last_failure_at": "2026-10-21T14:15:00Z"
+    },
+    "gold": {
+      "state": "UNAVAILABLE",
+      "http_status": 503,
+      "checked_at": "2026-10-21T14:17:23Z"
+    },
+    "bridge": {
+      "state": "DATA_DEGRADED",
+      "passed_gates": 0,
+      "total_gates": 6,
+      "checked_at": "2026-10-21T14:18:03Z"
+    }
+  },
+  "provenance": "read-only source-specific snapshots; not complete event coverage",
+  "root_cause_verified": false,
+  "support_ticket_submitted": false
+}
