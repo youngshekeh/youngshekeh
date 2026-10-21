@@ -55,7 +55,7 @@ test('new public pages are real Vite build entries, not 404 claims',()=>{
 });
 test('public checkout requires fresh production, identity, kernel and billing evidence',()=>{
   const source=read('src/checkout.ts');
-  assert.match(source,/evaluateLaunchReadiness\(\{auth:a,readiness:r,billing:b,qa:q\}\)/);
+  assert.match(source,/evaluateLaunchReadiness\(\{auth:a,readiness:r,billing:b,qa:q,gold:latestGold\}\)/);
   assert.match(source,/planEligible\(plan,b\.data\)/);
   assert.match(source,/consecutive_successes/);
   assert.match(source,/cycles>=2/);
