@@ -46,8 +46,10 @@ test('stale broker does not get certified, indicative remains separate',()=>{
 });
 test('fixed-path API does not depend on query args or expose dynamic upstream targets',()=>{
  const api=readFileSync(new URL('../api/public-gold-read.js',import.meta.url),'utf8');
- assert.match(api,/public-gold-live-xauusd/);
- assert.match(api,/public-gold-live-api/);
+ const pipeline=readFileSync(new URL('../src/gold-read-budget.mjs',import.meta.url),'utf8');
+ assert.match(api,/readGoldWithinBudget/);
+ assert.match(pipeline,/public-gold-live-xauusd/);
+ assert.match(pipeline,/public-gold-live-api/);
  assert.match(api,/curatePublicGold/);
  assert.doesNotMatch(api,/req\.url|req\.query|url\.searchParams|apiKey|service_role|checkout_url/);
  assert.match(api,/res\.status\(503\)/);

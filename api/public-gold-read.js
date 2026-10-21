@@ -2,6 +2,7 @@
 // Uses only existing approved read-only Supabase functions. No live trade API.
 import {createFeedPressureGate,GOLD_FEED} from '../src/public-feed-pressure.mjs';
 import {curatePublicGold} from '../src/public-gold-curation.mjs';
+import {readGoldWithinBudget} from '../src/gold-read-budget.mjs';
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 async function publicRead(slug,ms){
  const controller=new AbortController();
@@ -16,14 +17,8 @@ async function publicRead(slug,ms){
  }finally{clearTimeout(timer);}
 }
 const feed=createFeedPressureGate({async read(){
- let broker={httpOk:false,data:null},reference={httpOk:false,data:null};
- try{broker=await publicRead('public-gold-live-xauusd',11500);}catch{}
- // If already fresh broker-live, no second request is needed.
- let curated=curatePublicGold({broker});
- if(curated.ok)return curated;
- try{reference=await publicRead('public-gold-live-api',9500);}catch{}
- curated=curatePublicGold({broker,reference});
- if(!curated.ok)throw new Error('no_public_gold');
+ const curated=await readGoldWithinBudget({read:publicRead,curate:curatePublicGold});
+ if(curated?.ok!==true)throw new Error('no_public_gold');
  return curated;
 }});
 export default async function handler(req,res){

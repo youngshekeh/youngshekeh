@@ -1,4 +1,5 @@
 import './public-gold-launch.css';
+import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 
 // Public research surface. It cannot submit trades, elevate permission or infer a live quote.
 const GOLD_ENDPOINT = '/api/public-gold-read';
@@ -91,21 +92,16 @@ function setup() {
     busy = true;
     try {
       const response = await fetch(GOLD_ENDPOINT,{
-        headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(9500)
+        headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(7500)
       });
       if (!response.ok) throw new Error('quote_source_unavailable');
       const data = await response.json();
       if (!data || data.ok !== true || typeof data !== 'object') throw new Error('market_data_unavailable');
       const broker = data.live_broker || {};
       const quote = broker.quote || {};
-      const liveAgeReported = Number(quote.age_seconds);
+      const live = verifyPublicGoldQuote({response:{ok:response.ok},data}).verified;
+      const liveAgeReported = typeof quote.age_seconds === 'number' ? quote.age_seconds : null;
       const quoteAge = ageOf(quote.observed_at);
-      const live = broker.state === 'BROKER_LIVE'
-        && Number.isFinite(liveAgeReported) && liveAgeReported >= 0
-        && liveAgeReported <= MAX_BROKER_AGE_SECONDS
-        && quoteAge !== null && quoteAge <= MAX_BROKER_AGE_SECONDS
-        && Number.isFinite(Number(quote.mid)) && Number(quote.mid) > 0
-        && Number(quote.bid) > 0 && Number(quote.ask) >= Number(quote.bid);
       const spot = data.feed?.gold_spot || {};
       const referenceAge = ageOf(spot.market_time);
       const indicative = !live
