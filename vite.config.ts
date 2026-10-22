@@ -26,6 +26,7 @@ export default defineConfig({
         status: resolve(root, 'status/index.html'),
         intelligence: resolve(root, 'intelligence/index.html'),
         liveMarkets: resolve(root, 'live-markets/index.html'),
+        marketObservatory: resolve(root, 'market-observatory/index.html'),
         goldLive: resolve(root, 'gold-live/index.html'),
         capitalOs: resolve(root, 'capital-os/index.html'),
         commandOs: resolve(root, 'command-os/index.html'),
