@@ -47,3 +47,25 @@ test('private kernel and market reference lanes separate, no fabricated breadth'
  assert.match(main,/AbortSignal\.timeout\(12_000\)/);
  assert.match(readFileSync(new URL('../src/checkout.ts',import.meta.url),'utf8'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
 });
+
+test('actual board refresh updates its count through 0, 2, 1 and 0 sources without replacing core breadth',()=>{
+ const source=readFileSync(new URL('../src/v235-public-board.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
+ const node=()=>({textContent:'',dataset:{},children:[],classList:{contains:()=>false,add(){}},
+   append(...items){this.children.push(...items);},replaceChildren(){this.children=[];},
+   querySelector(selector){return this.children[selector==='strong'?1:2]||null;}});
+ const nodes=Object.fromEntries(['marketTileGrid','marketPattern','marketBreadth','marketUsable','independentLaneState'].map(id=>[id,node()]));
+ nodes.marketTileGrid.querySelectorAll=()=>[];
+ nodes.marketBreadth.textContent='Breadth unavailable';
+ const listeners={};
+ const window={addEventListener(name,fn){listeners[name]=fn;},setInterval(){return 1;},clearInterval(){}};
+ const document={getElementById:id=>nodes[id],createElement:node};
+ new Function('verifiedPublicReferences','window','document',source)(verifiedPublicReferences,window,document);
+ const emit=packet=>listeners['tfa:public-references']({detail:packet});
+ assert.match(nodes.marketBreadth.textContent,/^0\/2/);
+ const packet=sample();packet.assets.gold.source_updated_at=new Date().toISOString();packet.assets.bitcoin.observed_at=new Date().toISOString();
+ emit(packet);assert.match(nodes.marketBreadth.textContent,/^2\/2/);assert.equal(nodes.independentLaneState.textContent,'2/2 PUBLIC SOURCES');
+ packet.assets.bitcoin.price=0;emit(packet);assert.match(nodes.marketBreadth.textContent,/^1\/2/);
+ emit(null);assert.match(nodes.marketBreadth.textContent,/^0\/2/);
+ nodes.marketBreadth.textContent='Breadth 4 · 3 up / 1 down / 0 flat';
+ emit(packet);assert.equal(nodes.marketBreadth.textContent,'Breadth 4 · 3 up / 1 down / 0 flat');
+});

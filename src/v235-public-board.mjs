@@ -62,7 +62,7 @@ if(grid){
    if(independent) independent.textContent=references.count+'/2 PUBLIC SOURCES';
    // Do not fabricate complete cross-asset breadth from two spot observations.
    if(status&&/SYNCING|SOURCE CHECK|WITHHELD|UNAVAILABLE|UNKNOWN/.test(status.textContent||''))status.textContent='CORE BREADTH UNVERIFIED';
-   if(breadth&&/unavailable|n\/a/i.test(breadth.textContent||''))breadth.textContent=references.count+'/2 independently attributed spot references';
+   if(breadth&&/unavailable|n\/a|independently attributed spot references/i.test(breadth.textContent||''))breadth.textContent=references.count+'/2 independently attributed spot references';
    if(usable&&/^(0\/7|.*REF)/.test(usable.textContent||''))usable.textContent='0/7 CORE · '+references.count+'/2 REF';
  }
  // Share a single bounded Gold/BTC fetch with the homepage reference panel.
