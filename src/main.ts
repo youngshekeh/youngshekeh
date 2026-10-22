@@ -271,8 +271,8 @@ function renderGlobalMarkets(dashboard: { assets?: MarketAsset[]; breadth?: any 
   }
   missionText('marketPattern', breadth?.state ?? 'WITHHELD');
   missionText('marketBreadth', `Breadth ${breadth?.breadth_score ?? 'n/a'} · ${breadth?.up ?? 0} up / ${breadth?.down ?? 0} down / ${breadth?.flat ?? 0} flat`);
-  missionText('marketUsdState', `USD ${breadth?.usd_state ?? 'MIXED'}`);
-  missionText('marketRiskState', `RISK ${breadth?.risk_state ?? 'MIXED'}`);
+  missionText('marketUsdState', `USD ${breadth?.usd_state ?? 'UNVERIFIED'}`);
+  missionText('marketRiskState', `RISK ${breadth?.risk_state ?? 'UNVERIFIED'}`);
   missionText('marketUsable', `${breadth?.usable_assets ?? 0}/7`);
 }
 
