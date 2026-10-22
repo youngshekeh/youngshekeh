@@ -1,4 +1,4 @@
-name: V241–V247 research, kernel and scheduler preflight
+name: V241–V248 public research and resilience preflight
 on:
   pull_request:
     branches: [the-father-analytics-deploy]
@@ -17,5 +17,5 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - run: node --test tests/v241-*.test.mjs tests/v242-*.test.mjs tests/v243-*.test.mjs tests/v244-*.test.mjs tests/v245-*.test.mjs tests/v246-*.test.mjs tests/v247-*.test.mjs
+      - run: node --test tests/v241-*.test.mjs tests/v242-*.test.mjs tests/v243-*.test.mjs tests/v244-*.test.mjs tests/v245-*.test.mjs tests/v246-*.test.mjs tests/v247-*.test.mjs tests/v248-*.test.mjs
       - run: node scripts/v247-cron-collision-audit.mjs > /dev/null
