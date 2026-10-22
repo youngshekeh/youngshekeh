@@ -24,5 +24,6 @@ jobs:
           node-version: '22'
       - run: node --check src/v235-public-board.mjs && node --check src/v235-reference-integrity.mjs
       - run: node --test tests/v235-public-board.test.mjs tests/v234-public-market-reference.test.mjs
-      - run: npm ci
-      - run: npm run build
+      # The repository's existing build check validates Vite with its configured installer.
+      # This focused proof tests strict public quote semantics without a duplicate install.
+      - run: grep -q 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
