@@ -24,4 +24,5 @@ jobs:
           node-version: '22'
       - run: node --check src/v235-public-board.mjs && node --check src/v235-reference-integrity.mjs
       - run: node --test tests/v235-public-board.test.mjs tests/v234-public-market-reference.test.mjs
+      - run: npm ci
       - run: npm run build
