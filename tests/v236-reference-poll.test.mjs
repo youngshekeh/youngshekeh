@@ -17,7 +17,7 @@ test('reference values revalidate and clear on stale evidence',()=>{
  const board=read('src/v235-public-board.mjs');
  assert.match(board,/window\.setInterval\(\(\)=>paint\(/);
  assert.match(board,/verifiedPublicReferences\(packet,Date\.now\(\)\)/);
- assert.match(board,/quote\?'?quote\.value/);
+ assert.match(board,/quote\.value\.toLocaleString/);
 });
 test('initial public HTML is calm and never claims the private engines are loading forever',()=>{
  const home=read('index.html');
