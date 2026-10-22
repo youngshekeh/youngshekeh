@@ -144,7 +144,7 @@
     {
       "id": 32,
       "name": "tfa-enterprise-monitor-evaluator",
-      "schedule": "8,23,38,53 * * *"
+      "schedule": "8,23,38,53 * * * *"
     },
     {
       "id": 33,
@@ -189,7 +189,7 @@
     {
       "id": 41,
       "name": "tfa-autonomous-ops-watch",
-      "schedule": "7,22,37,52 * * *"
+      "schedule": "7,22,37,52 * * * *"
     },
     {
       "id": 42,
@@ -199,7 +199,7 @@
     {
       "id": 43,
       "name": "tfa-owner-anomaly-watch",
-      "schedule": "13,43 * * *"
+      "schedule": "13,43 * * * *"
     },
     {
       "id": 44,
@@ -209,7 +209,7 @@
     {
       "id": 48,
       "name": "tfa-v71-shadow-reconcile",
-      "schedule": "2,17,32,47 * * *"
+      "schedule": "2,17,32,47 * * * *"
     },
     {
       "id": 50,
