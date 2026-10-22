@@ -39,7 +39,8 @@ test('V194 compresses V186-V193 without opening capital',()=>{
 });
 
 test('V194 can surface human review readiness while execution remains locked',()=>{
-  const live={...base.live,state:'BROKER_LIVE',quality:{fresh:true},quote:{mid:4172.25}};
+  const live={...base.live,state:'BROKER_LIVE',quality:{fresh:true},quote:{bid:4172,mid:4172.25,ask:4172.5,
+    age_seconds:1,observed_at:'2026-10-02T20:31:00Z'}};
   const signal={...base.signal,signal_time:{state:'ACTIVE_SIGNAL_TIME',direction_candidate:'LONG_REPAIR_BIAS'}};
   const watch={...base.watch,state:'HUMAN_REVIEW_READY',review_gate:{ready:true,requirements:{signal_day_confirmed:true,signal_time_active:true,fresh_broker_xauusd:true,liquidity_transition_resolved:true}}};
   const out=buildGoldCommandSnapshot({...base,live,signal,watch,now:new Date('2026-10-02T20:31:00Z')});
@@ -56,4 +57,15 @@ test('V194 fails closed when a core upstream is unavailable',()=>{
   assert.equal(out.state,'DATA_DEGRADED');
   assert.ok(out.blockers.includes('UPSTREAM_ALERT_ROUTER_UNAVAILABLE'));
   assert.equal(out.governance.machine_execution_allowed,false);
+});
+
+test('V194 cannot promote a stale or malformed broker tick merely because quality says fresh',()=>{
+ for(const quote of [
+  {mid:4172.25},
+  {bid:4172,mid:4172.25,ask:4172.5,age_seconds:1,observed_at:'2026-10-02T20:30:00Z'},
+  {bid:4200,mid:4172.25,ask:4172.5,age_seconds:1,observed_at:'2026-10-02T20:31:00Z'}]){
+  const out=buildGoldCommandSnapshot({...base,live:{ok:true,state:'BROKER_LIVE',quality:{fresh:true},quote},now:new Date('2026-10-02T20:31:00Z')});
+  assert.equal(out.command.live_price,null);assert.ok(out.blockers.includes('FRESH_BROKER_XAUUSD'));
+  assert.equal(out.governance.capital_permission,'0R');
+ }
 });

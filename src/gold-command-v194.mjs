@@ -1,4 +1,6 @@
-const num=v=>{const n=Number(v);return Number.isFinite(n)?n:null};
+import {researchNumber} from './q4-research-integrity.mjs';
+import {brokerTickerView} from './broker-ticker-view.mjs';
+const num=researchNumber;
 const pick=(...v)=>v.find(x=>x!==null&&x!==undefined&&x!=='');
 const ageSeconds=(now,value)=>{
   const t=Date.parse(String(value||''));
@@ -29,14 +31,16 @@ export function buildGoldCommandSnapshot({
   const signalTime=pick(signal?.signal_time?.state,lifecycle?.signal_time?.state,'UNKNOWN');
   const direction=pick(signal?.signal_time?.direction_candidate,lifecycle?.signal_time?.direction_candidate,watch?.context?.direction_candidate,'NEUTRAL');
   const lifecycleStage=pick(lifecycle?.lifecycle?.stage,watch?.context?.lifecycle_stage,'UNKNOWN');
-  const anchorState=pick(live?.state,lifecycle?.anchor?.state,signal?.live_anchor?.state,'UNAVAILABLE');
-  const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&num(live?.quote?.mid)!==null;
-  const anchorPrice=liveFresh?num(live?.quote?.mid):num(pick(lifecycle?.anchor?.price,signal?.live_anchor?.price));
+  const broker=live?.live_broker??live;
+  const anchorState=pick(broker?.state,lifecycle?.anchor?.state,signal?.live_anchor?.state,'UNAVAILABLE');
+  const ticker=brokerTickerView(live,now.getTime());
+  const liveFresh=ticker.verified&&broker?.quality?.fresh===true;
+  const anchorPrice=liveFresh?num(ticker.quote?.mid):num(pick(lifecycle?.anchor?.price,signal?.live_anchor?.price));
   const review=watch?.review_gate?.requirements??{};
   const next=watch?.next_signal_window?.next??null;
 
   const components={
-    live_xauusd:component(now,live,['checked_at']),
+    live_xauusd:component(now,{...live,...broker,ok:live?.ok},['checked_at']),
     signal_map:component(now,signal,['generated_at']),
     lifecycle:component(now,lifecycle,['generated_at']),
     trigger_watch:component(now,watch,['generated_at']),
@@ -93,7 +97,7 @@ export function buildGoldCommandSnapshot({
     symbol:'XAUUSD',
     state,
     command:{
-      live_market_state:live?.state??'UNAVAILABLE',
+      live_market_state:broker?.state??'UNAVAILABLE',
       live_price:liveFresh?anchorPrice:null,
       structural_anchor:anchorPrice,
       anchor_state:anchorState,
@@ -107,7 +111,7 @@ export function buildGoldCommandSnapshot({
     },
     evidence:{
       event_ledger_state:ledger?.state??'UNAVAILABLE',
-      event_count:num(ledger?.counts?.events)??0,
+      event_count:ledger?.ok===true?num(ledger?.counts?.events):null,
       latest_event_at:ledger?.latest_event_at??latestEvent?.event_at??null,
       latest_event:latestEvent?{
         event_key:latestEvent?.event_key??null,
@@ -116,8 +120,8 @@ export function buildGoldCommandSnapshot({
         condition:latestEvent?.condition??null
       }:null,
       alert_router_state:router?.state??'UNAVAILABLE',
-      visible_alerts:num(router?.counts?.visible_alerts)??0,
-      notification_ready:num(router?.counts?.notification_ready)??0,
+      visible_alerts:router?.ok===true?num(router?.counts?.visible_alerts):null,
+      notification_ready:router?.ok===true?num(router?.counts?.notification_ready):null,
       alert_chain_failures:num(router?.counts?.chain_failures),
       owner_review_state:'AAL2_OWNER_ONLY'
     },

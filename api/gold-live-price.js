@@ -7,8 +7,9 @@ function strictV230Payload(status,body){
     &&!Array.isArray(body)&&body.ok===true;
 }
 function freshBrokerReadOnly(body,now=Date.now()){
-  if(body?.live_broker?.state!=='BROKER_LIVE')return false;
-  const q=body.live_broker.quote;
+  const live=body?.live_broker??body;
+  if(live?.state!=='BROKER_LIVE')return false;
+  const q=live.quote;
   if(!q||typeof q!=='object')return false;
   const ts=Date.parse(String(q.observed_at||''));
   if(!Number.isFinite(ts)||ts>now+1000||now-ts>5000)return false;
