@@ -7,16 +7,27 @@
     <title>Status | THE FATHER ANALYTICS</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
-  <body>
+  <body class="status-public">
     <main class="wrap">
-      <div class="label">THE FATHER ANALYTICS · STATUS</div>
-      <h1>Production status.</h1>
+      <div class="label">THE FATHER ANALYTICS · SERVICE STATUS</div>
+      <h1>Research is public. Certification is separate.</h1>
+      <p class="status-intro">The website and public reference prices can operate independently of the private engine. This page shows the distinction without presenting research as an executable trade or a verified paid service.</p>
+      <section class="card status-availability" aria-label="Public research availability">
+        <div class="label">PUBLIC RESEARCH · INDEPENDENT STATUS</div>
+        <div class="status-availability-grid">
+          <div><span class="status-caption">Website delivery</span><div id="public-page" class="value good">PAGE DELIVERED</div></div>
+          <div><span class="status-caption">Gold and Bitcoin references</span><div id="public-reference" class="value wait" role="status" aria-live="polite">CHECKING SOURCES</div></div>
+        </div>
+        <p id="public-proof" class="muted">Checking independently sourced indicative prices. An unavailable provider does not make the website unavailable.</p>
+        <a href="../live-markets/" class="status-visit-link">Explore live market references ↗</a>
+      </section>
+      <h2 class="status-section-heading">Private engine and paid release gates</h2>
       <section class="card status-box" aria-live="polite" aria-label="Launch decision">
-        <div class="label">PUBLIC LAUNCH ACCEPTANCE</div>
+        <div class="label">PRIVATE & COMMERCIAL RELEASE ACCEPTANCE</div>
         <div id="launch-gate" class="value wait" role="status">LAUNCH HOLD</div>
         <p id="last-checked" class="muted">Independent verification not yet complete.</p>
         <button id="status-refresh" type="button" class="secondary">CHECK LAUNCH STATUS</button>
-        <p class="muted">A deployed website is not evidence of a healthy kernel, fresh quotes or verified checkout. Positive source observations must be recent (within 10 minutes); a QA pass is not a kernel receipt. Trading remains WAIT / 0R.</p>
+        <p class="muted">A deployed public research website is separate from proof of a healthy private kernel, an execution-grade broker quote or verified checkout. Positive source observations must be recent (within 10 minutes); a QA pass is not a kernel receipt. Trading remains WAIT / 0R.</p>
         <p class="muted">Commercial access requires a verified, currently active subscription. A historical successful payment or a past-due membership does not establish entitlement to current services. <a href="../research/">Research proposal enquiries remain open</a> without payment.</p>
       </section>
       <section class="grid">
