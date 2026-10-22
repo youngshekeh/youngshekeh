@@ -863,7 +863,7 @@ function renderAutonomousHealth(health: any) {
 
 async function loadMissionBrief() {
   try {
-    const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const response = await fetch('/api/mission-brief', { headers: { Accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(12_000) });
     if (!response.ok) throw new Error(`mission_http_${response.status}`);
     const brief = await response.json();
     const changed = brief?.what_changed ?? {};
@@ -896,11 +896,29 @@ async function loadMissionBrief() {
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
     missionText('calibrationQA', calibration?.qa_score ?? 'VERIFYING');
   } catch {
-    missionText('briefHeadline', 'Mission brief unavailable. The UI is failing closed.');
-    missionText('briefMatter', 'No live intelligence is promoted while the mission brief cannot be verified.');
-    missionText('briefQuality', 'WITHHELD');
-    missionText('briefQA', 'WITHHELD');
-    missionText('briefPhase', 'WITHHELD');
+    missionText('briefHeadline', 'Public market references continue independently.');
+    missionText('briefMatter', 'The private research brief is unavailable. Public spot references remain separate from model conclusions, execution and forecast scores.');
+    missionText('briefQuality', 'CORE OFFLINE');
+    missionText('briefQA', 'NOT CERTIFIED');
+    missionText('briefPhase', 'NOT VERIFIED');
+    missionText('briefTimestamp', 'SOURCE UNAVAILABLE');
+    const grid=document.querySelector<HTMLElement>('#engineGrid');
+    if(grid)for(const chip of grid.querySelectorAll<HTMLElement>('.engine-chip')){
+      const s=chip.querySelector<HTMLElement>('span');
+      if(s){s.textContent='NOT VERIFIED';s.dataset.state='UNAVAILABLE';}
+    }
+    missionText('engineCount', 'ENGINE STATES UNVERIFIED');
+    const desks=document.querySelector<HTMLElement>('#sixDeskGrid');
+    if(desks&&!desks.querySelector('.desk-card')){
+      renderDesks([
+        {id:'macro',name:'Macro & World Economy',state:'SOURCE UNAVAILABLE',href:'/world-economy/'},
+        {id:'markets',name:'Global Markets',state:'PUBLIC SPOT REFERENCES',href:'/live-markets/'},
+        {id:'flows',name:'Flows & Positioning',state:'SOURCE UNAVAILABLE',href:'/research/'},
+        {id:'quant',name:'Quant & Calibration',state:'SOURCE UNAVAILABLE',href:'/intelligence/'},
+        {id:'risk',name:'Risk & Portfolio',state:'LOCKED · 0R',href:'/capital-os/'},
+        {id:'trends',name:'Trends & Solutions',state:'SOURCE UNAVAILABLE',href:'/global-trends/'}
+      ]);
+    }
   }
 }
 

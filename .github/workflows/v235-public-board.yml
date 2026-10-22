@@ -1,0 +1,27 @@
+name: V235 credible public market board
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'index.html'
+      - 'src/main.ts'
+      - 'src/v235-*'
+      - 'tests/v235-public-board.test.mjs'
+      - '.github/workflows/v235-public-board.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  credible-market-board:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check src/v235-public-board.mjs && node --check src/v235-reference-integrity.mjs
+      - run: node --test tests/v235-public-board.test.mjs tests/v234-public-market-reference.test.mjs
+      - run: npm run build

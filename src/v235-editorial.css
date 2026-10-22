@@ -1,0 +1,27 @@
+/* V235: restrained institutional research interface. Preserves all existing data modules. */
+.mission-tape{animation:none!important;white-space:normal;flex-wrap:wrap;width:auto;justify-content:space-between;row-gap:8px;font-size:11px}
+.mission-tape-frame{border-radius:7px;box-shadow:none}
+.mission-tape-frame:before,.mission-tape-frame:after,.what-changed-card:before,.what-changed-orbit{display:none}
+.what-changed-card,.engine-vault,.calibration-vault,.institutional-layer,.global-market-board{border-radius:9px!important;box-shadow:none!important}
+.command-hero{grid-template-columns:minmax(0,1.2fr) minmax(295px,.8fr);gap:12px}
+.what-changed-card{min-height:340px;background:#14101d}
+.what-changed-card h2{line-height:1.17;letter-spacing:-.035em}
+.editorial-evidence-panel{padding:30px;border:1px solid rgba(255,255,255,.11);border-radius:9px;background:#100d16;display:flex;flex-direction:column;gap:12px}
+.evidence-panel-kicker{font-size:10px;letter-spacing:.13em;color:#bba4e2;font-weight:750}
+.editorial-evidence-panel h3{margin:0;font-size:clamp(23px,2.2vw,31px);line-height:1.14;letter-spacing:-.04em}
+.editorial-evidence-panel p{margin:0 0 8px;color:#b7afc0;font-size:13px;line-height:1.7}
+.evidence-panel-line{border-top:1px solid rgba(255,255,255,.1);padding:11px 0;display:flex;justify-content:space-between;gap:14px}
+.evidence-panel-line span{font-size:11px;color:#a8a0ae}
+.evidence-panel-line strong{font-size:10px;text-align:right;color:#ded0ef;line-height:1.45;max-width:165px}
+.editorial-evidence-panel a{margin-top:auto;color:#dac3f5;text-underline-offset:4px;font-size:12px}
+.market-reference-card{border-color:rgba(156,115,255,.37)!important;background:rgba(156,115,255,.04)!important;border-radius:7px!important}
+.market-reference-card strong{font-size:clamp(20px,2.2vw,30px)!important;font-variant-numeric:tabular-nums}
+.market-reference-card small{font-size:10px!important;line-height:1.55!important}
+.market-reference-card[data-reference-status='unavailable']{opacity:.58}
+.elite-command-shell .kicker{font-size:10px;letter-spacing:.09em}
+.elite-command-shell .engine-chip{border-radius:7px}
+.elite-command-shell .engine-chip b{font-size:12px}
+.elite-command-shell .engine-chip small{font-size:11px;line-height:1.5}
+.topnav{gap:15px}.topnav a{font-size:12px}
+@media(max-width:900px){.command-hero{grid-template-columns:1fr}.mission-tape{justify-content:flex-start;gap:15px}}
+@media(max-width:520px){.editorial-evidence-panel{padding:21px}.what-changed-card{min-height:0;padding:22px}}
