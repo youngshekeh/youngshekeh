@@ -65,17 +65,16 @@ if(grid){
    if(breadth&&/unavailable|n\/a/i.test(breadth.textContent||''))breadth.textContent=references.count+'/2 independently attributed spot references';
    if(usable&&/^(0\/7|.*REF)/.test(usable.textContent||''))usable.textContent='0/7 CORE · '+references.count+'/2 REF';
  }
- const refresh=async()=>{
-  try{
-   const response=await fetch('/api/public-market-reference',{headers:{Accept:'application/json'},
-     cache:'no-store',signal:AbortSignal.timeout(7500)});
-   if(!response.ok)throw new Error('reference_http_unavailable');
-   paint(await response.json());
-  }catch{paint(null)}
- };
- void refresh();
- // Keep display live across the private brief's DOM updates, without polling the private kernel.
- const period=window.setInterval(()=>{if(!document.hidden)void refresh()},15000);
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refresh()});
- window.addEventListener('pagehide',()=>window.clearInterval(period),{once:true});
+ // Share a single bounded Gold/BTC fetch with the homepage reference panel.
+ // A price never becomes a broker tick or a core market breadth observation.
+ const receive=event=>paint(event.detail??null);
+ window.addEventListener('tfa:public-references',receive);
+ // The reference module may resolve first on a warm browser cache.
+ paint(window.__tfaPublicReferencePacket??null);
+ // Time-based revalidation removes observations that age out while network is unavailable.
+ const interval=window.setInterval(()=>paint(window.__tfaPublicReferencePacket??null),10000);
+ window.addEventListener('pagehide',()=>{
+   window.clearInterval(interval);
+   window.removeEventListener('tfa:public-references',receive);
+ },{once:true});
 }

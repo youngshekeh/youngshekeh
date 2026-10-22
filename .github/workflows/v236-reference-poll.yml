@@ -1,0 +1,27 @@
+name: V236 single public source refresh and truth
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'index.html'
+      - 'src/public-market-reference.mjs'
+      - 'src/v235-public-board.mjs'
+      - 'tests/v236-reference-poll.test.mjs'
+      - '.github/workflows/v236-reference-poll.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single-source-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check src/public-market-reference.mjs && node --check src/v235-public-board.mjs
+      - run: node --test tests/v236-reference-poll.test.mjs tests/v235-public-board.test.mjs
+      - run: grep -q 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
