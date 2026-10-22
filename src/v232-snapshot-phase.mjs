@@ -6,11 +6,33 @@ export const V232_TARGET=Object.freeze({
 });
 export const V232_PROTECTED=Object.freeze([
   {jobid:13,jobname:'gold-live-snapshot-5m'},
+  {jobid:20,jobname:'gold_spot_shadow_capture'},
   {jobid:16,jobname:'live_markets_snapshot_capture'},
   {jobid:21,jobname:'gold_signal_resolution_finalize'},
   {jobid:39,jobname:'tfa-transactional-email-dispatch'},
   {jobid:95,jobname:'tfa-v136-gold-execution-firewall'}
 ]);
+// A downstream shadow capture must not share any minute with source capture.
+// Unsupported cron expressions fail closed rather than being assumed disjoint.
+function minuteSlots(expression){
+ const fields=String(expression||'').trim().split(/\s+/);
+ if(fields.length!==5)return null;
+ const slots=new Set();
+ for(const segment of fields[0].split(',')){
+   const pair=segment.split('/');
+   if(pair.length>2)return null;
+   const step=pair[1]===undefined?1:Number(pair[1]);
+   if(!Number.isInteger(step)||step<1)return null;
+   let low,high;
+   if(pair[0]==='*'){low=0;high=59}
+   else if(/^\d+-\d+$/.test(pair[0]))[low,high]=pair[0].split('-').map(Number);
+   else if(/^\d+$/.test(pair[0]))low=high=Number(pair[0]);
+   else return null;
+   if(low<0||high>59||low>high)return null;
+   for(let minute=low;minute<=high;minute+=step)slots.add(minute);
+ }
+ return slots;
+}
 function fresh(when,now){
  const n=Date.parse(String(when||''));
  return Number.isFinite(n)&&n<=now+1000&&now-n<=120000;
@@ -32,6 +54,12 @@ export function assessV232SnapshotPhase({jobs=[],seal=null,database=null,now=Dat
    else if(item.jobid===V232_TARGET.jobid&&matching[0].schedule!==V232_TARGET.previous_schedule)
      blockers.push('TARGET_SCHEDULE_DRIFT');
  }
+ const shadow=jobs.find(j=>j?.jobid===20&&j?.jobname==='gold_spot_shadow_capture');
+ const proposed=minuteSlots(V232_TARGET.proposed_schedule);
+ const shadowMinutes=minuteSlots(shadow?.schedule);
+ if(shadow?.active!==true||!proposed||!shadowMinutes
+   ||[...proposed].some(minute=>shadowMinutes.has(minute)))
+   blockers.push('GOLD_SOURCE_SHADOW_PHASE_COLLISION');
  const target=jobs.find(j=>j?.jobid===V232_TARGET.jobid);
  const ready=blockers.length===0;
  return Object.freeze({

@@ -11,7 +11,7 @@ Date: 2026-10-22. Base: V231 commit 326441e647883cfdf8768353054ae82b3627594e.
 - Last complete 107-case runtime QA evidence: 77 passing, 30 failing. Live broker tick and real paper receipts are not verified.
 
 ## Hypothesis and narrowly-scoped mitigation
-Shift only job 17 Gold spot snapshot from minutes 0/5/... to minutes 1/6/... on weekdays, retaining the same 5-minute cadence, active flag and identical command. This may reduce synchronous scheduler-start load; it is not a guarantee of DB recovery. The finalizer at minute 2 continues after Gold spot capture. All other jobs are untouched.
+Shift only job 17 Gold spot snapshot from minutes 0/5/... to minutes 1/6/... on weekdays, retaining the same 5-minute cadence, active flag and identical command. This may reduce synchronous scheduler-start load; it is not a guarantee of DB recovery. **Safety finding (V233):** downstream job 20 Gold spot shadow capture is already scheduled at minute 1, so moving job 17's source capture there creates a same-minute dependency race. This candidate is therefore blocked by both read-only admission and the guarded SQL unless a separately verified, non-overlapping design is approved. No existing cron schedules have been changed. The finalizer remains at minute 2. All other jobs are untouched.
 
 ## Release protocol
 1. RUN READ ONLY preflight: supabase/recovery/v232-gold-spot-snapshot-phase-preflight.sql.
