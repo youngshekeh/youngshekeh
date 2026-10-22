@@ -73,7 +73,19 @@ function safePoolerFailureClass(error:unknown){
 }
 async function requireKernelSeal(){
   return await verifySealWithHedge({
-    pooler:verifySealViaPooler,
+    pooler:async()=>{
+      try{return await verifySealViaPooler()}
+      catch(error){
+        // Preserve the original explicit negative-seal boundary and safe
+        // transport diagnostics. The hedge may not turn denial into fallback.
+        if(String(error).includes('v180_kernel_security_seal_missing'))throw error;
+        console.warn('V218_SEAL_POOLER_FALLBACK',{
+          reason:safePoolerFailureClass(error),
+          rest_fallback_budget_ms:SEAL_DEADLINE_MS
+        });
+        throw error;
+      }
+    },
     rest:async()=>{
       const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
       if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
