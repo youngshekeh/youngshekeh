@@ -188,7 +188,7 @@ export default async function handler(req,res){
     }:{
       gate:'NO_BOOTSTRAP_BLOCKER',
       evidence:'Relay bootstrap gates are complete. Downstream governance remains separate.',
-      operator_path
+      operator_path:operatorPath
     },
     decision_compression:{
       what_changed:'V12 classified the relay bootstrap state as '+state+'.',

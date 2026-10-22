@@ -30,3 +30,19 @@
 @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:26px}.editorial-monitor{max-width:660px;width:100%;margin:auto}.global-hero{padding:55px 0 46px}}
 @media(max-width:520px){.editorial-monitor{padding:18px;border-radius:8px}.em-row{gap:9px}.em-value{font-size:26px}.em-source{max-width:180px}.em-head{align-items:flex-start}.global-hero .hero-actions a{font-size:12px}}
 @media(prefers-reduced-motion:reduce){.editorial-monitor,*:focus{scroll-behavior:auto}}
+
+/* Public desks share the same attributed observations as the homepage. */
+.route-market-reference{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin:30px 0;background:#f7f4fa;border-color:#d8cfe2;border-radius:8px;box-shadow:none}
+.route-market-reference::before{background:#8058ab}
+.route-market-reference .em-head,.route-market-reference .em-bottom{grid-column:1/-1}
+.route-market-reference .em-head{border-color:#dcd3e4;padding-bottom:20px}
+.route-market-reference .em-brand{color:#75528e}
+.route-market-reference .em-title,.route-market-reference .em-instrument,.route-market-reference .em-value{color:#261a32}
+.route-market-reference .em-symbol,.route-market-reference .em-source,.route-market-reference .em-bottom,.route-market-reference .em-time{color:#66576e}
+.route-market-reference .em-row{border-color:#dcd3e4;padding:23px 0}
+.route-market-reference .em-status{color:#62516b;border-color:#b8a9c4}
+.route-market-reference .em-status[data-state="online"]{color:#235d43;border-color:#8ab5a0}
+.route-market-reference .em-status[data-state="partial"]{color:#79570f;border-color:#bc9b55}
+.route-market-reference .em-status[data-state="unavailable"]{color:#8a382f;border-color:#bd8c84}
+.route-market-reference .em-bottom strong,.route-market-reference a{color:#694384}
+@media(max-width:1000px){.route-market-reference{grid-template-columns:1fr;gap:0;max-width:none;width:auto}}

@@ -73,7 +73,8 @@ function setup() {
   }
   foot.append(links);
   panel.append(foot);
-  heading.insertAdjacentElement('afterend',panel);
+  const referencePanel = document.getElementById('public-market-reference');
+  (referencePanel || heading).insertAdjacentElement('afterend',panel);
   let busy = false;
   let lastOk = 0;
   const unavailable = (reason) => {

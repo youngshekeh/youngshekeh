@@ -45,16 +45,28 @@ test('V5 withholds probability when evidence is missing instead of coercing null
 
 test('V5 requires every authority gate even when an empirical probability is present',async()=>{
   const fixtures={...base,
-    'public-v47-probability-lab':{gold:{probability_estimate_pct:72},ai_probability:{probability_pct:null}},
-    'public-market-calibration':{sample_size:5},
-    'public-gold-benchmark-calibration':{canonical:{eligible_n:5,paired_resolutions:5},policy:{adaptive_weighting_enabled:false}},
-    'public-gold-outcome-learning':{resolved_outcome_count:500,trade_eligible_source_count:5,horizons:[],calibration:{}},
-    'public-gold-signal-reputation':{state:'MATURE',pipeline:{max_sample_count:30}}
+    'public-v47-probability-lab':{ok:true,gold:{probability_estimate_pct:72},ai_probability:{probability_pct:null}},
+    'public-market-calibration':{ok:true,sample_size:5},
+    'public-gold-benchmark-calibration':{ok:true,canonical:{eligible_n:5,paired_resolutions:5},policy:{adaptive_weighting_enabled:false}},
+    'public-gold-outcome-learning':{ok:true,resolved_outcome_count:500,trade_eligible_source_count:5,horizons:[],calibration:{}},
+    'public-gold-signal-reputation':{ok:true,state:'MATURE',pipeline:{max_sample_count:30}}
   };
   const res=await run(fixtures);
   assert.equal(res.body.calibration_authority.passed_gates,5);
   assert.equal(res.body.calibration_authority.state,'PROBABILITY_AUTHORITY_WITHHELD');
   assert.equal(res.body.calibration_authority.probability_estimate_pct,null);
+});
+
+test('V5 rejects sample counts without explicit source-health confirmation',async()=>{
+  const fixtures=structuredClone(base);
+  fixtures['public-gold-outcome-learning']={resolved_outcome_count:500,trade_eligible_source_count:500};
+  fixtures['public-gold-signal-reputation']={state:'MATURE',pipeline:{max_sample_count:500}};
+  const res=await run(fixtures);
+  assert.equal(res.body.evidence_inventory.resolved_structural_outcomes,null);
+  assert.equal(res.body.evidence_inventory.max_signal_sample_count,null);
+  assert.equal(res.body.calibration_authority.passed_gates,0);
+  assert.equal(res.body.calibration_authority.state,'PROBABILITY_AUTHORITY_WITHHELD');
+  assert.equal(res.body.governance.capital_permission,'0R');
 });
 
 
