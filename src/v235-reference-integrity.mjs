@@ -2,7 +2,7 @@
 const positive=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
 const recent=(at,now,maxAge)=>{
  const t=Date.parse(String(at||''));
- return Number.isFinite(t)&&t<=now+5000&&now-t>=0&&now-t<=maxAge;
+ return Number.isFinite(t)&&t<=now+5000&&now-t<=maxAge;
 };
 export function verifiedPublicReferences(packet,now=Date.now()){
  const empty=Object.freeze({gold:null,bitcoin:null,count:0});

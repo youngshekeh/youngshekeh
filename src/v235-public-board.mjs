@@ -68,13 +68,21 @@ if(grid){
  // Share a single bounded Gold/BTC fetch with the homepage reference panel.
  // A price never becomes a broker tick or a core market breadth observation.
  const receive=event=>paint(event.detail??null);
- window.addEventListener('tfa:public-references',receive);
  // The reference module may resolve first on a warm browser cache.
  paint(window.__tfaPublicReferencePacket??null);
  // Time-based revalidation removes observations that age out while network is unavailable.
- const interval=window.setInterval(()=>paint(window.__tfaPublicReferencePacket??null),10000);
+ let interval=null;
+ const start=()=>{
+   if(interval!==null)return;
+   window.addEventListener('tfa:public-references',receive);
+   paint(window.__tfaPublicReferencePacket??null);
+   interval=window.setInterval(()=>paint(window.__tfaPublicReferencePacket??null),10000);
+ };
+ start();
  window.addEventListener('pagehide',()=>{
    window.clearInterval(interval);
+   interval=null;
    window.removeEventListener('tfa:public-references',receive);
- },{once:true});
+ });
+ window.addEventListener('pageshow',start);
 }
