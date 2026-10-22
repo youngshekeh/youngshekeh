@@ -1,4 +1,4 @@
-import {classifyOidcError} from './v249-oidc-policy.mjs';
+import {classifyOidcError,selectVercelSigningKey} from './v249-oidc-policy.mjs';
 
 const ISSUER='https://oidc.vercel.com/the-father';
 const JWKS_URL='https://oidc.vercel.com/the-father/.well-known/jwks';
@@ -49,15 +49,9 @@ async function verifyVercel(token:string){
   const [h,p,sig]=parts;
   const header=b64urlJson(h),payload=b64urlJson(p);
   if(header?.alg!=='RS256'||!header?.kid)throw new Error('token_header');
-  let set=await jwks();
-  let jwk=(set?.keys||[]).find((k:any)=>k.kid===header.kid&&k.alg==='RS256');
-  if(!jwk){
-    // A 15-minute cache can miss newly rotated Vercel signing keys.
-    // Fetch official JWKS ONCE again; never accept unverified signatures.
-    set=await jwks(true);
-    jwk=(set?.keys||[]).find((k:any)=>k.kid===header.kid&&k.alg==='RS256');
-  }
-  if(!jwk)throw new Error('signing_key_missing');
+  // Missing cached KID forces one fresh official JWKS read. Signature verification
+  // below is still mandatory and the claim constraints are unchanged.
+  const jwk=await selectVercelSigningKey({kid:header.kid,load:jwks});
   const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
   const valid=await crypto.subtle.verify(
     'RSASSA-PKCS1-v1_5',
