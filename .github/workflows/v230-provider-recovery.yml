@@ -1,0 +1,30 @@
+name: V230 provider recovery triage and support packet
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/v230-provider-recovery.mjs'
+      - 'scripts/v230-provider-escalation.mjs'
+      - 'supabase/recovery/v230-readonly-diagnostics.sql'
+      - 'docs/operations/evidence/v230-20261021-redacted.json'
+      - 'tests/v230-provider-recovery.test.mjs'
+      - '.github/workflows/v230-provider-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provider-support-packet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check src/v230-provider-recovery.mjs && node --check scripts/v230-provider-escalation.mjs
+      - run: node --test tests/v230-provider-recovery.test.mjs tests/v227-provider-incident-packet.test.mjs tests/v217-db-incident-acceptance.test.mjs
+      - run: |
+          node scripts/v230-provider-escalation.mjs docs/operations/evidence/v230-20261021-redacted.json build-v230-support
+          grep -q 'Ticket submission is NOT performed' build-v230-support/support-ticket-draft.md
+          grep -q 'NOT_CERTIFIED' build-v230-support/verified-incident.json
