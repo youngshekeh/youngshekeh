@@ -20,6 +20,26 @@
     <h1 class="command-title">Market structure,<br><span>turned into a kingdom.</span></h1>
     <p class="command-lede">Crown Pyramid maps ascending liquidity. Liquidity River shows the nearest pools around price. Royal Staircase exposes multi-timeframe location from Daily to Yearly. Every visual remains subordinate to evidence and capital permission.</p>
 
+          <aside class="editorial-monitor route-market-reference" id="public-market-reference" aria-label="Read-only public market reference prices">
+            <div class="em-head">
+              <div><div class="em-brand">THE FATHER / MARKET OBSERVATORY</div><div class="em-title">Market reference prices</div></div>
+              <span class="em-status" id="pmr-status" data-state="partial" role="status" aria-live="polite">CONNECTING</span>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Gold spot</div><div class="em-symbol">XAU / USD</div></div>
+              <div><div class="em-value" id="pmr-gold">Checking</div><div class="em-source" id="pmr-gold-info">Verifying price and source timestamp</div></div>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Bitcoin</div><div class="em-symbol">BTC / USD</div></div>
+              <div><div class="em-value" id="pmr-btc">Checking</div><div class="em-source" id="pmr-btc-info">Checking independent spot reference</div></div>
+            </div>
+            <div class="em-bottom"><strong>Evidence before execution.</strong> Independent public reference prices, not broker bid/ask or tradeable signals. Historical observations are never presented as current.
+              <span class="em-time" id="pmr-updated">Connecting to public sources</span>
+              <a href="/live-markets/">Explore the full market dashboard ↗</a>
+            </div>
+          </aside>
+
+
     <section class="command-strip q4-head-strip">
       <article><span>Q4 GOLD</span><strong id="q4-price">CHECKING</strong></article>
       <article><span>DAY DNA</span><strong id="q4-day-state">CHECKING</strong></article>
@@ -200,5 +220,6 @@
   </main>
   <script type="module" src="../src/public-surfaces.ts"></script>
   <script type="module" src="../src/public-gold-launch.mjs"></script>
+  <script type="module" src="../src/public-market-reference.mjs"></script>
 </body>
 </html>

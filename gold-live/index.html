@@ -20,6 +20,26 @@
     <h1 class="command-title">Structure can speak.<br><span>Capital still needs permission.</span></h1>
     <p class="command-lede">Live price, session state, structural liquidity, model evidence and execution permission are deliberately separated. A good-looking chart cannot override stale or unavailable data.</p>
 
+          <aside class="editorial-monitor route-market-reference" id="public-market-reference" aria-label="Read-only public market reference prices">
+            <div class="em-head">
+              <div><div class="em-brand">THE FATHER / MARKET OBSERVATORY</div><div class="em-title">Market reference prices</div></div>
+              <span class="em-status" id="pmr-status" data-state="partial" role="status" aria-live="polite">CONNECTING</span>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Gold spot</div><div class="em-symbol">XAU / USD</div></div>
+              <div><div class="em-value" id="pmr-gold">Checking</div><div class="em-source" id="pmr-gold-info">Verifying price and source timestamp</div></div>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Bitcoin</div><div class="em-symbol">BTC / USD</div></div>
+              <div><div class="em-value" id="pmr-btc">Checking</div><div class="em-source" id="pmr-btc-info">Checking independent spot reference</div></div>
+            </div>
+            <div class="em-bottom"><strong>Evidence before execution.</strong> Independent public reference prices, not broker bid/ask or tradeable signals. Historical observations are never presented as current.
+              <span class="em-time" id="pmr-updated">Connecting to public sources</span>
+              <a href="/live-markets/">Explore the full market dashboard ↗</a>
+            </div>
+          </aside>
+
+
     <section class="gold-command">
       <div class="gold-orb" aria-hidden="true"><span>AU</span></div>
       <div><span class="kicker">GOVERNED GOLD STATE</span><h2 id="gold-live-state">CHECKING</h2><p id="gold-live-copy">Reading Gold market spine and permission firewall.</p></div>
@@ -2448,5 +2468,6 @@
   </main>
   <script type="module" src="../src/public-surfaces.ts"></script>
   <script type="module" src="../src/public-gold-launch.mjs"></script>
+  <script type="module" src="../src/public-market-reference.mjs"></script>
 </body>
 </html>

@@ -88,6 +88,8 @@ test('V12 never turns relay bootstrap completion into trade permission',async()=
   assert.equal(res.body.bootstrap.state,'RELAY_STREAMING');
   assert.equal(res.body.bootstrap.operator_path,'NO_BOOTSTRAP_ACTION_REQUIRED');
   assert.equal(res.body.gates.passed_count,6);
+  assert.equal(res.body.next_action.gate,'NO_BOOTSTRAP_BLOCKER');
+  assert.equal(res.body.next_action.operator_path,'NO_BOOTSTRAP_ACTION_REQUIRED');
   assert.equal(res.body.bootstrap_firewall.successful_tick_is_not_execution_permission,true);
   assert.equal(res.body.bootstrap_firewall.no_orders,true);
   assert.equal(res.body.governance.action_permitted,'WAIT');

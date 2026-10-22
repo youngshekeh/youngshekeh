@@ -6,6 +6,9 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   base: './',
+  server: {
+    allowedHosts: ['terminal.local'],
+  },
   build: {
     outDir: process.env.APPDEPLOY_VITE_OUT_DIR || 'dist',
     sourcemap:
