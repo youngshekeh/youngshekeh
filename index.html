@@ -85,12 +85,12 @@
         <div class="wrap hero-grid">
           <div class="hero-copy-block" data-reveal>
             <div class="eyebrow">THE FATHER ANALYTICS · GLOBAL DECISION INTELLIGENCE</div>
-            <h1>See the system.<br />Find the problem.<br /><span>Build the solution.</span></h1>
+            <h1>Intelligence before<br /><span>decisions.</span></h1>
             <p class="hero-copy">
-              One command surface for <strong>World Economy, Global Markets, Global Trends and the African Economy</strong>, combining evidence-gated ingestion, forecast accountability, immutable publication snapshots and autonomous health monitoring.
+              Independent research on <strong>markets, the world economy, global trends and Africa.</strong> Clear evidence, precise timestamps and measured outcomes, in one connected workspace.
             </p>
             <p class="hero-subcopy">
-              Then the system goes one layer further: it maps causes, tests scenarios, develops solution options, measures outcomes and learns from what actually happened.
+              Explore the data, understand what changed and assess the implications. Each conclusion remains accountable to its source.
             </p>
             <div class="hero-actions">
               <a href="./intelligence/">Explore World Intelligence</a>
@@ -106,33 +106,24 @@
             </div>
           </div>
 
-          <div class="dimension-stage" data-parallax data-reveal aria-label="Animated global intelligence model">
-            <div class="depth-card depth-a">PROBLEMS</div>
-            <div class="depth-card depth-b">EVIDENCE</div>
-            <div class="depth-card depth-c">SOLUTIONS</div>
-            <div class="world-scene">
-              <div class="world-sphere">
-                <div class="sphere-glow"></div>
-                <div class="sphere-grid sphere-grid-a"></div>
-                <div class="sphere-grid sphere-grid-b"></div>
-                <div class="sphere-core">
-                  <span>Ω</span>
-                  <strong>WORLD<br />INTELLIGENCE</strong>
-                  <small>DECISION OS</small>
-                </div>
-              </div>
-              <div class="orbit orbit-a"></div>
-              <div class="orbit orbit-b"></div>
-              <div class="orbit orbit-c"></div>
-              <div class="world-node node-economy">WORLD<br />ECONOMY</div>
-              <div class="world-node node-markets">GLOBAL<br />MARKETS</div>
-              <div class="world-node node-trends">GLOBAL<br />TRENDS</div>
-              <div class="world-node node-africa">AFRICAN<br />ECONOMY</div>
-              <div class="world-node node-problems">PROBLEM<br />MAP</div>
-              <div class="world-node node-solutions">SOLUTION<br />LAB</div>
+          <aside class="editorial-monitor" id="public-market-reference" aria-label="Read-only public market reference prices">
+            <div class="em-head">
+              <div><div class="em-brand">THE FATHER / MARKET OBSERVATORY</div><div class="em-title">Current reference prices</div></div>
+              <span class="em-status" id="pmr-status" data-state="partial" role="status" aria-live="polite">CONNECTING</span>
             </div>
-            <div class="time-axis">DEPTH × TIME × EVIDENCE × OUTCOME</div>
-          </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Gold spot</div><div class="em-symbol">XAU / USD</div></div>
+              <div><div class="em-value" id="pmr-gold">Checking</div><div class="em-source" id="pmr-gold-info">Verifying price and source timestamp</div></div>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">Bitcoin</div><div class="em-symbol">BTC / USD</div></div>
+              <div><div class="em-value" id="pmr-btc">Checking</div><div class="em-source" id="pmr-btc-info">Checking independent spot reference</div></div>
+            </div>
+            <div class="em-bottom"><strong>Evidence before execution.</strong> Independent public reference prices, not broker bid/ask or tradeable signals. Historical observations are never presented as current.
+              <span class="em-time" id="pmr-updated">Connecting to public sources</span>
+              <a href="/live-markets/">Explore the full market dashboard ↗</a>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -1035,5 +1026,6 @@
     </footer>
 
     <script type="module" src="./src/main.ts"></script>
+    <script type="module" src="/src/public-market-reference.mjs"></script>
   </body>
 </html>
