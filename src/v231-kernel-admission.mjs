@@ -4,8 +4,11 @@ export function classifyV231KernelIncident(kernel){
  const detail=String(kernel?.body?.detail||'').slice(0,200);
  const stage=kernel?.body?.stage;
  const explicitInvalidSeal=/v180_kernel_security_seal_missing|security_seal_verification_failed/i.test(detail);
+ // V246: V180.9 emits a sanitized, explicit two-transport timeout code
+ // instead of the raw AbortError used by the previous sequential fallback.
+ // Recognize both without mistaking a missing/negative seal for a timeout.
  const timeout=kernel?.status===503&&stage==='KERNEL_SEAL'
-   &&(/timed out|deadline|aborterror/i.test(detail));
+   &&(/timed out|timeout|deadline|aborterror|DATABASE_SEAL_TRANSPORT_TIMEOUT|POOLER_(?:CONNECT_TIMEOUT|QUERY_DEADLINE|AUTH_TIMEOUT_OR_REJECTED)/i.test(detail));
  let code='PRIVATE_KERNEL_UNAVAILABLE';
  if(explicitInvalidSeal)code='SECURITY_SEAL_NOT_VERIFIED';
  else if(timeout)code='DATABASE_SEAL_TRANSPORT_TIMEOUT';
