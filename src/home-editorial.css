@@ -1,0 +1,101 @@
+/* V244 · THE FATHER editorial front page. Scope to the landing page only.
+   Markets/command/Gold dashboards deliberately retain their existing dark workspaces. */
+body.home-public .ambient-grid{display:none}
+body.home-public .topbar{
+ background:rgba(250,249,246,.97);
+ border-bottom:1px solid #e4dfe4;
+ box-shadow:0 2px 20px rgba(31,23,36,.025);
+ backdrop-filter:blur(14px)
+}
+body.home-public .brand strong{color:#251e2d}
+body.home-public .brand small{color:#675d6d}
+body.home-public .brand-mark{
+ border-radius:4px;border-color:#c3a86f;color:#533c20;
+ background:#f7eed9;box-shadow:none
+}
+body.home-public .topnav a{color:#3a313f;font-size:12px}
+body.home-public .topnav a:hover{color:#70469a}
+body.home-public .topnav .nav-cta{
+ background:#302239;color:#fff;border-color:#302239;
+ border-radius:4px;box-shadow:none
+}
+body.home-public .topnav .nav-cta:hover{background:#51345e;color:#fff}
+body.home-public .global-hero{
+ background:#f7f5f0;color:#261e2c;
+ border-bottom:1px solid #e8e1e7;
+ padding:74px 0 73px
+}
+body.home-public .global-hero::before{display:none}
+body.home-public .global-hero .eyebrow{color:#684e7e}
+body.home-public .global-hero h1{
+ font-family:Georgia,'Times New Roman',serif;
+ color:#261d30;font-weight:700;
+ font-size:clamp(49px,5.5vw,83px);
+ letter-spacing:-.052em;line-height:1.045
+}
+body.home-public .global-hero h1 span{
+ color:#7951a2;background:none;-webkit-text-fill-color:currentColor
+}
+body.home-public .global-hero .hero-copy{
+ color:#423949;font-size:clamp(16px,1.5vw,19px);
+ line-height:1.65
+}
+body.home-public .global-hero .hero-copy strong{color:#2b2230}
+body.home-public .global-hero .hero-subcopy{color:#615865}
+body.home-public .global-hero .hero-actions a{
+ background:#33263a;border:1px solid #33263a;
+ color:white;border-radius:4px;box-shadow:none
+}
+body.home-public .global-hero .hero-actions .secondary{
+ background:transparent;border-color:#bab0c0;color:#403448
+}
+body.home-public .global-hero .hero-actions a:hover{transform:translateY(-1px)}
+body.home-public .global-hero .truth-strip{
+ color:#5d5162;border-color:#dcd5dd
+}
+body.home-public .global-hero .dot.verified{background:#30805f}
+body.home-public .global-hero .dot.framework{background:#9c7433}
+body.home-public .global-hero .dot.probability{background:#4c719e}
+body.home-public .global-hero .dot.strategic{background:#765292}
+body.home-public .editorial-monitor{
+ background:#fff;color:#2d2433;border:1px solid #ded5e2;
+ border-radius:7px;box-shadow:0 22px 52px rgba(43,30,53,.075)
+}
+body.home-public .editorial-monitor::before{
+ height:2px;background:#79559e
+}
+body.home-public .editorial-monitor .em-head,
+body.home-public .editorial-monitor .em-row{border-color:#ebe6ec}
+body.home-public .editorial-monitor .em-brand{color:#795796}
+body.home-public .editorial-monitor .em-title,
+body.home-public .editorial-monitor .em-instrument,
+body.home-public .editorial-monitor .em-value{color:#2c2232}
+body.home-public .editorial-monitor .em-symbol,
+body.home-public .editorial-monitor .em-source,
+body.home-public .editorial-monitor .em-bottom,
+body.home-public .editorial-monitor .em-time{color:#665d6a}
+body.home-public .editorial-monitor .em-bottom strong{color:#4c345e}
+body.home-public .editorial-monitor .em-status{
+ border-color:#cbbfd2;color:#695c71;background:#fcfafd
+}
+body.home-public .editorial-monitor .em-status[data-state="online"]{
+ color:#1e684b;border-color:#a0c8b1;background:#f1f9f3
+}
+body.home-public .editorial-monitor .em-status[data-state="partial"]{
+ color:#795b1b;border-color:#d8c093;background:#fdf9ed
+}
+body.home-public .editorial-monitor .em-status[data-state="unavailable"]{
+ color:#8b413b;border-color:#d6aaa6;background:#fff7f6
+}
+body.home-public .editorial-monitor a{color:#704893}
+@media(max-width:900px){
+ body.home-public .global-hero{padding:52px 0 54px}
+}
+@media(max-width:520px){
+ body.home-public .global-hero h1{font-size:clamp(43px,11vw,60px)}
+ body.home-public .global-hero .hero-actions a{font-size:12px}
+ body.home-public .editorial-monitor{padding:19px}
+}
+@media(prefers-reduced-motion:reduce){
+ body.home-public .global-hero .hero-actions a:hover{transform:none}
+}
