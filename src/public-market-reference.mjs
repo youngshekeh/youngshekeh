@@ -1,4 +1,5 @@
 import './public-market-reference.css';
+import './home-editorial.css';
 import {verifiedPublicReferences} from './v235-reference-integrity.mjs';
 const ROOT=document.getElementById('public-market-reference');
 if(ROOT){
