@@ -1,4 +1,5 @@
-const num=v=>{const n=Number(v);return Number.isFinite(n)?n:null};
+import {researchNumber} from './q4-research-integrity.mjs';
+const num=researchNumber;
 const pick=(...v)=>v.find(x=>x!==null&&x!==undefined&&x!=='');
 const ageSeconds=(now,value)=>{
   const t=Date.parse(String(value||''));
@@ -30,7 +31,7 @@ export function buildGoldCommandSnapshot({
   const direction=pick(signal?.signal_time?.direction_candidate,lifecycle?.signal_time?.direction_candidate,watch?.context?.direction_candidate,'NEUTRAL');
   const lifecycleStage=pick(lifecycle?.lifecycle?.stage,watch?.context?.lifecycle_stage,'UNKNOWN');
   const anchorState=pick(live?.state,lifecycle?.anchor?.state,signal?.live_anchor?.state,'UNAVAILABLE');
-  const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&num(live?.quote?.mid)!==null;
+  const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&num(live?.quote?.mid)>0;
   const anchorPrice=liveFresh?num(live?.quote?.mid):num(pick(lifecycle?.anchor?.price,signal?.live_anchor?.price));
   const review=watch?.review_gate?.requirements??{};
   const next=watch?.next_signal_window?.next??null;
@@ -107,7 +108,7 @@ export function buildGoldCommandSnapshot({
     },
     evidence:{
       event_ledger_state:ledger?.state??'UNAVAILABLE',
-      event_count:num(ledger?.counts?.events)??0,
+      event_count:ledger?.ok===true?num(ledger?.counts?.events):null,
       latest_event_at:ledger?.latest_event_at??latestEvent?.event_at??null,
       latest_event:latestEvent?{
         event_key:latestEvent?.event_key??null,
@@ -116,8 +117,8 @@ export function buildGoldCommandSnapshot({
         condition:latestEvent?.condition??null
       }:null,
       alert_router_state:router?.state??'UNAVAILABLE',
-      visible_alerts:num(router?.counts?.visible_alerts)??0,
-      notification_ready:num(router?.counts?.notification_ready)??0,
+      visible_alerts:router?.ok===true?num(router?.counts?.visible_alerts):null,
+      notification_ready:router?.ok===true?num(router?.counts?.notification_ready):null,
       alert_chain_failures:num(router?.counts?.chain_failures),
       owner_review_state:'AAL2_OWNER_ONLY'
     },

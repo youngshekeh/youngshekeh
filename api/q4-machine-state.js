@@ -1,8 +1,8 @@
+import {researchNumber,positiveResearchNumber,researchSourceStatus} from '../src/q4-research-integrity.mjs';
 const ORIGIN='https://thefatheranalytics.com';
 
 function finite(value){
-  const n=Number(value);
-  return Number.isFinite(n)?n:null;
+  return researchNumber(value);
 }
 
 function zoneBy(rows,name){
@@ -12,7 +12,7 @@ function zoneBy(rows,name){
 function uniqueLevels(rows){
   const seen=new Set();
   return rows.filter(row=>{
-    const p=finite(row?.price);
+    const p=positiveResearchNumber(row?.price);
     if(p===null) return false;
     const key=p.toFixed(2);
     if(seen.has(key)) return false;
@@ -92,10 +92,18 @@ export default async function handler(req,res){
   }
 
   const now=new Date();
-  const day=bundle.day||{};
-  const zones=bundle.zones||{};
-  const liquidity=bundle.liquidity||{};
-  const price=finite(day?.current?.price)??finite(zones?.price)??finite(liquidity?.price);
+  const day=bundle.day?.ok===true?bundle.day:{};
+  const zones=bundle.zones?.ok===true?bundle.zones:{};
+  const liquidity=bundle.liquidity?.ok===true?bundle.liquidity:{};
+  if(![day,zones,liquidity].some(source=>source.ok===true))return res.status(503).json({
+    ok:false,version:'q4-machine-state-v2',state:'DATA_GATED',
+    governance:{action_permitted:'WAIT',capital_permission:'0R',automatic_execution:false}
+  });
+  const sourceStatus={day:researchSourceStatus(day,now.getTime()),
+    zones:researchSourceStatus(zones,now.getTime()),liquidity:researchSourceStatus(liquidity,now.getTime())};
+  const price=(sourceStatus.day.current?positiveResearchNumber(day?.current?.price):null)
+    ??(sourceStatus.zones.current?positiveResearchNumber(zones?.price):null)
+    ??(sourceStatus.liquidity.current?positiveResearchNumber(liquidity?.price):null);
   const zoneRows=Array.isArray(zones?.zones)?zones.zones:[];
   const daily=zoneBy(zoneRows,'daily');
   const quarterly=zoneBy(zoneRows,'quarterly');
@@ -155,9 +163,12 @@ export default async function handler(req,res){
 
   const timing=sessionWindow(now);
   const sourceTime=Date.parse(String(bundle.generated_at||''));
-  const ageSec=Number.isFinite(sourceTime)?Math.max(0,Math.round((now.getTime()-sourceTime)/1000)):null;
-  const usable=Number(bundle.usable_sources||0);
-  const health=usable>=3&&(ageSec===null||ageSec<=120)?'SYNCHRONIZED':usable>0?'DEGRADED':'DATA_GATED';
+  const bundleAge=Number.isFinite(sourceTime)&&sourceTime<=now.getTime()+5000?Math.max(0,Math.round((now.getTime()-sourceTime)/1000)):null;
+  const statuses=Object.values(sourceStatus);
+  const usable=statuses.filter(x=>x.available).length;
+  const ageSec=statuses.every(x=>x.age_seconds!==null)?Math.max(...statuses.map(x=>x.age_seconds)):null;
+  const health=usable===3&&statuses.every(x=>x.recent)&&price!==null
+    ?'SYNCHRONIZED':usable>0?'DEGRADED':'DATA_GATED';
 
   const currentPath=/UP/i.test(direction)&&/RECLAIM/i.test(acceptance)
     ?'UP_REPAIR'
@@ -173,7 +184,7 @@ export default async function handler(req,res){
     day_dna:dna,
     transmutation:{
       state:transmutationState,
-      rule_score:score,
+      rule_score:price===null?null:score,
       rule_score_label:'DETERMINISTIC_NOT_PROBABILITY',
       tension,
       evidence
@@ -181,14 +192,16 @@ export default async function handler(req,res){
     signal_time:timing,
     scenario_tree:{
       current_path:currentPath,
-      upside:upside.map(x=>({label:String(x.label||'LIQUIDITY'),price:finite(x.price)})),
-      downside:downside.map(x=>({label:String(x.label||'LIQUIDITY'),price:finite(x.price)})),
+      upside:price===null?[]:upside.map(x=>({label:String(x.label||'LIQUIDITY'),price:finite(x.price)})),
+      downside:price===null?[]:downside.map(x=>({label:String(x.label||'LIQUIDITY'),price:finite(x.price)})),
       note:'Structural path map only. Levels are not entries, stops, targets, or trade instructions.'
     },
     heartbeat:{
       state:health,
       usable_sources:usable,
       source_age_seconds:ageSec,
+      bundle_age_seconds:bundleAge,
+      source_observations:sourceStatus,
       source_truth_label:String(bundle.truth_label||'UNKNOWN'),
       order_route:'OFF',
       automatic_execution:false,

@@ -2,6 +2,9 @@ import './styles.css';
 import { paperQuoteView } from './paper-quote-view.mjs';
 import { createLiveMonitor, runBounded, marketAssetView } from './live-monitor.mjs';
 import { buildGoldSignalLifecycle } from './gold-signal-lifecycle.mjs';
+import { researchFetch as fetch } from './research-connection.mjs';
+import { withholdResearchPanel } from './research-panel-state.mjs';
+import { brokerTickerView } from './broker-ticker-view.mjs';
 
 type AnyJson = Record<string, any>;
 
@@ -21,6 +24,7 @@ let goldDiagnosticsAt: number | null = null;
 let goldPulseStarted = false;
 let liveGoldTickerBusy = false;
 let liveGoldTickerTimer: number | undefined;
+let latestLiveBrokerData: AnyJson | null = null;
 let signalMapBusy = false;
 let signalMapTimer: number | undefined;
 let signalLifecycleBusy = false;
@@ -109,6 +113,8 @@ function invalidateBrokerTranslation(message: string) {
 
 function renderGoldPulseClock() {
   const now = Date.now();
+  if(latestLiveBrokerData && !brokerTickerView(latestLiveBrokerData,now).verified)
+    renderV186LiveGoldTicker(latestLiveBrokerData);
   if (latestPaperQuoteFeed) renderV172PaperQuoteFeed();
 
   if (goldLastRefreshAt) {
@@ -3411,10 +3417,19 @@ async function refreshGoldDiagnostics() {
 
 
 function renderV186LiveGoldTicker(data: AnyJson) {
-  const q = data?.quote ?? null;
+  latestLiveBrokerData=data;
+  const ticker=brokerTickerView(data);
+  const q = ticker.quote;
+  if(!ticker.verified && byId('gold-market')?.textContent?.startsWith('BROKER LIVE')){
+    set('gold-price',null);set('gold-market','BROKER QUOTE UNVERIFIED');
+    set('v121-broker-age','EXPIRED');set('v117-broker-feed','UNVERIFIED');
+  }
+  if(withholdResearchPanel(data,'v186',{document,set,byId})){
+    set('v186-live-state','UNAVAILABLE');return;
+  }
   const quality = data?.quality ?? {};
   const source = data?.source ?? {};
-  const state = first(data?.state, 'UNAVAILABLE');
+  const state = ticker.state;
   set('v186-live-state', String(state).replaceAll('_', ' '));
   set('v186-bid', q?.bid == null ? null : Number(q.bid).toFixed(2));
   set('v186-ask', q?.ask == null ? null : Number(q.ask).toFixed(2));
@@ -3425,11 +3440,11 @@ function renderV186LiveGoldTicker(data: AnyJson) {
   set('v186-tick-rate', quality?.tick_count_60s == null ? null : `${quality.tick_count_60s}/60s`);
   set('v186-range', quality?.range_5m == null ? null : Number(quality.range_5m).toFixed(2));
   set('v186-source', source?.connected ? `${source.source_code || 'MT5'} · ${source.provider_symbol || 'XAUUSD'}` : 'NOT CONNECTED');
-  set('v186-detail', data?.state === 'BROKER_LIVE'
+  set('v186-detail', ticker.verified
     ? `Read-only broker tick · ${q?.real_account_quote ? 'REAL account quote' : 'DEMO account quote'} · machine orders OFF · capital 0R.`
     : 'Waiting for the V186 read-only MT5 live-market bridge. Delayed public context remains available separately.');
 
-  if (data?.state === 'BROKER_LIVE' && q?.mid != null && Number(q?.age_seconds) < 3) {
+  if (ticker.verified) {
     set('gold-price', Number(q.mid).toFixed(2));
     set('gold-market', 'BROKER LIVE · XAUUSD');
     set('v121-broker-age', `${Number(q.age_seconds).toFixed(1)}s · LIVE`);
@@ -3468,6 +3483,7 @@ function zoneRangeText(z: AnyJson) {
   return `${f(z?.low)} → ${f(z?.high)}`;
 }
 function renderV187SignalMap(data: AnyJson) {
+  if(withholdResearchPanel(data,'v187',{document,set,byId,grids:['v187-zone-grid']}))return;
   const sd=data?.signal_day??{}, st=data?.signal_time??{}, dna=data?.day_dna??{}, anchor=data?.live_anchor??{};
   set('v187-signal-day', sd?.state ? `${String(sd.state).replaceAll('_',' ')} · ${sd.score ?? 0}/100` : null);
   set('v187-day-dna', dna?.day_state ? `${dna.day_state} · ${dna.liquidity_phase ?? 'PHASE N/A'}` : null);
@@ -3541,6 +3557,7 @@ function formatLiquidityLevel(x: AnyJson) {
   return `${x.session} ${String(x.kind).replaceAll('_',' ')} · ${Number(x.price).toFixed(2)}${Number.isFinite(d)?` · Δ ${d.toFixed(2)}`:''}`;
 }
 function renderV188Lifecycle(data: AnyJson) {
+  if(withholdResearchPanel(data,'v188',{document,set,byId,grids:['v188-session-grid']}))return;
   const life=data?.lifecycle??{}, st=data?.structural_state??{}, sl=data?.session_liquidity??{};
   set('v188-stage', life?.stage ? String(life.stage).replaceAll('_',' ') : null);
   set('v188-score', life?.detector_score == null ? null : `${life.detector_score}/100 · DETECTOR`);
@@ -3605,6 +3622,7 @@ function startV188Lifecycle(){
 }
 
 function renderV189TriggerWatch(data: AnyJson) {
+  if(withholdResearchPanel(data,'v189',{document,set,byId,grids:['v189-trigger-grid']}))return;
   set('v189-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
   const next=data?.next_signal_window?.next;
   set('v189-next-window', next?.label ?? null);
@@ -3653,6 +3671,7 @@ function startV189TriggerWatch(){
 }
 
 function renderV191EventLedger(data: AnyJson) {
+  if(withholdResearchPanel(data,'v191',{document,set,byId,grids:['v191-event-grid']}))return;
   set('v191-chain', data?.state ? String(data.state).replaceAll('_',' ') : null);
   set('v191-count', data?.counts?.events ?? 0);
   set('v191-failures', data?.counts?.chain_failures ?? null);
@@ -3704,6 +3723,7 @@ function startV191EventLedger(){
 }
 
 function renderV192AlertRouter(data: AnyJson) {
+  if(withholdResearchPanel(data,'v192',{document,set,byId,grids:['v192-alert-grid']}))return;
   set('v192-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
   set('v192-visible', data?.counts?.visible_alerts ?? 0);
   set('v192-notify', data?.counts?.notification_ready ?? 0);
@@ -3758,6 +3778,7 @@ function startV192AlertRouter(){
 }
 
 function renderV194GoldCommand(data: AnyJson) {
+  if(withholdResearchPanel(data,'v194',{document,set,byId,grids:['v194-component-grid']}))return;
   const command=data?.command??{}, evidence=data?.evidence??{}, blockers=Array.isArray(data?.blockers)?data.blockers:[];
   set('v194-state', data?.state ? String(data.state).replaceAll('_',' ') : null);
   set('v194-live', command?.live_market_state ? String(command.live_market_state).replaceAll('_',' ') : null);
@@ -3822,6 +3843,7 @@ function startV194GoldCommand(){
 }
 
 function renderV195BridgeReadiness(data: AnyJson){
+  if(withholdResearchPanel(data,'v195',{document,set,byId}))return;
   const gates=data?.gates??{}, counts=data?.public_counts??{};
   const pass=(value:boolean)=>value===true?'PASS':'WAITING';
   const state=String(data?.state||'UNAVAILABLE');
@@ -3868,6 +3890,7 @@ function startV195BridgeReadiness(){
 }
 
 function renderV196FeedQuality(data: AnyJson){
+  if(withholdResearchPanel(data,'v196',{document,set,byId}))return;
   const g=data?.gates??{};
   const label=(v:boolean)=>v===true?'PASS':'WAITING';
   set('v196-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
@@ -3919,6 +3942,7 @@ function startV196FeedQuality(){
 }
 
 function renderV197LiveAnchorGuard(data: AnyJson){
+  if(withholdResearchPanel(data,'v197',{document,set,byId}))return;
   const blockers=Array.isArray(data?.blockers)?data.blockers:[];
   set('v197-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
   set('v197-certified',data?.anchor?.certified===true?'YES':'NO');
@@ -3955,6 +3979,7 @@ function startV197LiveAnchorGuard(){
 }
 
 function renderV198SessionIntelligence(data: AnyJson){
+  if(withholdResearchPanel(data,'v198',{document,set,byId}))return;
   const ctx=data?.context??{}, cons=data?.consensus??{}, blockers=Array.isArray(data?.blockers)?data.blockers:[];
   set('v198-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
   set('v198-score',data?.deterministic_review_score==null?null:`${data.deterministic_review_score}/100`);
@@ -4016,6 +4041,7 @@ function startV198SessionIntelligence(){
 }
 
 function renderV199RelayObservability(data: AnyJson){
+  if(withholdResearchPanel(data,'v199',{document,set,byId}))return;
   const b=data?.bridge??{}, r=data?.relay??{}, m=data?.milestones??{};
   const pass=(v:boolean)=>v===true?'PASS':'WAITING';
   const state=String(data?.state||'UNAVAILABLE');
@@ -4067,6 +4093,7 @@ function startV199RelayObservability(){
 }
 
 function renderV202RelayLedger(data: AnyJson){
+  if(withholdResearchPanel(data,'v202',{document,set,byId,grids:['v202-event-grid']}))return;
   const counts=data?.counts??{}, events=Array.isArray(data?.events)?data.events:[];
   set('v202-state',String(data?.state||'UNAVAILABLE').replaceAll('_',' '));
   set('v202-count',counts?.events??0);
@@ -4123,6 +4150,7 @@ function startV202RelayLedger(){
 }
 
 function renderV204ActivationOrchestrator(data: AnyJson){
+  if(withholdResearchPanel(data,'v204',{document,set,byId,grids:['v204-gate-grid']}))return;
   const state=String(data?.state||'UNAVAILABLE');
   const phase=data?.phase??{},stall=data?.stall??{},gates=data?.gates??{};
   set('v204-state',state.replaceAll('_',' '));

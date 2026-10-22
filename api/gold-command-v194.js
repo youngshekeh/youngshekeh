@@ -17,7 +17,7 @@ async function fetchJson(path){
       cache:'no-store',redirect:'error',signal:AbortSignal.timeout(9500)
     });
     const body=await r.json().catch(()=>null);
-    if(!body||typeof body!=='object'||Array.isArray(body)) return {ok:false,state:'UNAVAILABLE',upstream_status:r.status};
+    if(!r.ok||!body||typeof body!=='object'||Array.isArray(body)) return {ok:false,state:'UNAVAILABLE',upstream_status:r.status};
     return body;
   }catch{
     return {ok:false,state:'UNAVAILABLE',error:'upstream_transport_unavailable'};

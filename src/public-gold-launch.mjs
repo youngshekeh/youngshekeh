@@ -1,5 +1,6 @@
 import './public-gold-launch.css';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
+import {researchFetch as fetch} from './research-connection.mjs';
 
 // Public research surface. It cannot submit trades, elevate permission or infer a live quote.
 const GOLD_ENDPOINT = '/api/public-gold-read';
