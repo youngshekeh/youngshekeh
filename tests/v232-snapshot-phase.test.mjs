@@ -40,12 +40,29 @@ test('unknown or disabled protected critical job prohibits changes',()=>{
  const y=sample();y.jobs=y.jobs.filter(z=>z.jobid!==21);
  assert.equal(assessV232SnapshotPhase(y).ready_for_manual_review,false);
 });
+test('actual Gold shadow at minute 1 blocks moving its source to minute 1',()=>{
+ const x=sample();
+ x.jobs.find(j=>j.jobid===20).schedule='1-59/5 * * * 1-5';
+ const r=assessV232SnapshotPhase(x);
+ assert.equal(r.ready_for_manual_review,false);
+ assert.ok(r.blockers.includes('GOLD_SOURCE_SHADOW_PHASE_COLLISION'));
+ const sql=read('supabase/recovery/v232-gold-spot-snapshot-phase-apply.sql');
+ assert.match(sql,/v232_gold_source_shadow_phase_collision/);
+ assert.match(sql,/jobid=20/);
+});
+test('any overlapping minute or unknown shadow schedule is blocked',()=>{
+ for(const pattern of ['1-59/5 * * * 1-5','*/1 * * * *','1,6,11,16,21,26,31,36,41,46,51,56 * * * 1-5','not-a-cron']){
+   const x=sample();x.jobs.find(j=>j.jobid===20).schedule=pattern;
+   assert.equal(assessV232SnapshotPhase(x).ready_for_manual_review,false,pattern);
+ }
+});
+
 test('SQL apply is single-job atomic, preserves activity and checks real database seal',()=>{
  const s=read('supabase/recovery/v232-gold-spot-snapshot-phase-apply.sql');
  assert.match(s,/begin;/i);assert.match(s,/commit;/i);
  assert.match(s,/pg_try_advisory_xact_lock/);
  assert.match(s,/v_seal:=public\.command_kernel_seal_status\(\)/);
- assert.match(s,/if v_count<>6/);
+ assert.match(s,/if v_count<>7/);
  assert.match(s,/cron\.alter_job\(17,schedule := '1-59\/5 \* \* \* 1-5'\)/);
  assert.equal((s.match(/cron\.alter_job\(/g)||[]).length,1);
  assert.doesNotMatch(s,/active\s*:=\s*false|pg_terminate_backend|ALTER SYSTEM|execute_trade|create-checkout|drop table/i);

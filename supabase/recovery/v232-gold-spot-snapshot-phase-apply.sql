@@ -38,10 +38,19 @@ begin
     (jobid=13 and jobname='gold-live-snapshot-5m'
      or jobid=16 and jobname='live_markets_snapshot_capture'
      or jobid=17 and jobname='gold_spot_snapshot_capture'
+     or jobid=20 and jobname='gold_spot_shadow_capture'
      or jobid=21 and jobname='gold_signal_resolution_finalize'
      or jobid=39 and jobname='tfa-transactional-email-dispatch'
      or jobid=95 and jobname='tfa-v136-gold-execution-firewall');
-  if v_count<>6 then raise exception 'v232_protected_cron_inventory_drift'; end if;
+  if v_count<>7 then raise exception 'v232_protected_cron_inventory_drift'; end if;
+
+  -- Fail closed: the existing downstream shadow capture fires at minute 1.
+  -- Rephasing its source into the same minute can create a source/consumer race.
+  if exists(select 1 from cron.job where jobid=20
+    and jobname='gold_spot_shadow_capture' and active=true
+    and schedule='1-59/5 * * * 1-5') then
+    raise exception 'v232_gold_source_shadow_phase_collision';
+  end if;
 
   select * into t from cron.job
   where jobid=17 and jobname='gold_spot_snapshot_capture'
