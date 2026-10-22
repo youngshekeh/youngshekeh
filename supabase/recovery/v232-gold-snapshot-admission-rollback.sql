@@ -14,6 +14,10 @@ begin
   select count(*) into n from private.v232_gold_snapshot_phase_baseline
   where jobid in(13,16) and applied_at is not null;
   if n<>2 then raise exception 'v232_applied_baseline_incomplete'; end if;
+  select count(*) into n from private.v232_gold_snapshot_phase_baseline b
+    join cron.job j on j.jobid=b.jobid
+    where b.jobid in(13,16) and b.applied_at is not null;
+  if n<>2 then raise exception 'v232_target_job_missing_for_rollback'; end if;
   for r in select b.jobid,b.jobname,b.command_fingerprint,b.previous_schedule,
           b.governed_schedule,j.schedule as current_schedule,j.command,j.active,j.jobname as current_name
     from private.v232_gold_snapshot_phase_baseline b
