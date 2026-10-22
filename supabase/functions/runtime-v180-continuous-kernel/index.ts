@@ -1,3 +1,4 @@
+import {verifySealWithHedge} from './v245-seal-hedge.mjs';
 import postgres from "npm:postgres@3.4.7";
 const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
 const SUPABASE_URL=Deno.env.get('SUPABASE_URL')||'https://mpcelmjiycjpdyyflisn.supabase.co';
@@ -71,15 +72,15 @@ function safePoolerFailureClass(error:unknown){
   return 'POOLER_UNAVAILABLE';
 }
 async function requireKernelSeal(){
-  try{return await verifySealViaPooler()}
-  catch(error){
-    // Explicit negative seal verdict is not a transport fault and cannot fall back.
-    if(String(error).includes('v180_kernel_security_seal_missing'))throw error;
-    console.warn('V218_SEAL_POOLER_FALLBACK',{reason:safePoolerFailureClass(error),rest_fallback_budget_ms:SEAL_DEADLINE_MS});
-  }
-  const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
-  if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
-  return {...seal,transport:'POSTGREST_VERIFIED'};
+  return await verifySealWithHedge({
+    pooler:verifySealViaPooler,
+    rest:async()=>{
+      const seal:any=await rpc('command_kernel_seal_status',{},SEAL_DEADLINE_MS);
+      if(!seal?.sealed)throw new Error('v180_kernel_security_seal_missing');
+      return {...seal,transport:'POSTGREST_VERIFIED'};
+    },
+    hedgeDelayMs:2000
+  });
 }
 // Read only the same active owners as V180 REST. The SQL credentials stay private.
 // If transport fails, the original PostgREST owner lookup remains mandatory.
@@ -241,7 +242,7 @@ Deno.serve(async(req:Request)=>{
     const failed=runs.some(x=>x.status==='FAILED');
     return Response.json({
       ok:!failed,
-      version:'v180.8-bounded-seal-transport-v1',
+      version:'v180.9-hedged-verifiable-seal-v1',
       generated_at:new Date().toISOString(),
       owners_processed:owners.length,
       runs,
@@ -254,7 +255,7 @@ Deno.serve(async(req:Request)=>{
   }catch(error){
     console.error('V180_CONTINUOUS_KERNEL_ERROR',stage,String(error).slice(0,400));
     return Response.json({
-      ok:false,version:'v180.8-bounded-seal-transport-v1',state:'FAIL_CLOSED',stage,
+      ok:false,version:'v180.9-hedged-verifiable-seal-v1',state:'FAIL_CLOSED',stage,
       error:'continuous_kernel_unavailable',detail:String(error).slice(0,220),
       governance:{action_permitted:'WAIT',capital_permission:'0R',funds_moved:false,trades_sent:false}
     },{
