@@ -43,7 +43,13 @@ if(ROOT){
    status.dataset.state=count===2?'online':count===1?'partial':'unavailable';
    updated.textContent='Checked '+new Date().toLocaleTimeString()+' · Independent public feeds';
    lastOk=now;
-  }catch{unavailable('Provider unavailable · retrying automatically. No stale price shown.');}
+   window.__tfaPublicReferencePacket=data;
+   window.dispatchEvent(new CustomEvent('tfa:public-references',{detail:data}));
+  }catch{
+   unavailable('Provider unavailable · retrying automatically. No stale price shown.');
+   window.__tfaPublicReferencePacket={ok:false};
+   window.dispatchEvent(new CustomEvent('tfa:public-references',{detail:{ok:false}}));
+  }
   finally{pending=false;}
  }
  void refresh();

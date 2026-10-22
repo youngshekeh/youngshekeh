@@ -1,0 +1,4 @@
+# V236 · Single public source refresh and transparent initial UI
+The V234 public market observer and V235 main board originally requested the same fixed API independently every 15 seconds. V236 shares a single fetch and broadcasts verified public-only data to both. An in-memory public packet is set to ok:false on failed requests to prevent showing a stale quote. The board revalidates age every 10 seconds without new HTTP requests; public observer continues its bounded 15-second cadence and visibility-aware refresh.
+During first paint, private engines and less widely accessible market sources say AWAITING SOURCE or NOT CERTIFIED, not endless SYNCING. This is transparency, not replacement of existing engines.
+This is source/build and UI copy work. No database, external authentication, trading, subscription or commercial payment changes. Permanent third-party uptime cannot be guaranteed.
