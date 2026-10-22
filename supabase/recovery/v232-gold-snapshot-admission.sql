@@ -38,7 +38,8 @@ begin
     end if;
     if exists(select 1 from private.v232_gold_snapshot_phase_baseline b
               where b.jobid=r.jobid and (b.command_fingerprint<>md5(r.command)
-                or b.jobname<>r.jobname or b.governed_schedule<>r.desired)) then
+                or b.jobname<>r.jobname or b.governed_schedule<>r.desired
+                or b.previous_schedule<>'*/5 * * * 1-5')) then
       raise exception 'v232_command_or_baseline_drift';
     end if;
     if r.schedule='*/5 * * * 1-5' then
