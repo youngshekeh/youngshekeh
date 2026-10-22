@@ -1,0 +1,300 @@
+{
+  "observed_at_utc": "2026-10-22T18:43:08Z",
+  "day_of_week": "Thursday",
+  "source": "Supabase read-only cron.job schedule response; captured October 22 2026",
+  "snapshot_only": true,
+  "active_job_count": 58,
+  "notes": "Static scheduling evidence only. No job commands, credentials, or customer data. Does not establish actual simultaneous execution, CPU, or saturation.",
+  "jobs": [
+    {
+      "id": 1,
+      "name": "tfa-system-integrity",
+      "schedule": "5 */6 * * *"
+    },
+    {
+      "id": 2,
+      "name": "tfa-global-trends-daily",
+      "schedule": "30 5 * * *"
+    },
+    {
+      "id": 3,
+      "name": "tfa-forecast-ledger-qa",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "id": 4,
+      "name": "tfa-source-ingestion",
+      "schedule": "17 * * * *"
+    },
+    {
+      "id": 5,
+      "name": "tfa-trend-synthesis",
+      "schedule": "22 5 * * *"
+    },
+    {
+      "id": 6,
+      "name": "tfa-synthesis-on-new-evidence",
+      "schedule": "7,27,47 * * * *"
+    },
+    {
+      "id": 7,
+      "name": "tfa-report-publication-watch",
+      "schedule": "35 * * * *"
+    },
+    {
+      "id": 8,
+      "name": "tfa-newsroom-ingestion",
+      "schedule": "19 * * * *"
+    },
+    {
+      "id": 10,
+      "name": "tfa-article-seed-ingestion",
+      "schedule": "23 * * * *"
+    },
+    {
+      "id": 11,
+      "name": "nigeria-economy-weekly",
+      "schedule": "40 6 * * 1"
+    },
+    {
+      "id": 12,
+      "name": "member-alert-generation-hourly",
+      "schedule": "45 * * * *"
+    },
+    {
+      "id": 13,
+      "name": "gold-live-snapshot-5m",
+      "schedule": "*/5 * * * 1-5"
+    },
+    {
+      "id": 15,
+      "name": "gold_live_session_finalize",
+      "schedule": "10 21 * * 1-5"
+    },
+    {
+      "id": 16,
+      "name": "live_markets_snapshot_capture",
+      "schedule": "*/5 * * * 1-5"
+    },
+    {
+      "id": 17,
+      "name": "gold_spot_snapshot_capture",
+      "schedule": "*/5 * * * 1-5"
+    },
+    {
+      "id": 18,
+      "name": "gold_spot_session_finalize",
+      "schedule": "15 21 * * 1-5"
+    },
+    {
+      "id": 20,
+      "name": "gold_spot_shadow_capture",
+      "schedule": "1-59/5 * * * 1-5"
+    },
+    {
+      "id": 21,
+      "name": "gold_signal_resolution_finalize",
+      "schedule": "2-59/5 * * * 1-5"
+    },
+    {
+      "id": 22,
+      "name": "tfa_gold_contract_path_resolver_v1",
+      "schedule": "0-59/10 * * * *"
+    },
+    {
+      "id": 23,
+      "name": "tfa_gold_exposure_firewall_refresh_v1",
+      "schedule": "1-59/10 * * * *"
+    },
+    {
+      "id": 24,
+      "name": "tfa_gold_permission_compiler_v1",
+      "schedule": "2-59/10 * * * *"
+    },
+    {
+      "id": 26,
+      "name": "tfa-flutterwave-reconciliation",
+      "schedule": "12 * * * *"
+    },
+    {
+      "id": 27,
+      "name": "tfa-subscription-expiry-reaper",
+      "schedule": "27 * * * *"
+    },
+    {
+      "id": 28,
+      "name": "global-markets-daily-publication",
+      "schedule": "59 5 * * 1-5"
+    },
+    {
+      "id": 29,
+      "name": "global-markets-publication-watch",
+      "schedule": "29 6-14 * * 1-5"
+    },
+    {
+      "id": 30,
+      "name": "tfa-production-smoke-sweep",
+      "schedule": "6,21,36,51 * * * *"
+    },
+    {
+      "id": 31,
+      "name": "tfa-source-ingestion-recovery",
+      "schedule": "47 * * * *"
+    },
+    {
+      "id": 32,
+      "name": "tfa-enterprise-monitor-evaluator",
+      "schedule": "8,23,38,53 * * *"
+    },
+    {
+      "id": 33,
+      "name": "tfa-enterprise-webhook-delivery",
+      "schedule": "3-59/5 * * * *"
+    },
+    {
+      "id": 34,
+      "name": "tfa-billing-subscription-watch",
+      "schedule": "22 */6 * * *"
+    },
+    {
+      "id": 35,
+      "name": "tfa-trend-synthesis-recovery-0900",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "id": 36,
+      "name": "tfa-global-trends-daily-recovery-0910",
+      "schedule": "10 9 * * *"
+    },
+    {
+      "id": 37,
+      "name": "tfa-trend-synthesis-recovery-1300",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "id": 38,
+      "name": "tfa-global-trends-daily-recovery-1310",
+      "schedule": "10 13 * * *"
+    },
+    {
+      "id": 39,
+      "name": "tfa-transactional-email-dispatch",
+      "schedule": "4-59/5 * * * *"
+    },
+    {
+      "id": 40,
+      "name": "tfa-member-alert-sync",
+      "schedule": "49 * * * *"
+    },
+    {
+      "id": 41,
+      "name": "tfa-autonomous-ops-watch",
+      "schedule": "7,22,37,52 * * *"
+    },
+    {
+      "id": 42,
+      "name": "tfa-member-digest-daily",
+      "schedule": "35 5 * * *"
+    },
+    {
+      "id": 43,
+      "name": "tfa-owner-anomaly-watch",
+      "schedule": "13,43 * * *"
+    },
+    {
+      "id": 44,
+      "name": "tfa-v70-autonomous-core",
+      "schedule": "7-59/15 * * * *"
+    },
+    {
+      "id": 48,
+      "name": "tfa-v71-shadow-reconcile",
+      "schedule": "2,17,32,47 * * *"
+    },
+    {
+      "id": 50,
+      "name": "tfa-v72-edge-load-shed-enforcer",
+      "schedule": "14-59/15 * * * *"
+    },
+    {
+      "id": 51,
+      "name": "tfa-v73-shadow-promotion-review",
+      "schedule": "12 * * * *"
+    },
+    {
+      "id": 58,
+      "name": "tfa-v77-model-review",
+      "schedule": "14 * * * *"
+    },
+    {
+      "id": 59,
+      "name": "tfa-v78-qa-matrix",
+      "schedule": "27 * * * *"
+    },
+    {
+      "id": 60,
+      "name": "tfa-v78-qa-reconcile",
+      "schedule": "29 * * * *"
+    },
+    {
+      "id": 61,
+      "name": "tfa-v80-gold-state-capture",
+      "schedule": "3-59/10 * * * *"
+    },
+    {
+      "id": 62,
+      "name": "tfa-v80-gold-state-reconcile",
+      "schedule": "4-59/10 * * * *"
+    },
+    {
+      "id": 67,
+      "name": "tfa-v85-calibration-review",
+      "schedule": "16 * * * *"
+    },
+    {
+      "id": 68,
+      "name": "tfa-v86-capital-permission-firewall",
+      "schedule": "5-59/10 * * * *"
+    },
+    {
+      "id": 73,
+      "name": "tfa-v98-scenario-ev-proxy",
+      "schedule": "10-59/15 * * * *"
+    },
+    {
+      "id": 75,
+      "name": "tfa-v107-provenance-receipts",
+      "schedule": "13-59/15 * * * *"
+    },
+    {
+      "id": 77,
+      "name": "tfa-v110-provenance-checkpoint",
+      "schedule": "0-59/30 * * * *"
+    },
+    {
+      "id": 78,
+      "name": "tfa-v119-gold-desk-capture",
+      "schedule": "6-59/10 * * * *"
+    },
+    {
+      "id": 79,
+      "name": "tfa-v119-gold-desk-reconcile",
+      "schedule": "7-59/10 * * * *"
+    },
+    {
+      "id": 81,
+      "name": "tfa-v123-gold-transition-detector",
+      "schedule": "8-59/10 * * * *"
+    },
+    {
+      "id": 93,
+      "name": "tfa-v134-gold-broker-adapter-lab",
+      "schedule": "17 * * * *"
+    },
+    {
+      "id": 95,
+      "name": "tfa-v136-gold-execution-firewall",
+      "schedule": "9-59/10 * * * *"
+    }
+  ]
+}
