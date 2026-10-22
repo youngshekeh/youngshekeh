@@ -39,7 +39,8 @@ test('private kernel and market reference lanes separate, no fabricated breadth'
  assert.match(html,/class="editorial-evidence-panel"/);
  assert.doesNotMatch(html,/class="command-radar"/);
  assert.match(html,/src="\/src\/v235-public-board.mjs"/);
- assert.match(src,/api\/public-market-reference/);
+ assert.match(readFileSync(new URL('../src/public-market-reference.mjs',import.meta.url),'utf8'),/api\\/public-market-reference/);
+ assert.match(src,/addEventListener\\('tfa:public-references'/);
  assert.match(src,/CORE BREADTH UNVERIFIED/);
  assert.match(src,/0\/7 CORE/);
  assert.match(main,/SOURCE UNAVAILABLE/);
