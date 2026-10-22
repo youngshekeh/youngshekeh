@@ -1,6 +1,7 @@
 import './styles.css';
 import './autonomous.css';
 import './mission.css';
+import {usablePrivateState} from './private-state-bridge.mjs';
 
 const cleanRoute = new Set(['/access', '/member', '/owner', '/status']);
 if (cleanRoute.has(window.location.pathname)) {
@@ -86,8 +87,8 @@ function renderClosedLoopLearning(stack: any) {
     missionText('learningV98State', 'WITHHELD');
     missionText('learningV99State', '0R · DB-GATED');
     missionText('learningV86State', 'BLOCKED · 0R');
-    missionText('learningV96Detail', 'Internal attribution continues database-side; public bridge is restricted.');
-    missionText('learningV97Detail', 'Internal latency-cost calibration continues database-side; broker costs remain unavailable.');
+    missionText('learningV96Detail', 'Internal attribution could not be verified while the private research channel is unavailable.');
+    missionText('learningV97Detail', 'Internal latency-cost calibration could not be verified; broker costs remain unavailable.');
     missionText('learningV98Detail', 'Scenario EV proxy remains unpublished while evidence is not publicly verifiable.');
     missionText('learningV99Detail', 'Risk readiness remains fail-closed while the governed database bridge is restricted.');
     missionText('learningV86Detail', 'Capital permission remains 0R. Public runtime restrictions cannot be bypassed.');
@@ -130,10 +131,12 @@ async function loadAutonomousState() {
     const response = await fetch('/api/autonomous-state', {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      cache: 'no-store'
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000)
     });
     if (!response.ok) throw new Error(`autonomy_http_${response.status}`);
     const state = await response.json();
+    if (!usablePrivateState(state)) throw new Error('autonomy_state_unverified');
     const health = state?.health ?? {};
     const governance = state?.governance ?? {};
     const connectors = health?.connectors ?? {};
@@ -177,6 +180,13 @@ async function loadAutonomousState() {
     if (state?.mode) modeNode.dataset.state = String(state.mode);
   } catch {
     setAutonomyText('autonomyMode', 'DATABASE STATE UNAVAILABLE');
+    modeNode.dataset.state = 'UNAVAILABLE';
+    setAutonomyText('autonomyScore', '--');
+    for (const id of ['autonomyDatabase','autonomyEdge','autonomyEvidence','autonomyMarket','marketMemoryState','stackV70','stackV71','stackV72']) setAutonomyText(id, 'UNVERIFIED');
+    setAutonomyText('autonomyConnectors', 'Required connector freshness unverified');
+    setAutonomyText('stackV73', 'LOCKED');
+    setAutonomyText('autonomyTest', 'NOT CERTIFIED');
+    setAutonomyText('autonomyTestDetail', 'Private research state is unavailable; previous observations have been cleared.');
     setAutonomyText('autonomyUpdated', 'The public state channel could not be verified.');
     renderTags('autonomyBlockers', ['PUBLIC_STATE_CHANNEL_UNAVAILABLE']);
     renderTags('autonomyActions', ['FAIL_CLOSED']);
@@ -836,8 +846,11 @@ function renderAutonomousHealth(health: any) {
       clear.className = 'autonomy-event autonomy-event-clear';
       const strong = document.createElement('strong');
       const small = document.createElement('small');
-      strong.textContent = kind === 'incident' ? 'NO ACTIVE INCIDENTS' : 'NO RECOVERY ACTIONS';
-      small.textContent = emptyText;
+      const verified = Boolean(health?.version) && Array.isArray(health?.lanes) && health.lanes.length > 0;
+      strong.textContent = verified
+        ? (kind === 'incident' ? 'NO ACTIVE INCIDENTS' : 'NO RECOVERY ACTIONS')
+        : (kind === 'incident' ? 'INCIDENT STATUS UNVERIFIED' : 'RECOVERY STATUS UNVERIFIED');
+      small.textContent = verified ? emptyText : 'Private health evidence is unavailable. Absence of observations does not prove a healthy system.';
       clear.append(strong, small);
       host.appendChild(clear);
       return;

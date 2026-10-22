@@ -1,0 +1,21 @@
+name: V237 private research state truth
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+  push:
+    branches: [the-father-analytics-deploy]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-state-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --test tests/v237-private-state.test.mjs tests/launch-readiness-gate.test.mjs tests/v230-launch-guards.test.mjs tests/v236-reference-poll.test.mjs
