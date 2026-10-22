@@ -1,0 +1,5 @@
+# V235 · Credible public reference market board and editorial clean-up
+V234 independent public API already returned attributed Gold API indicative XAU spot and Coinbase BTC spot while Supabase engine/DB continued experiencing transport timeouts.
+V235 does not fake source availability or join price references to broker live order submission. It adds an independently verified research-only Gold/Bitcoin fallback for the homepage market board and rechecks freshness every 15 seconds. Unavailable source values are withheld, cross-asset breadth remains unverified; no market trend is inferred from isolated spot prices.
+UI upgrades: remove animated radar, clearer provenance card, fewer top nav links, less decorative ticker and larger readable market/engine labels. Deep engines and pages preserved. A private brief timeout shows core offline, engine states not certified and navigation links remain operational.
+No Supabase schema/cron changes, no payment unlock, WAIT/0R preserved. Source tests and Vercel production smoke required. No fixed provider can guarantee permanent availability.
