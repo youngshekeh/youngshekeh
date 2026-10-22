@@ -1,5 +1,5 @@
 import './status-editorial.css';
-import { assessPublicResearchAvailability } from './public-research-readiness.mjs';
+import {probePublicStatus} from './status-public-lane.mjs';
 import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
@@ -54,19 +54,8 @@ async function load() {
       readEdge('public-final-readiness'),
       readEdge('public-billing-acceptance'),
       readSite('/api/public-gold-read'),
-      readSite('/api/public-market-reference'),
     ]);
-    const [auth, readiness, billing, gold, publicReference] = results.map(completed);
-    const publicSurface = assessPublicResearchAvailability({
-      pageServed:true,reference:publicReference
-    });
-    show('public-page', publicSurface.page_state, publicSurface.page_delivered);
-    show('public-reference', publicSurface.reference_state, publicSurface.research_reference_available);
-    const publicProof = document.getElementById('public-proof');
-    if (publicProof) publicProof.textContent =
-      'Gold source current: ' + (publicSurface.gold_reference_current ? 'YES' : 'NO') +
-      ' · Bitcoin receipt current: ' + (publicSurface.bitcoin_reference_current ? 'YES' : 'NO') +
-      ' · Reference only, not broker bid/ask, trading permission or paid entitlement.';
+    const [auth, readiness, billing, gold] = results.map(completed);
     // Do not amplify a known database incident with 107 independent private
     // QA probes. Defer the expensive OIDC relay until cheap launch inputs pass.
     // A deferred matrix is unverified, never a green QA or identity verdict.
@@ -125,10 +114,7 @@ async function load() {
     const at = document.getElementById('last-checked');
     if (at) at.textContent = 'Checked ' + new Date().toLocaleString() + ' · Independent probes · fail closed';
   } catch {
-    show('public-page', 'PAGE DELIVERED', true);
-    show('public-reference', 'NO CURRENT SOURCES', false);
-    const publicProof = document.getElementById('public-proof');
-    if (publicProof) publicProof.textContent = 'Reference source check unavailable. The website page loaded, but current prices are not verified.';
+    // The independently fetched public lane owns its own status during private failures.
     for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'kernel', 'gold', 'launch-gate']) {
       show(id, id === 'launch-gate' ? 'LAUNCH HOLD' : 'UNAVAILABLE', false);
     }
@@ -140,5 +126,25 @@ async function load() {
   }
 }
 
-document.getElementById('status-refresh')?.addEventListener('click', () => { void load(); });
+// The user can see verified public research availability immediately, without
+// waiting for private database prechecks to finish or time out.
+async function loadPublic(){
+ return probePublicStatus({
+  readReference:()=>readSite('/api/public-market-reference'),
+  report(publicSurface){
+   show('public-page',publicSurface.page_state,publicSurface.page_delivered);
+   show('public-reference',publicSurface.reference_state,publicSurface.research_reference_available);
+   const proof=document.getElementById('public-proof');
+   if(proof)proof.textContent=
+    'Gold source current: '+(publicSurface.gold_reference_current?'YES':'NO')+
+    ' · Bitcoin receipt current: '+(publicSurface.bitcoin_reference_current?'YES':'NO')+
+    ' · Read-only references, not broker bid/ask, trading permission or paid entitlement.';
+  }
+ });
+}
+document.getElementById('status-refresh')?.addEventListener('click',()=>{
+ void loadPublic();
+ void load();
+});
+void loadPublic();
 void load();
