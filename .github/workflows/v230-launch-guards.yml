@@ -1,0 +1,27 @@
+name: V230 Gold truth and launch guard proof
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/gold-live-price.js'
+      - 'api/production-closure.js'
+      - 'src/v230-launch-guards.mjs'
+      - 'tests/v230-launch-guards.test.mjs'
+      - '.github/workflows/v230-launch-guards.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check api/gold-live-price.js && node --check api/production-closure.js && node --check src/v230-launch-guards.mjs
+      - run: node --test tests/v230-launch-guards.test.mjs tests/v229-gold-read-budget.test.mjs tests/v228-queryless-gold.test.mjs tests/v222-public-gold-launch.test.mjs
+      - run: grep -q 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts

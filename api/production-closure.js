@@ -1,4 +1,5 @@
 import { getVercelOidcToken } from '@vercel/oidc';
+import { positiveMarketPrice } from '../src/v230-launch-guards.mjs';
 
 const SUPABASE_FUNCTIONS='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1';
 const DEPENDENCY_TIMEOUT_MS=6000;
@@ -132,7 +133,7 @@ export default async function handler(req,res){
   const allDependenciesHealthy=Object.values(dependencyHealth).every(Boolean);
 
   const market=desk?.market||{};
-  const marketObserved=deskR.ok&&Number.isFinite(Number(market?.price));
+  const marketObserved=deskR.ok&&positiveMarketPrice(market?.price)!==null;
   const marketDataUsable=marketObserved&&market?.hard_stale!==true;
   const executionGradeQuote=market?.execution_quote_allowed===true&&market?.delayed_feed!==true;
   const researchReady=marketDataUsable&&desk?.execution?.system_capital_permission==='0R';
@@ -218,7 +219,7 @@ export default async function handler(req,res){
     },
     live_market:{
       symbol:'GC=F / XAUUSD execution requires broker quote',
-      price:Number.isFinite(Number(market?.price))?Number(market.price):null,
+      price:positiveMarketPrice(market?.price),
       market_time:market?.market_time??null,
       market_status:market?.market_status??'UNKNOWN',
       engine_state:market?.engine_state??'UNKNOWN',
