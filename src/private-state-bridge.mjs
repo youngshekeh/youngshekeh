@@ -5,7 +5,8 @@ export function usablePrivateState(body){
     &&body.ok===true&&body.usable!==false;
 }
 export function createPrivateStateHandler({getToken,fetchImpl=fetch,
-  deadlineMs=PRIVATE_STATE_DEADLINE_MS}={}){
+  deadlineMs=PRIVATE_STATE_DEADLINE_MS,functionSlug='runtime-v70-autonomous-state'}={}){
+  if(!['runtime-v70-autonomous-state','runtime-v115-mission-brief'].includes(functionSlug))throw Error('invalid_private_read_target');
   return async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
@@ -13,7 +14,7 @@ export function createPrivateStateHandler({getToken,fetchImpl=fetch,
     const unavailable=(error,body=null)=>{
       res.setHeader('Retry-After','60');
       return res.status(503).json({ok:false,usable:false,
-        state:body?.state==='LOAD_SHED_DB_RECOVERY'?'LOAD_SHED_DB_RECOVERY':'PRIVATE_STATE_UNAVAILABLE',
+        state:['LOAD_SHED_DB_RECOVERY','STALE_RESEARCH_SNAPSHOT','RESEARCH_GOVERNANCE_UNVERIFIED','WORKLOAD_IDENTITY_UNAVAILABLE','PRIVATE_STATE_RETRY_COOLDOWN'].includes(body?.state)?body.state:'PRIVATE_STATE_UNAVAILABLE',
         error,action:'WAIT',capital_permission:'0R',
         live_order_submission_enabled:false,automatic_execution:false,
         governance:{action_permitted:'WAIT',capital_permission:'0R',
@@ -27,7 +28,7 @@ export function createPrivateStateHandler({getToken,fetchImpl=fetch,
     try{token=await getToken();}catch{}
     if(!token)return unavailable('vercel_workload_identity_unavailable');
     try{
-      const target=new URL('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v70-autonomous-state');
+      const target=new URL('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/'+functionSlug);
       target.search=new URL(req.url,'https://thefatheranalytics.com').search;
       const upstream=await fetchImpl(target,{headers:{Authorization:`Bearer ${token}`,
         Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-PUBLIC-SHELL/237'},

@@ -1,0 +1,21 @@
+name: V238 bounded private research recovery
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+  push:
+    branches: [the-father-analytics-deploy]
+permissions:
+  contents: read
+jobs:
+  canonical-read-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs
+      - run: node --test tests/v238-canonical-read.test.mjs tests/v237-private-state.test.mjs tests/launch-readiness-gate.test.mjs tests/v230-launch-guards.test.mjs
