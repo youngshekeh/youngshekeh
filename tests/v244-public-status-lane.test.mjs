@@ -27,8 +27,10 @@ test('a failed public source does not mark the site itself down',async()=>{
 });
 test('tampered stale references never become current',async()=>{
  const input=current();
- input.data.assets.gold.source_updated_at='2026-10-22T12:00:00.000Z';
- input.data.assets.bitcoin.observed_at='2026-10-22T12:00:00.000Z';
+ input.data={...input.data,assets:{
+  gold:{...input.data.assets.gold,source_updated_at:'2026-10-22T12:00:00.000Z'},
+  bitcoin:{...input.data.assets.bitcoin,observed_at:'2026-10-22T12:00:00.000Z'}
+ }};
  const result=await probePublicStatus({readReference:async()=>input,now:()=>now});
  assert.equal(result.verified_references,0);
  assert.equal(result.page_state,'PAGE DELIVERED');
