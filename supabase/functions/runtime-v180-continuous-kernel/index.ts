@@ -1,3 +1,4 @@
+import {verifyOidcProbeWithBoundedRetry} from './v249-oidc-probe-retry.mjs';
 import {verifySealWithHedge} from './v245-seal-hedge.mjs';
 import postgres from "npm:postgres@3.4.7";
 const AUTHZ='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-oidc-probe';
@@ -13,7 +14,18 @@ function eq(a:string,b:string){if(!a||!b||a.length!==b.length)return false;let d
 async function authorized(req:Request){
   const auth=req.headers.get('authorization')||'',token=auth.toLowerCase().startsWith('bearer ')?auth.slice(7).trim():'';
   if(!token)return false;if(SERVICE_ROLE&&eq(token,SERVICE_ROLE))return true;
-  try{const r=await fetch(AUTHZ,{headers:{Authorization:auth,Accept:'application/json'},signal:AbortSignal.timeout(5000)});const b=await r.json().catch(()=>null);return r.ok&&b?.ok===true&&b?.state==='VERCEL_WORKLOAD_VERIFIED'}catch{return false}
+  async function readProbe(){
+    const r=await fetch(AUTHZ,{headers:{Authorization:auth,Accept:'application/json'},
+      signal:AbortSignal.timeout(5000)});
+    const b=await r.json().catch(()=>null);
+    return {status:r.status,verified:r.ok&&b?.ok===true&&b?.state==='VERCEL_WORKLOAD_VERIFIED'};
+  }
+  try{
+    // Retry only the verifier's explicit infrastructure 503 once.
+    // Invalid JWT/claims 401, absent auth and any uncertain results stay denied.
+    const probe=await verifyOidcProbeWithBoundedRetry(readProbe);
+    return probe?.verified===true;
+  }catch{return false}
 }
 function headers(){return{apikey:SERVICE_ROLE,Authorization:`Bearer ${SERVICE_ROLE}`,Accept:'application/json','Content-Type':'application/json'}}
 async function dbRows(path:string){
