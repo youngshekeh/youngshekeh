@@ -1,5 +1,6 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 import { certifyKernelReceipt } from '../src/kernel-receipt-gate.mjs';
+import { classifyV231KernelIncident } from '../src/v231-kernel-admission.mjs';
 
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
 
@@ -13,6 +14,7 @@ function failClosed(res,status,state,error,detail,stages={}){
     state,error,detail:safeDetail(detail),stages,at:new Date().toISOString()
   });
   res.setHeader('Cache-Control','no-store');
+  if(status===503)res.setHeader('Retry-After','300');
   res.setHeader('X-TFA-Engine','V180-SEALED-KERNEL');
   return res.status(status).json({
     ok:false,
@@ -74,7 +76,7 @@ export default async function handler(req,res){
     return failClosed(res,401,'FAIL_CLOSED','unauthorized_cron_heartbeat');
   }
 
-  const schedule=String(req.headers['x-vercel-cron-schedule']||'4-59/15 * * * *');
+  const schedule=String(req.headers['x-vercel-cron-schedule']||'4-59/5 * * * *');
   console.log('V180_HEARTBEAT_ACCEPTED',{schedule,mode:'SEALED_KERNEL_FIRST',at:new Date().toISOString()});
 
   let oidc='';
@@ -141,6 +143,7 @@ export default async function handler(req,res){
     kernel.body?.stage||kernel.body?.error||'private_kernel_request_failed',
     {
       kernel:{ok:false,status:kernel.status,duration_ms:kernel.duration_ms},
+      incident:classifyV231KernelIncident(kernel),
       database_scheduler:{changed:false,reason:'preserve_unrelated_cron_jobs'},
       recovery:{skipped:true,reason:'explicit_approved_runbook_required'},
       seal:{skipped:true},

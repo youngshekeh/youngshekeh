@@ -1,0 +1,21 @@
+name: V231 kernel admission phase verification
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths: ['vercel.json','api/ops-heartbeat.js','src/v231-kernel-admission.mjs','tests/v231-kernel-admission.test.mjs','.github/workflows/v231-kernel-admission.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kernel-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check api/ops-heartbeat.js && node --check src/v231-kernel-admission.mjs
+      - run: node --test tests/v231-kernel-admission.test.mjs tests/v218-seal-transport-pressure.test.mjs tests/v216-kernel-receipt.test.mjs tests/v207-kernel-deadline.test.mjs
