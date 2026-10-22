@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Market Observatory | Gold & Bitcoin Reference Prices | THE FATHER ANALYTICS</title>
+  <meta name="description" content="Independent, timestamped Gold and Bitcoin spot references for research. See source freshness and observations collected in your browser tab, without broker execution or simulated market history." />
+  <meta name="robots" content="index,follow,max-snippet:-1" />
+  <meta name="theme-color" content="#f7f6f2" />
+  <link rel="canonical" href="https://thefatheranalytics.com/market-observatory/" />
+  <link rel="stylesheet" href="../src/styles.css" />
+</head>
+<body class="observatory-page">
+  <header class="ob-nav">
+    <a class="ob-identity" href="../" aria-label="THE FATHER ANALYTICS home"><span class="ob-monogram">TF</span><span><strong>THE FATHER</strong><small>ANALYTICS</small></span></a>
+    <nav aria-label="Main navigation"><a href="../">Home</a><a href="../live-markets/">Market desk</a><a href="../research/">Research</a><a href="../status/">Service status</a></nav>
+  </header>
+  <main class="ob-wrap">
+    <div class="ob-utility"><span>THE FATHER / INDEPENDENT MARKET DATA</span><span>RESEARCH RELEASE 01 · OCT 2026</span></div>
+    <section class="ob-intro" aria-labelledby="ob-title">
+      <div class="ob-headline"><div class="ob-kicker">THE MARKET OBSERVATORY</div><h1 id="ob-title">The price.<br><em>The provenance.</em></h1><p>Two public market references, precisely timestamped. No account, no private database dependency, no guessing when a source goes quiet.</p></div>
+      <aside class="ob-brief"><div class="ob-brief-top"><span class="ob-status-dot"></span> RESEARCH-ONLY ACCESS</div><strong>Independent by design.</strong><p>These spot references are for observation. They are not broker bid/ask, trade signals or proof that the autonomous kernel is operational.</p><div class="ob-permission"><span>EXECUTION</span><strong>OFF</strong><span>CAPITAL</span><strong>0R</strong></div></aside>
+    </section>
+    <section class="ob-feedbar" aria-label="Market sources status"><div><span class="ob-micro">PUBLIC DATA FEED</span><strong id="ob-feed-status" role="status" aria-live="polite">CHECKING SOURCES</strong><span id="ob-last-check">Waiting for independently attributed observations</span></div><button type="button" id="ob-refresh" class="ob-button">Refresh sources <span aria-hidden="true">↗</span></button></section>
+    <section class="ob-prices" aria-label="Indicative asset references">
+      <article class="ob-asset" id="ob-gold-card">
+        <div class="ob-asset-head"><span>01 / PRECIOUS METALS</span><span id="ob-gold-state" class="ob-asset-state">UNVERIFIED</span></div>
+        <div class="ob-asset-symbol">XAU / USD <span>Gold spot · USD per troy oz</span></div>
+        <div class="ob-price" id="ob-gold">Unavailable</div>
+        <div class="ob-source"><span>DATA SOURCE</span><strong>Gold API</strong></div>
+        <div class="ob-source"><span>SOURCE OBSERVATION</span><strong id="ob-gold-time">Not verified</strong></div>
+        <p id="ob-gold-proof" class="ob-smallprint">Waiting for a provider-supplied source timestamp.</p>
+      </article>
+      <article class="ob-asset" id="ob-btc-card">
+        <div class="ob-asset-head"><span>02 / DIGITAL ASSETS</span><span id="ob-btc-state" class="ob-asset-state">UNVERIFIED</span></div>
+        <div class="ob-asset-symbol">BTC / USD <span>Bitcoin spot · USD per BTC</span></div>
+        <div class="ob-price" id="ob-btc">Unavailable</div>
+        <div class="ob-source"><span>DATA SOURCE</span><strong>Coinbase</strong></div>
+        <div class="ob-source"><span>RESPONSE RECEIVED</span><strong id="ob-btc-time">Not verified</strong></div>
+        <p id="ob-btc-proof" class="ob-smallprint">Coinbase spot endpoint does not supply a provider price timestamp; receipt time will be disclosed separately.</p>
+      </article>
+    </section>
+    <section class="ob-observations" aria-labelledby="ob-observations-title">
+      <div class="ob-section-title"><div><span class="ob-micro">IN-TAB OBSERVATIONS</span><h2 id="ob-observations-title">An honest trace, not a synthetic chart.</h2></div><p id="ob-chart-summary">Charts will appear after multiple verified responses. Only observations captured in this open page are included.</p></div>
+      <div class="ob-plots">
+        <article><div class="ob-chart-label"><strong>Gold</strong><span id="ob-gold-count">0 observations</span></div><svg viewBox="0 0 600 144" preserveAspectRatio="none" aria-label="Gold spot observations captured in this tab" role="img"><path class="ob-baseline" d="M0 72 L600 72"></path><path id="ob-gold-trace" class="ob-gold-trace" d=""></path></svg></article>
+        <article><div class="ob-chart-label"><strong>Bitcoin</strong><span id="ob-btc-count">0 observations</span></div><svg viewBox="0 0 600 144" preserveAspectRatio="none" aria-label="Bitcoin spot observations captured in this tab" role="img"><path class="ob-baseline" d="M0 72 L600 72"></path><path id="ob-btc-trace" class="ob-btc-trace" d=""></path></svg></article>
+      </div>
+      <p class="ob-chart-note">Session-only observations · automatically scaled vertical range · no historical backfill · samples are not suitable for chart-based trading decisions. Closing this tab clears the trace.</p>
+    </section>
+    <section class="ob-bottom-grid">
+      <article><span class="ob-micro">EVIDENCE STANDARD</span><h3>Missing data stays missing.</h3><p>Gold requires a current source timestamp within two minutes. Bitcoin is only accepted as a recent Coinbase response receipt, not source-time verification. Stale references vanish automatically.</p></article>
+      <article><span class="ob-micro">PLATFORM OPERATIONS</span><h3>Research is not the private engine.</h3><p>The public observatory can work while private kernel certification, account entitlement and live broker feeds are unavailable. <a href="../status/">Inspect launch status ↗</a></p></article>
+    </section>
+  </main>
+  <footer class="ob-footer"><div><strong>THE FATHER ANALYTICS</strong><span>Intelligence before decisions.</span></div><div><a href="../privacy/">Privacy</a><a href="../terms/">Terms</a><a href="../status/">Status</a></div></footer>
+  <script type="module" src="../src/market-observatory.mjs"></script>
+</body>
+</html>
