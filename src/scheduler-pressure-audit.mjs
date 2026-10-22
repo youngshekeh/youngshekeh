@@ -1,5 +1,5 @@
 // V247: SCHEDULED START COLLISIONS ONLY, not actual DB concurrency.
-// Pure, offline analysis. This module cannot access network, SQL or cron.alter_job.
+// Pure, offline analysis. This module cannot access network, SQL or modify cron schedules.
 function field(text,min,max){
  if(typeof text!=='string'||!text.length)throw Error('invalid_cron_field');
  const hits=new Set();
