@@ -3427,8 +3427,9 @@ function renderV186LiveGoldTicker(data: AnyJson) {
   if(withholdResearchPanel(data,'v186',{document,set,byId})){
     set('v186-live-state','UNAVAILABLE');return;
   }
-  const quality = data?.quality ?? {};
-  const source = data?.source ?? {};
+  const broker = data?.live_broker ?? data;
+  const quality = broker?.quality ?? {};
+  const source = broker?.source ?? {};
   const state = ticker.state;
   set('v186-live-state', String(state).replaceAll('_', ' '));
   set('v186-bid', q?.bid == null ? null : Number(q.bid).toFixed(2));

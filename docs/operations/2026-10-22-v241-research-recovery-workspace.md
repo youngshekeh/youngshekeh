@@ -68,6 +68,10 @@ This is containment and correctness work, not a database recovery certificate.
 Private autonomous QA, the kernel seal and real paper-broker evidence remain
 separate release gates. Trading stays WAIT/0R and checkout remains locked.
 
-Final local validation: 537/537 repository tests pass; Vite production build passes;
+Final local validation: 538/538 repository tests pass; Vite production build passes;
 git diff whitespace checks pass. The DOM retains all 936 original IDs, verified
 by count and matching sorted-ID checksum 2653677643. New workspace IDs are unique.
+
+Final review also binds the server command snapshot to the same source-time and
+bid/ask checks as the ticker. A quality fresh flag alone cannot promote a stale
+or malformed quote. Flat and nested broker contracts retain their source state.
