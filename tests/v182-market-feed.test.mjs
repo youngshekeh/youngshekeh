@@ -72,6 +72,6 @@ test('malformed JSON, arrays and HTTP failures stay fail-closed and uncached', a
 test('the deadline aborts upstream work and never retries it', async () => {
   const ctx=fixture((url,options) => new Promise((resolve,reject) => options.signal.addEventListener('abort',() => reject(new Error('aborted')))));
   const pending=ctx.run(); const timer=[...ctx.timers.values()][0];
-  assert.equal(timer.delay,7_500); timer.callback();
+  assert.equal(timer.delay,10_500); timer.callback();
   assert.equal((await pending).status,503); assert.equal(ctx.calls(),1); assert.equal(ctx.timers.size,0);
 });

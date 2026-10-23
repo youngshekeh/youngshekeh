@@ -6,6 +6,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
+    "api/market-feed.js": { "maxDuration": 20 },
     "api/connection-pressure-shadow.js": { "maxDuration": 40 },
     "api/peak-minute-spreader-status.js": { "maxDuration": 40 }
   },
