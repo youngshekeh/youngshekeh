@@ -36,7 +36,8 @@ async function dbState(){
       Accept:'application/json'
     },
     body:'{}',
-    signal:AbortSignal.timeout(9000)
+    // PostgreSQL still cancels at 25s; permit its bounded result to arrive.
+    signal:AbortSignal.timeout(26000)
   });
   const body=await r.json().catch(()=>null);
   if(!r.ok||!body)throw new Error(`v1461_rpc_${r.status}`);

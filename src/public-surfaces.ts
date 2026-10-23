@@ -1743,7 +1743,7 @@ async function loadV148PredictiveCollisionShadow() {
 }
 
 async function loadV147ConnectionPressureShadow() {
-  const pressure = await readLocal('/api/connection-pressure-shadow', 18000);
+  const pressure = await readLocal('/api/connection-pressure-shadow', 38000);
   if (!pressure?.ok) {
     set('v147-state', 'PRESSURE · FAIL CLOSED');
     set('v147-copy', 'The private connection-pressure model is unavailable. No pool, scheduler, or execution change is permitted.');
@@ -1803,7 +1803,7 @@ async function loadV147ConnectionPressureShadow() {
 }
 
 async function loadV1461ControlledPeakSpreader() {
-  const spreader = await readLocal('/api/peak-minute-spreader-status', 18000);
+  const spreader = await readLocal('/api/peak-minute-spreader-status', 38000);
   if (!spreader?.ok) {
     set('v1461-state', 'SPREADER · FAIL CLOSED');
     set('v1461-copy', 'The controlled scheduler experiment status is unavailable. No further scheduler action is permitted from this surface.');

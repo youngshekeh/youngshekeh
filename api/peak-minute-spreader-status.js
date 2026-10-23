@@ -39,7 +39,8 @@ export default async function handler(req,res){
         'User-Agent':'THE-FATHER-ANALYTICS-V146.1-PEAK-SPREADER/1.0'
       },
       cache:'no-store',
-      signal:AbortSignal.timeout(15000)
+      // Existing 25s database limit + Edge auth/transport margin; no retries.
+      signal:AbortSignal.timeout(35000)
     });
     const body=await upstream.json().catch(()=>null);
     res.setHeader('Cache-Control','no-store');

@@ -1,5 +1,12 @@
 // One page-wide read-only admission lane for the database-backed research APIs.
 // The independent public price observer deliberately does not use this lane.
+// Only the two scheduler-history diagnostics need margin beyond the database's
+// unchanged 25s statement limit. Price readers keep their existing deadlines.
+export function researchReadDeadline(key,fallback=20000){
+ const path=String(key).split('?')[0];
+ return path==='/api/connection-pressure-shadow'||path==='/api/peak-minute-spreader-status'
+  ?40000:fallback;
+}
 export function createResearchTransport({fetchImpl=globalThis.fetch, origin='https://thefatheranalytics.com',
  now=Date.now, isVisible=()=>true, onState=()=>{}, limit=3, queueLimit=64,
  failureThreshold=3, cooldownMs=30000, maxCooldownMs=120000, deadlineMs=20000}={}) {
@@ -69,7 +76,7 @@ export function createResearchTransport({fetchImpl=globalThis.fetch, origin='htt
   active.add(task);task.epoch=epoch;
   counters.network_started++;counters.peak_active=Math.max(counters.peak_active,active.size);emit();
   let response,probeOk=false,backendFailure=false;
-  const deadline=AbortSignal.timeout(deadlineMs);
+  const deadline=AbortSignal.timeout(researchReadDeadline(task.key,deadlineMs));
   const signal=AbortSignal.any([task.controller.signal,deadline]);
   let abortListener;
   const aborted=new Promise((_,reject)=>{
