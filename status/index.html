@@ -76,6 +76,12 @@
         <div id="recovery-triage" class="value wait" role="status" aria-live="polite">NOT CHECKED · NO AUTOMATIC PROBE</div>
         <p id="recovery-triage-detail" class="muted">Runs only on your click. No database changes, service role, cron edits, financial execution, or account access.</p>
         <button id="recovery-triage-check" class="secondary" type="button">CHECK READ-ONLY RECOVERY PATH</button>
+        <div class="status-escalation-operator" aria-label="Prepare support report without sending data">
+          <p class="muted">After checking the network path, prepare a sanitized support report to copy into your own Supabase Support case. No ticket is sent automatically.</p>
+          <button type="button" class="secondary" id="support-escalation-prepare" disabled>PREPARE &amp; COPY SUPPORT REPORT</button>
+          <p class="muted" id="support-escalation-state" role="status" aria-live="polite">Run the read-only recovery check before preparing a report.</p>
+          <textarea id="support-escalation-report" class="status-support-text" readonly rows="9" aria-label="Copy-ready sanitized provider support report" hidden></textarea>
+        </div>
         <p class="muted">Provider incident investigation: <a href="https://supabase.com/dashboard/support/new" rel="noopener noreferrer" target="_blank">Supabase Support ↗</a>. Trading remains WAIT / 0R.</p>
       </section>
       <section class="card status-box">

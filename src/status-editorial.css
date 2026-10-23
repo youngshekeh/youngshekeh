@@ -53,3 +53,11 @@ body.status-public::before{display:none}
 .status-public .status-feed-detail{margin:8px 0 0;font-size:12px;line-height:1.65}
 .status-public .status-public-disclosure{color:#746979;font-size:12px;line-height:1.7;margin:14px 0}
 .status-public .status-availability-grid .value{font-size:clamp(16px,1.75vw,23px)}
+
+/* V259 · operator-facing support report, never a remote ticket submission */
+.status-public .status-escalation-operator{border-top:1px solid #e8e1e8;margin-top:22px;padding-top:18px}
+.status-public .status-escalation-operator p{font-size:12px;line-height:1.75;margin:8px 0 13px}
+.status-public .status-escalation-operator button{max-width:100%;white-space:normal}
+.status-public .status-escalation-operator button:disabled{opacity:.48;cursor:not-allowed}
+.status-public .status-support-text{display:block;box-sizing:border-box;width:100%;min-height:170px;margin:14px 0 6px;padding:14px;border:1px solid #d9d1de;background:#fff;border-radius:4px;font-size:12px;line-height:1.65;color:#3e3441;font-family:ui-monospace,Consolas,monospace;resize:vertical}
+.status-public .status-support-text[hidden]{display:none}

@@ -5,6 +5,7 @@ import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
 import {probeStatusDependencies} from './status-dependency-admission.mjs';
 import {inspectResearchSources} from './status-market-lane.mjs';
+import {buildSupabaseSupportPacket} from './v259-support-escalation.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -206,10 +207,18 @@ async function inspectExternalAuthGateway(){
   }
 }
 document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
+let latestRecoveryForSupport=null;
 let recoveryTriageInFlight=false;
 async function inspectRecoveryTriage(){
  if(recoveryTriageInFlight)return;
  recoveryTriageInFlight=true;
+ latestRecoveryForSupport=null;
+ const supportButton=document.getElementById('support-escalation-prepare');
+ if(supportButton)supportButton.disabled=true;
+ const report=document.getElementById('support-escalation-report');
+ if(report){report.value='';report.hidden=true}
+ const feedback=document.getElementById('support-escalation-state');
+ if(feedback)feedback.textContent='Checking transport evidence before preparing the report.';
  const button=document.getElementById('recovery-triage-check');
  if(button)button.disabled=true;
  show('recovery-triage','CHECKING · HTTP TRANSPORT ONLY',false);
@@ -225,12 +234,21 @@ async function inspectRecoveryTriage(){
   const auth=verified?d.checks?.auth_http?.state:'NOT VERIFIED';
   const rest=verified?d.checks?.postgrest_http?.state:'NOT VERIFIED';
   const incident=verified&&d.checks?.database_incident_reported===true;
+  const supportPacket=verified?buildSupabaseSupportPacket(d):null;
+  latestRecoveryForSupport=supportPacket?d:null;
+  if(supportButton)supportButton.disabled=!supportPacket;
+  if(feedback)feedback.textContent=supportPacket
+   ?'Source-verified report can now be prepared. Nothing has been submitted.'
+   :'Report unavailable without fresh verified diagnostic evidence.';
   show('recovery-triage',incident?'DATABASE INCIDENT REPORTED · LAUNCH HOLD':
    verified?'TRANSPORT CHECKED · LAUNCH STILL ON HOLD':'DIAGNOSTIC UNAVAILABLE · LAUNCH HOLD',false);
   if(info)info.textContent='Auth HTTP: '+auth+' · PostgREST HTTP: '+rest+
    ' · Database incident: '+(incident?'REPORTED':'NOT VERIFIED OR NOT REPORTED')+
    ' · This does not certify a SQL query, login, a kernel receipt, billing, a broker price, or readiness. WAIT / 0R.';
  }catch{
+  latestRecoveryForSupport=null;
+  if(supportButton)supportButton.disabled=true;
+  if(feedback)feedback.textContent='No report available: diagnostic evidence unavailable.';
   show('recovery-triage','DIAGNOSTIC UNAVAILABLE · LAUNCH HOLD',false);
   if(info)info.textContent='On-demand network check failed; no private execution or scheduler changes attempted.';
  }finally{
@@ -239,6 +257,28 @@ async function inspectRecoveryTriage(){
  }
 }
 document.getElementById('recovery-triage-check')?.addEventListener('click',()=>void inspectRecoveryTriage());
+document.getElementById('support-escalation-prepare')?.addEventListener('click',async()=>{
+ const output=document.getElementById('support-escalation-report');
+ const note=document.getElementById('support-escalation-state');
+ const packet=buildSupabaseSupportPacket(latestRecoveryForSupport);
+ if(!packet){
+  if(note)note.textContent='Snapshot expired or invalid. Run the read-only diagnostic again.';
+  if(output){output.hidden=true;output.value=''}
+  return;
+ }
+ if(output){output.value=packet.message;output.hidden=false}
+ let copied=false;
+ try{
+  if(navigator.clipboard?.writeText){
+   await navigator.clipboard.writeText(packet.message);
+   copied=true;
+  }
+ }catch{}
+ if(note)note.textContent=copied
+  ?'Report copied. Paste it into a support request; NO TICKET HAS BEEN SUBMITTED.'
+  :'Report prepared below. Select and copy it into Supabase Support; NO TICKET HAS BEEN SUBMITTED.';
+ if(!copied)output?.focus();
+});
 
 void loadMarketExtras();
 void loadPublic();

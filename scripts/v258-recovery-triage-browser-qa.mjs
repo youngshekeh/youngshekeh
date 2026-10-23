@@ -21,6 +21,12 @@ const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-
 try{
  const page=await browser.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{
+  window.__copiedSupportReports=[];
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+   writeText:async text=>{window.__copiedSupportReports.push(text)}
+  }});
+ });
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname;
   if(path==='/api/public-recovery-triage'){
@@ -42,9 +48,26 @@ try{
  const state=page.locator('#recovery-triage');
  assert.match(await state.innerText(),/NOT CHECKED/);
  assert.equal(requested,0,'no diagnostic probe on page load');
+ assert.equal(await page.locator('#support-escalation-prepare').isDisabled(),true,
+  'support report must be disabled before source verification');
+ assert.equal(await page.locator('#support-escalation-report').isHidden(),true);
+ assert.deepEqual(await page.evaluate(()=>window.__copiedSupportReports),[]);
  await page.locator('#recovery-triage-check').click();
  await page.waitForFunction(()=>document.getElementById('recovery-triage')?.textContent?.includes('DATABASE INCIDENT REPORTED'));
  assert.equal(requested,1);
+ await page.locator('#support-escalation-prepare').waitFor({state:'visible'});
+ assert.equal(await page.locator('#support-escalation-prepare').isEnabled(),true);
+ await page.locator('#support-escalation-prepare').click();
+ await page.waitForFunction(()=>document.getElementById('support-escalation-report')?.value?.includes('Supabase Pro project in eu-west-1'));
+ const copies=await page.evaluate(()=>window.__copiedSupportReports);
+ assert.equal(copies.length,1,'operator click creates one copy only');
+ assert.match(copies[0],/Auth HTTP transport: TIMEOUT/);
+ assert.match(copies[0],/PostgREST HTTP transport: HTTP RESPONDED \(HTTP 200\)/);
+ assert.match(copies[0],/No passwords, API secrets, session data or customer records/);
+ assert.doesNotMatch(copies[0],/PRIVATE_SECRET|secret_key|DATABASE_URL/);
+ assert.equal(await page.locator('#support-escalation-report').isVisible(),true);
+ assert.match(await page.locator('#support-escalation-state').innerText(),/NO TICKET HAS BEEN SUBMITTED/);
+ assert.equal(requested,1,'copy cannot re-probe the upstream service');
  const detail=await page.locator('#recovery-triage-detail').innerText();
  assert.match(detail,/Auth HTTP: TIMEOUT/);
  assert.match(detail,/PostgREST HTTP: HTTP RESPONDED/);
@@ -53,7 +76,8 @@ try{
  assert.equal(unsafe,0);
  assert.deepEqual(errors,[]);
  console.log(JSON.stringify({
-  name:'V258_REAL_CHROMIUM_READONLY_RECOVERY_TRIAGE',result:'PASS',
+  name:'V258_V259_REAL_CHROMIUM_READONLY_RECOVERY_AND_ESCALATION',result:'PASS',
+  support_report_copies:1,support_tickets_sent:0,
   diagnostic_requests:requested,unsafe_requests:unsafe,
   private_launch:'HOLD',db_changed:false,cron_changed:false,live_orders:false,
   limitation:'mocked public responses, no real Supabase repair or actual login certification'
