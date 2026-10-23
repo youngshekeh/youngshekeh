@@ -6,17 +6,20 @@ import {validatedEyePacket} from './directional-eye-packet.mjs';
 import {createResearchEpoch} from './research-request-epoch.mjs';
 const root=document.getElementById('directional-eye');
 if(root){
- let packet=null,pending=false,timer=null,expiry=null,controller=null;const epochs=createResearchEpoch();const records=new Map();
+ let packet=null,pending=false,timer=null,expiry=null,controller=null;const epochs=createResearchEpoch();const records=new Map();const disclosure=new Map();
  const el=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  const fmt=x=>typeof x==='number'?new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(x):'Unavailable';
  function paint(){
   const fresh=validatedEyePacket(packet,Date.now());
   if(packet&&!fresh)root.querySelector('[data-status]').textContent='Research check expired · signals withheld until refreshed';
-  const grid=root.querySelector('.eye-grid');grid.replaceChildren();
+  const grid=root.querySelector('.eye-grid');
+  const focusedAsset=document.activeElement?.closest?.('.eye-card')?.dataset.asset||null;
+  const focusedSummary=document.activeElement?.tagName==='SUMMARY';
+  grid.replaceChildren();
   for(const asset of ASSETS){
    let row=fresh?.assets?.find(x=>x.asset===asset)||unavailable(asset);
    if(row.expires_at&&Date.parse(row.expires_at)<Date.now())row=unavailable(asset,'Candle evidence expired');
-   const card=el('article','');card.className='eye-card';
+   const card=el('article','');card.className='eye-card';card.dataset.asset=asset;
    const status=el('strong',`${row.state} · ${row.direction}`);status.className='eye-state';
    status.dataset.state=row.state==='UNAVAILABLE'?'unavailable':row.state==='TRIGGER'?'trigger':row.state==='ARMED'?'armed':'observe';
    card.append(el('h3',asset),status);
@@ -48,10 +51,13 @@ if(root){
    }
    pair('Capital Permission','WAIT · 0R');
    const details=el('details','');details.className='eye-evidence';details.append(el('summary','Evidence & scenario details'),dl);
-   if(row.state==='TRIGGER'||row.state==='ARMED')details.open=true;
+   const previous=disclosure.get(asset);
+   details.open=previous===undefined?(row.state==='TRIGGER'||row.state==='ARMED'):previous;
+   details.addEventListener('toggle',()=>{if(details.isConnected)disclosure.set(asset,details.open);});
    card.append(el('p',row.reason),details);grid.append(card);
    if(['ARMED','TRIGGER'].includes(row.state)&&row.forecast_id&&!records.has(row.forecast_id)&&records.size<500)records.set(row.forecast_id,Object.freeze({...row,captured_at:new Date().toISOString(),outcome:'PENDING',storage:'TAB_ONLY_NOT_CANONICAL'}));
   }
+  if(focusedSummary&&focusedAsset)grid.querySelectorAll('.eye-card').forEach(card=>{if(card.dataset.asset===focusedAsset)card.querySelector('summary')?.focus({preventScroll:true});});
  }
  async function refresh(){if(pending||document.hidden)return;pending=true;
   const epoch=epochs.begin();const requestController=new AbortController();controller=requestController;
