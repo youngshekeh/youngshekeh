@@ -1,0 +1,22 @@
+{
+  "baseline_commit": "74d04fcc43f3e54df33a983138031063b00e9ec8",
+  "project_id": "mpcelmjiycjpdyyflisn",
+  "functions": [
+    {
+      "name": "public-v66-runtime-observatory",
+      "original_version": 9,
+      "verify_jwt": false,
+      "original_bundle_sha256": "db55b037dcb3c583667aeece4dfb58c056ce558a3d68cf3a7c1c5a68488c8dd7",
+      "rollback_entrypoint": "supabase/recovery/v262-public-v66-runtime-observatory-rollback/index.ts",
+      "original_source_sha256": "b302518487fc54cb8b6f7a006df2f15d7e71be035bc4da5c224566d73bb0da59"
+    },
+    {
+      "name": "public-final-readiness",
+      "original_version": 3,
+      "verify_jwt": false,
+      "original_bundle_sha256": "4bc3ba363802fbff97dd7f8c2296f2a477f8238ea8c41ad4a9ea210655a0b35a",
+      "rollback_entrypoint": "supabase/recovery/v262-public-final-readiness-rollback/index.ts",
+      "original_source_sha256": "6334548b44b0107a1517bd69eb860d22dcc90db8f0b274b03e4612ad76a19b09"
+    }
+  ]
+}

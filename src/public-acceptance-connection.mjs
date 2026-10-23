@@ -5,8 +5,9 @@ const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 const PATHS=new Set([
  'public-final-readiness','public-auth-runtime-check','public-billing-acceptance'
 ]);
-export function createPublicAcceptanceReader({fetchImpl=globalThis.fetch,timeoutMs=18000}={}){
- if(typeof fetchImpl!=='function'||!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>20000)
+export function publicAcceptanceDeadline(path){return path==='public-final-readiness'?30000:18000;}
+export function createPublicAcceptanceReader({fetchImpl=globalThis.fetch,timeoutMs}={}){
+ if(typeof fetchImpl!=='function'||(timeoutMs!==undefined&&(!Number.isInteger(timeoutMs)||timeoutMs<1||timeoutMs>30000)))
   throw new TypeError('public_acceptance_reader_config_invalid');
  const pending=new Map();
  return async function readPublicAcceptance(path){
@@ -17,7 +18,7 @@ export function createPublicAcceptanceReader({fetchImpl=globalThis.fetch,timeout
    const response=await fetchImpl(BASE+path,{
     method:'GET',headers:{Accept:'application/json'},credentials:'omit',
     mode:'cors',redirect:'error',cache:'no-store',
-    signal:AbortSignal.timeout(timeoutMs)
+    signal:AbortSignal.timeout(timeoutMs??publicAcceptanceDeadline(path))
    });
    const data=await response.json().catch(()=>({ok:false,state:'INVALID_RESPONSE'}));
    return {response,data};
