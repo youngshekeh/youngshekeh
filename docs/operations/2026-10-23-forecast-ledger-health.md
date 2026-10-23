@@ -1,0 +1,9 @@
+# Forecast ledger health and launch blocker audit
+
+Read-only production audit on 2026-10-23: initial schema query timed out. Subsequent SQL reads returned seven publication forecasts, all seven with stored publication snapshots/hashes, zero resolved, zero Brier-scored and zero EYE-prefixed records. Freeze/audit triggers exist on INSERT/UPDATE. This audit did not independently validate hashes or every immutability property. Project control-plane ACTIVE_HEALTHY is not proof of database or Data API availability. Public Gold broker-price endpoint returned HTTP 503.
+
+Adds a strict GET-only projection of the existing public-track-record service and a public Eye ledger-health panel. The bridge requires recent source timestamps, nonnegative integer counts, total=open+resolved and scored<=resolved. Null, missing, inconsistent, incident-gated or stale counts remain unavailable; they never become zero. Count availability does not prove forecast accuracy. All performance metrics remain withheld pending outcome-level validation; Eye permanent capture remains NOT_CONNECTED, canonical_write_performed=false.
+
+No schema, RLS, privileges, authentication, secrets, cron schedules, billing, broker, database records or forecasts were modified. Snapshot counts are fetched, never baked into runtime source. The browser polls every two minutes while visible and clears expired source evidence. Existing candles, depth and measured ranges are preserved.
+
+616/616 local tests and Vite production build passed; whitespace check passed. Tests cover missing/null/inconsistent counts, incident/time rejection, source expiry, unverified aggregate-performance suppression and provider outage. Full commercial launch remains HOLD; Gold/oil candle adapters, reliable canonical Eye writes and calibration are unresolved. Trading OFF, WAIT/0R.
