@@ -3,6 +3,7 @@ import {QUARTER_ASSETS,verifyQuarterlyPacket} from './quarterly-liquidity-core.m
 import {classifyQuarterAlert} from './quarterly-alert-rules.mjs';
 import {advanceQuarterWatch} from './quarterly-alert-observer.mjs';
 import {verifyMacroPacket} from './public-macro-reference-data.mjs';
+import {MARKET_FEED_PLAN,readMarketFeed,marketStreamSummary,MARKET_RENDER_INTERVAL_MS} from './market-feed-cadence.mjs';
 import {verifiedPublicReferences} from './v235-reference-integrity.mjs';
 // V253: Opt-in, local, open-tab research notifications only; no service worker.
 const root=document.getElementById('quarter-zones');
@@ -12,8 +13,8 @@ if(root){
  const status=select('[data-quarter-status]'),alertStatus=select('[data-quarter-alert-status]');
  const fmt=n=>typeof n==='number'&&Number.isFinite(n)
   ?new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n):'Unavailable';
- let packet=null,btcPacket=null,macroPacket=null,active=false,alertsArmed=false,desktopGranted=false;
- let history=[],observations=new Map(),timer=null,clockTimer=null,controller=null;
+ let packet=null,btcPacket=null,macroPacket=null,alertsArmed=false,desktopGranted=false;
+ let history=[],observations=new Map(),timers=new Map(),clockTimer=null,controllers=new Map(),pending=new Set();
  const notify=event=>{
   const message=event.asset_label+' · '+event.state.replaceAll('_',' ').toLowerCase()+
     ' · '+fmt(event.price)+' · '+event.quarter+' proxy '+fmt(event.level);
@@ -106,31 +107,52 @@ if(root){
   alertStatus.textContent=alertsArmed
    ?'Watching new provider-timestamped zone transitions · '+(desktopGranted?'browser notifications allowed':'browser notifications not enabled')
    :'Tab alerts OFF · opt in to begin';
+  for(const [kind,sourcePacket] of [['quarterly',packet],['spot',btcPacket],['macro',macroPacket]]){
+   const el=select('[data-quarter-feed-'+kind+']');
+   if(!el)continue;
+   const state=marketStreamSummary(kind,sourcePacket,now);
+   el.textContent=state.kind.toUpperCase()+' · '+state.count+'/'+state.expected+
+    ' '+state.state+' · '+Math.round(state.interval_ms/1000)+'s checks';
+   el.dataset.state=state.count===state.expected?'online':state.count>0?'partial':'unavailable';
+  }
   renderEvents();
  }
- async function fetchZoneData(){
-  if(active||document.hidden)return;
-  active=true;const b=select('[data-quarter-refresh]');if(b)b.disabled=true;
-  controller=new AbortController();
-  const timeout=window.setTimeout(()=>controller?.abort(),9500);
+ // Run streams at independent cadences: 15s spot, 30s macro, 5m history.
+ // Each source has its own timeout and error state. No source failure can
+ // erase still-valid observations from another source.
+ async function fetchFeed(kind){
+  if(pending.has(kind)||document.hidden)return;
+  const plan=MARKET_FEED_PLAN[kind];
+  if(!plan)return;
+  pending.add(kind);
+  const controller=new AbortController();
+  controllers.set(kind,controller);
+  const button=select('[data-quarter-refresh]');if(button)button.disabled=true;
+  const timeout=window.setTimeout(()=>controller.abort(),plan.maxRequestMs);
   try{
-   const [zonesRes,btcRes,macroRes]=await Promise.allSettled([
-    fetch('/api/public-quarterly-zones',{cache:'no-store',
-      signal:controller.signal,headers:{Accept:'application/json'}}),
-    fetch('/api/public-market-reference',{cache:'no-store',
-      signal:controller.signal,headers:{Accept:'application/json'}}),
-    fetch('/api/public-macro-reference',{cache:'no-store',
-      signal:controller.signal,headers:{Accept:'application/json'}})
-   ]);
-   if(zonesRes.status==='fulfilled'&&zonesRes.value.ok){
-    const value=await zonesRes.value.json();
-    packet=Object.keys(verifyQuarterlyPacket(value,Date.now())).length?value:null;
-   }else packet=null;
-   btcPacket=btcRes.status==='fulfilled'&&btcRes.value.ok?await btcRes.value.json():null;
-   macroPacket=macroRes.status==='fulfilled'&&macroRes.value.ok?await macroRes.value.json():null;
-  }catch{packet=null;btcPacket=null;macroPacket=null}
-  finally{window.clearTimeout(timeout);controller=null;active=false;
-   if(b)b.disabled=false;render()}
+   const accepted=await readMarketFeed(kind,{
+    read:async url=>{
+     const r=await fetch(url,{cache:'no-store',signal:controller.signal,
+      headers:{Accept:'application/json'}});
+     if(!r.ok)throw Error('upstream_public_source_unavailable');
+     return r.json();
+    }
+   });
+   if(kind==='quarterly')packet=accepted?.packet||null;
+   if(kind==='spot')btcPacket=accepted?.packet||null;
+   if(kind==='macro')macroPacket=accepted?.packet||null;
+  }catch{
+   if(kind==='quarterly')packet=null;
+   if(kind==='spot')btcPacket=null;
+   if(kind==='macro')macroPacket=null;
+  }finally{
+   window.clearTimeout(timeout);controllers.delete(kind);
+   pending.delete(kind);if(button)button.disabled=pending.size>0;
+   render();
+  }
+ }
+ function refreshAll(){
+  for(const kind of Object.keys(MARKET_FEED_PLAN))void fetchFeed(kind);
  }
  const arm=select('[data-quarter-arm]');
  arm?.addEventListener('click',()=>{
@@ -150,16 +172,26 @@ if(root){
    render();
   }catch{desktopGranted=false;alertStatus.textContent='Browser notification permission unavailable.'}
  });
- select('[data-quarter-refresh]')?.addEventListener('click',()=>void fetchZoneData());
- const wake=()=>{render();if(!document.hidden)void fetchZoneData()};
- const start=()=>{if(timer!==null)return;
-  timer=window.setInterval(()=>{if(!document.hidden)void fetchZoneData()},60000);
-  clockTimer=window.setInterval(render,15000);
+ select('[data-quarter-refresh]')?.addEventListener('click',refreshAll);
+ const wake=()=>{render();if(!document.hidden)refreshAll()};
+ const start=()=>{
+  if(timers.size>0)return;
+  for(const [kind,plan] of Object.entries(MARKET_FEED_PLAN))
+   timers.set(kind,window.setInterval(()=>{
+    if(!document.hidden)void fetchFeed(kind);
+   },plan.intervalMs));
+  clockTimer=window.setInterval(render,MARKET_RENDER_INTERVAL_MS);
   document.addEventListener('visibilitychange',wake);
  };
- const stop=()=>{window.clearInterval(timer);window.clearInterval(clockTimer);timer=null;clockTimer=null;
-  document.removeEventListener('visibilitychange',wake);controller?.abort();packet=null;btcPacket=null;macroPacket=null;active=false};
+ const stop=()=>{
+  for(const timer of timers.values())window.clearInterval(timer);
+  timers.clear();window.clearInterval(clockTimer);clockTimer=null;
+  document.removeEventListener('visibilitychange',wake);
+  for(const controller of controllers.values())controller.abort();
+  controllers.clear();pending.clear();
+  packet=null;btcPacket=null;macroPacket=null;
+ };
  window.addEventListener('pagehide',stop);
  window.addEventListener('pageshow',()=>{start();wake()});
- start();render();void fetchZoneData();
+ start();render();refreshAll();
 }
