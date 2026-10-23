@@ -1,6 +1,9 @@
 import {createFeedPressureGate} from '../src/public-feed-pressure.mjs';
 
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
+// V264: allow the Gold aggregator its full 8.5s deadline plus bounded network overhead.
+// Do not retry, invent a quote, or serve a stale success on upstream failure.
+const PUBLIC_FEED_DEADLINE_MS=10_500;
 // Only existing anonymous read endpoints. No private runtimes, writes, or caller URLs.
 const FEEDS=new Set([
   'public-vertical-status','latest-global-markets','latest-global-trends','latest-nigeria-economy',
@@ -21,7 +24,7 @@ const FEEDS=new Set([
 const feeds=createFeedPressureGate({
   async read(feed){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),7500);
+    const timer=setTimeout(()=>controller.abort(),PUBLIC_FEED_DEADLINE_MS);
     try{
       const response=await fetch(BASE+feed,{
         headers:{Accept:'application/json','User-Agent':'THE-FATHER-ANALYTICS-V223-BOUNDED-READ/1.0'},
