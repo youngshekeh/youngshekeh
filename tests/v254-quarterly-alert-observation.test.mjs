@@ -125,8 +125,9 @@ test('production UI polls three independent market sources, no background servic
  assert.match(src,/getBitcoinQuote\(now\)/);
  assert.match(src,/verifyMacroPacket\(macroPacket,now\)/);
  assert.match(src,/asset==='wti'\|\|asset==='dxy'/);
+ const sourcePolicy=readFileSync(new URL('../src/market-feed-cadence.mjs',import.meta.url),'utf8');
  for(const path of ['/api/public-quarterly-zones','/api/public-market-reference','/api/public-macro-reference'])
-  assert.ok(src.includes(path),path);
+  assert.ok(sourcePolicy.includes(path),path);
  assert.match(src,/timers\.set\(kind,window\.setInterval/);
  assert.match(src,/plan\.intervalMs/);
  assert.match(src,/readMarketFeed\(kind/);
