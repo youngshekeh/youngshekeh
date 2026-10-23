@@ -96,6 +96,15 @@ test('independent macro failure still reports complete quarterly history',async(
  assert.equal(result.quarterly.full,true);
  assert.equal(result.macro.available,false);
 });
+test('source inspector default clock is callable without custom test injection',async()=>{
+ const calls=[];
+ const result=await inspectResearchSources({
+  read:async kind=>{calls.push(kind);return{response:{ok:false},data:{ok:false}}},
+ });
+ assert.deepEqual(calls,['macro','quarterly']);
+ assert.equal(result.macro.available,false);
+ assert.equal(result.quarterly.available,false);
+});
 test('no market data source can alter private release gate source code',()=>{
  const status=readFileSync(new URL('../src/status.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../status/index.html',import.meta.url),'utf8');
