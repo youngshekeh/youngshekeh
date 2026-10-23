@@ -48,3 +48,8 @@ body.status-public::before{display:none}
  .status-public .status-box{padding:22px 20px}
 }
 @media(prefers-reduced-motion:reduce){.status-public *{scroll-behavior:auto}}
+
+/* V257: the complete public research universe has independent, source-time status. */
+.status-public .status-feed-detail{margin:8px 0 0;font-size:12px;line-height:1.65}
+.status-public .status-public-disclosure{color:#746979;font-size:12px;line-height:1.7;margin:14px 0}
+.status-public .status-availability-grid .value{font-size:clamp(16px,1.75vw,23px)}
