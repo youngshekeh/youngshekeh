@@ -29,7 +29,7 @@ export function quarterBounds(now=Date.now()){
    previous_label:'Q'+((currentMonth+9)%12/3+1)+' '+(currentMonth===0?year-1:year)
  });
 }
-export function parseYahooQuarterBars(payload,asset){
+export function parseYahooQuarterBars(payload,asset,now=Date.now()){
  const c=QUARTER_ASSETS[asset];
  if(!c||asset==='bitcoin')return null;
  const r=payload?.chart?.result;
@@ -45,7 +45,7 @@ export function parseYahooQuarterBars(payload,asset){
   // ICE DXY daily feed includes placeholder calendar rows without an OHLC
   // observation. Skip a fully empty bar; never fabricate a high or low.
   if(high==null&&low==null)continue;
-  if(!Number.isSafeInteger(sec)||!finite(t)||t<0||t>8.64e15
+  if(!Number.isSafeInteger(sec)||!finite(t)||t<0||t>now+86400000
     ||!positive(high)||!positive(low)||high<low)return null;
   const day=new Date(t).toISOString().slice(0,10);
   if(seen.has(day))return null;
