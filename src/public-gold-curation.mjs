@@ -1,7 +1,8 @@
 // V228: independent fixed-source XAUUSD read, no caller-chosen URL or query.
 // Broker quotes and indicative spot data are never confused.
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
-export const MAX_INDICATIVE_AGE_MS=15*60_000;
+// Match the public display's two-minute evidence window to avoid API/UI disagreement.
+export const MAX_INDICATIVE_AGE_MS=120_000;
 export function curatePublicGold({broker,reference}={},now=Date.now()){
  const wait=Object.freeze({action_permitted:'WAIT',capital_permission:'0R',
    machine_execution_allowed:false,live_order_submission_enabled:false,market_data_only:true});
