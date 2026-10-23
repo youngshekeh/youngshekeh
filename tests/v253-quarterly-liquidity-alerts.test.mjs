@@ -12,7 +12,7 @@ function sessions(){
  for(let m=6;m<=9;m++){
   for(let d=1;d<=31;d++){
    const t=Date.UTC(2026,m,d),a=new Date(t);
-   if(a.getUTCMonth()!==m)continue;
+   if(a.getUTCMonth()!==m||t>now)continue;
    const day=a.getUTCDay();if(day>0&&day<6)dates.push(t);
   }
  }
@@ -32,7 +32,7 @@ function coinbase(){
  const result=[];
  for(let m=6;m<=9;m++)for(let d=1;d<=31;d++){
   const t=Date.UTC(2026,m,d),date=new Date(t);
-  if(date.getUTCMonth()!==m)continue;
+  if(date.getUTCMonth()!==m||t>now)continue;
   result.push([t/1000,80000+d*10,84000+d*10,81000+d*10,82000+d*10,5]);
  }
  return result;
@@ -84,6 +84,17 @@ test('previous quarter incomplete month is rejected, not estimated from other mo
  }
  const zone=calculateQuarterlyZones(parseYahooQuarterBars(data,'gold'),'gold',now);
  assert.equal(zone,null);
+});
+test('ICE DXY full-empty calendar placeholders are skipped, never imputed',()=>{
+ const p=yahoo('dxy');
+ const v=p.chart.result[0].indicators.quote[0];
+ for(let i=0;i<v.high.length;i+=12){v.high[i]=null;v.low[i]=null}
+ const parsed=parseYahooQuarterBars(p,'dxy');
+ assert.ok(parsed);
+ assert.ok(parsed.rows.length<p.chart.result[0].timestamp.length);
+ const zone=calculateQuarterlyZones(parsed,'dxy',now);
+ assert.ok(zone);
+ assert.ok(zone.sample_days_prev>=48);
 });
 test('malformed, duplicate, future and non-positive price candles fail closed',()=>{
  const p=yahoo('gold');p.chart.result[0].meta.symbol='XAUUSD=X';
