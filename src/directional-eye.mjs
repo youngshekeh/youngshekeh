@@ -22,6 +22,17 @@ if(root){
    pair('Potential distance',l?.projected_distance?`${fmt(l.projected_distance)} USD · 2 ATR scenario`:'Unavailable');
    pair('Evidence',row.observed_at?`${row.source} · ${new Date(row.observed_at).toLocaleString('en-GB',{timeZone:'Africa/Lagos'})} WAT`:'Awaiting attributed 1m + 5m candles');
    pair('Timing window',packet?.windows?(asset==='Bitcoin'||asset.includes('Nasdaq')||asset==='S&P 500'||asset==='US 10Y'||asset==='DXY'?packet.windows.newYork:packet.windows.london):'Awaiting check');
+   if(asset==='Bitcoin'){
+    const quality=packet?.data_quality?.bitcoin;
+    const qualityFresh=packet&&Date.now()-Date.parse(packet.generated_at)<60000;
+    pair('Candle feed health',quality?`${quality.provider} · ${qualityFresh?quality.status:'EXPIRED CHECK'} · ${(quality.reason||'Integrity checks passed').replaceAll('_',' ')}`:'Unavailable');
+    pair('Candle counts',quality?.one_minute_rows?`1m: ${quality.one_minute_rows} / 5m: ${quality.five_minute_rows}`:'Unavailable');
+    const ranges=packet?.measured_ranges?.bitcoin;
+    if(ranges?.status==='OBSERVED_RANGES'&&Date.parse(ranges.expires_at)>Date.now()){
+     for(const [name,r] of Object.entries(ranges.periods))pair(`${name} observed UTC range`,r.status==='OBSERVED_IN_PROGRESS'?`${fmt(r.low)}–${fmt(r.high)} · ${r.daily_buckets} daily buckets · in progress`:'Period start unavailable');
+     pair('Range provenance','Coinbase daily OHLC · current day incomplete · receipt freshness only');
+    }else pair('Measured UTC ranges',ranges?.reason||'Unavailable or receipt expired');
+   }
    pair('Capital Permission','WAIT · 0R');card.append(dl,el('p',row.reason));grid.append(card);
    if(['ARMED','TRIGGER'].includes(row.state)&&row.forecast_id&&!records.has(row.forecast_id)&&records.size<500)records.set(row.forecast_id,Object.freeze({...row,captured_at:new Date().toISOString(),outcome:'PENDING',storage:'TAB_ONLY_NOT_CANONICAL'}));
   }
