@@ -47,7 +47,7 @@ let macroUnavailable=false,requestCount={spot:0,macro:0,quarterly:0,private:0};
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
 try{
  const page=await browser.newPage();const errors=[];
- page.on('pageerror',error=>errors.push(error.message));
+ page.on('pageerror',error=>errors.push(error.stack||error.message));
  await page.route('**/api/public-market-reference',async route=>{
   requestCount.spot++;
   await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(spot)});
