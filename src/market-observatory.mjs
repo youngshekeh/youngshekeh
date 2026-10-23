@@ -1,4 +1,5 @@
 import './market-observatory.css';
+import './quarterly-observatory.mjs';
 import './public-macro-observatory.mjs';
 import {currentResearchObservations,retainTabObservation,tabSamplePath,PUBLIC_POLL_MS} from './market-observatory-core.mjs';
 const element=id=>document.getElementById(id);
