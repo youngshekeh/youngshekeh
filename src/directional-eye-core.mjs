@@ -59,11 +59,28 @@ export function evaluateEye({asset,oneMinute,fiveMinute,source,now=Date.now()}={
   horizon_minutes:60,capital_permission:'0R',action:'WAIT',
   reason:'Rule-based research only. Volume anomaly does not identify institutional activity.'};
 }
+// Construct formatters once per isolate, not thousands of times per API request.
+const windowFormatters=Object.freeze({
+ london:new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}),
+ newYork:new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}),
+ wat:new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}),
+ venue:new Intl.DateTimeFormat('en-GB',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'})
+});
 export function timingWindows(now=Date.now()){
- const local=zone=>new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',hourCycle:'h23',minute:'2-digit',weekday:'short'}).format(new Date(now));
- // Express windows in venue local time; conversion uses actual date/DST via Intl.
- const at=(zone,h,m)=>{const d=new Date(now);for(let n=0;n<1440;n++){const t=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),0,n);const p=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(t);if(p===`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)return new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Lagos',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(t);}return 'Unavailable';};
- return {london:`${at('Europe/London',8,0)}–${at('Europe/London',10,0)} WAT (08:00–10:00 London)`,
-  newYork:`${at('America/New_York',9,30)}–${at('America/New_York',11,30)} WAT (09:30–11:30 New York)`,
-  venue_clock:local('America/New_York'),note:'Candidate weekday windows only; holidays, releases and large-move timing are not predicted.'};
+ if(!Number.isFinite(now))throw new RangeError('invalid clock');
+ const d=new Date(now),day=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());
+ // One pass per venue resolves both endpoints using the venue's actual DST offset.
+ const resolve=(formatter,opens)=>{
+  const found=new Map();
+  for(let minute=0;minute<1440&&found.size<opens.length;minute++){
+   const t=day+minute*60000,clock=formatter.format(t);
+   if(opens.includes(clock)&&!found.has(clock))found.set(clock,windowFormatters.wat.format(t));
+  }
+  return opens.map(clock=>found.get(clock)||'Unavailable');
+ };
+ const [londonOpen,londonClose]=resolve(windowFormatters.london,['08:00','10:00']);
+ const [newYorkOpen,newYorkClose]=resolve(windowFormatters.newYork,['09:30','11:30']);
+ return {london:`${londonOpen}–${londonClose} WAT (08:00–10:00 London)`,
+  newYork:`${newYorkOpen}–${newYorkClose} WAT (09:30–11:30 New York)`,
+  venue_clock:windowFormatters.venue.format(d),note:'Candidate weekday windows only; holidays, releases and large-move timing are not predicted.'};
 }
