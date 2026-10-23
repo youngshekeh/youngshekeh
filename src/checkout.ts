@@ -1,6 +1,7 @@
 import {ALLOWED_PLANS,planEligible,priceFor,validProviderCheckout} from './commercial-gates.mjs';
 import {evaluateLaunchReadiness} from './launch-readiness.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
+import {readPublicAcceptance} from './public-acceptance-connection.mjs';
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co';
 const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 const params=new URLSearchParams(window.location.search);
@@ -26,13 +27,8 @@ function sessionToken(){
       ? payload.access_token:'';
   }catch{return ''}
 }
-async function edge(path:string,timeout=6000){
-  const response=await fetch(BASE+'/functions/v1/'+path,{
-    headers:{apikey:KEY,Accept:'application/json'},
-    cache:'no-store',signal:AbortSignal.timeout(timeout)
-  });
-  const data=await response.json().catch(()=>({ok:false,error:'invalid_json'}));
-  return {response,data};
+async function edge(path:string){
+  return readPublicAcceptance(path);
 }
 async function local(path:string,timeout=7500){
   const response=await fetch(path,{headers:{Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(timeout)});

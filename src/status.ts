@@ -6,21 +6,13 @@ import {assessQaAdmission} from './qa-admission.mjs';
 import {probeStatusDependencies} from './status-dependency-admission.mjs';
 import {inspectResearchSources} from './status-market-lane.mjs';
 import {buildSupabaseSupportPacket} from './v259-support-escalation.mjs';
-
-const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
-      const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+import {readPublicAcceptance} from './public-acceptance-connection.mjs';
 
 const timeoutMs = 7_000;
 const missing = () => ({ response: { ok: false, headers: { get: () => null } }, data: { ok: false, state: 'UNAVAILABLE' } });
 
 async function readEdge(path) {
-  const response = await fetch(SUPABASE + '/functions/v1/' + path, {
-    headers: { apikey: KEY, Accept: 'application/json' },
-    cache: 'no-store',
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  const data = await response.json().catch(() => ({ ok: false, state: 'INVALID_RESPONSE' }));
-  return { response, data };
+  return readPublicAcceptance(path);
 }
 
 async function readSite(path) {
