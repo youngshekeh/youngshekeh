@@ -61,3 +61,8 @@ body.observatory-page::before{display:none}
 @media(max-width:860px){.ob-intro{grid-template-columns:1fr;gap:25px;padding-top:46px}.ob-brief{max-width:100%}.ob-headline h1{font-size:clamp(52px,10vw,80px)}.ob-prices{grid-template-columns:1fr}.ob-section-title{align-items:flex-start;flex-direction:column}.ob-plots{grid-template-columns:1fr}.ob-asset-symbol{margin-top:22px}.ob-price{margin-bottom:24px;min-height:54px}}
 @media(max-width:540px){.ob-nav{align-items:flex-start;flex-direction:column;gap:16px}.ob-nav nav{gap:16px}.ob-utility{font-size:8px;letter-spacing:.08em}.ob-utility span:last-child{display:none}.ob-feedbar{padding:20px;align-items:stretch;flex-direction:column}.ob-price{font-size:45px}.ob-asset-symbol{align-items:flex-start;flex-direction:column;gap:5px}.ob-bottom-grid{grid-template-columns:1fr;gap:24px}.ob-footer{flex-direction:column;align-items:flex-start}.ob-observations{margin-top:46px}}
 @media(prefers-reduced-motion:reduce){.observatory-page *{scroll-behavior:auto}}
+
+/* V252 delayed macro cards inherit the editorial style without touching other pages. */
+.ob-wti-trace{stroke:#8b7455}.ob-dxy-trace{stroke:#576b8c}
+.ob-wti-trace,.ob-dxy-trace{stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;fill:none;vector-effect:non-scaling-stroke}
+.ob-asset[data-stale="true"] .ob-price{color:#756d75}
