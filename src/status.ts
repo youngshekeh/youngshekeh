@@ -4,6 +4,7 @@ import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
 import {probeStatusDependencies} from './status-dependency-admission.mjs';
+import {inspectResearchSources} from './status-market-lane.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -152,8 +153,28 @@ async function loadPublic(){
   }
  });
 }
+let marketExtrasInFlight=false;
+function displayResearchHealth(kind,report){
+ const id=kind==='macro'?'public-macro':'public-quarterly';
+ show(id,report.state,report.full);
+ const el=document.getElementById(id+'-proof');
+ if(el)el.textContent=report.source+' · '+report.detail+
+  (report.observed_at?' · Oldest verified market observation: '+new Date(report.observed_at).toLocaleString():'')+
+  ' · WAIT / 0R · No broker certification.';
+}
+async function loadMarketExtras(){
+ if(marketExtrasInFlight)return;
+ marketExtrasInFlight=true;
+ try{
+  await inspectResearchSources({
+   read:async kind=>readSite(kind==='macro'?'/api/public-macro-reference':'/api/public-quarterly-zones'),
+   report:displayResearchHealth
+  });
+ }finally{marketExtrasInFlight=false}
+}
 document.getElementById('status-refresh')?.addEventListener('click',()=>{
  void loadPublic();
+ void loadMarketExtras();
  void load();
 });
 
@@ -185,5 +206,6 @@ async function inspectExternalAuthGateway(){
   }
 }
 document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
+void loadMarketExtras();
 void loadPublic();
 void load();
