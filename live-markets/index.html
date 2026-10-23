@@ -78,29 +78,15 @@
       <article class="command-card"><span class="kicker">SIGNAL INTEGRITY</span><h3 id="integrity-state">CHECKING</h3><p id="integrity-copy">Reading confirmation / frozen / withheld state.</p></article>
       <article class="command-card"><span class="kicker">EVIDENCE STORE</span><h3 id="market-evidence">CHECKING</h3><p>Probabilities, EV and reputation stay withheld when immutable outcomes are unavailable.</p></article>
     </section>
+          <section id="directional-eye" class="directional-eye" aria-labelledby="eye-title">
+            <div class="eye-top"><div><span>THE FATHER / DIRECTIONAL RESEARCH</span><h2 id="eye-title">Directional Eye™</h2></div><button type="button" data-refresh>Refresh</button></div>
+            <p>Watch compression, liquidity interaction and directional confirmation as setups form. Levels are calculated from completed candles. Exact big-move timing and institutional positioning remain unconfirmed.</p>
+            <p data-status role="status">Checking candle evidence…</p><div class="eye-grid"></div>
+            <div class="eye-controls"><button type="button" data-export>Export tab observations</button><span class="eye-note">ARMED / TRIGGER records are held in this tab only. No permanent forecast-ledger writes.</span></div>
+            <p>WATCH → ARMED → TRIGGER describes research readiness. Readiness is rule completeness, not a success probability. Windows are candidates, including on holidays; verify the venue calendar. Calibration, backtesting and institutional-pressure validation are pending. Trading OFF · WAIT / 0R.</p>
+          </section>
   </main>
-    <section class="section-block compact" id="directional-eye" aria-labelledby="eye-heading" style="margin-block:36px;padding:28px;border:1px solid #d9d1e9;border-radius:18px;background:#faf8ff;color:#242035">
-      <div class="section-heading"><div><span class="kicker">THE FATHER DIRECTIONAL EYE™ · RESEARCH ONLY</span><h2 id="eye-heading">See the setup before the expansion.</h2></div><p>Directional monitoring requires completed candles, validated timestamps and independent confirmation. No live orders.</p></div>
-      <div id="eye-status" role="status" aria-live="polite" style="padding:12px 16px;background:#f0eaf9;border-radius:10px;margin:12px 0;font-weight:700">AWAITING VERIFIED CANDLES · CAPITAL WAIT · 0R</div>
-      <div id="eye-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px"></div>
-      <p style="font-size:13px;margin-top:16px">Reference zones are historical research levels, not verified live liquidity measurements. A current price alone never generates a direction, probability, entry or trade signal. Times are indicative monitoring windows in West Africa Time, not predictions.</p>
-    </section>
-    <script type="module">
-      const assets=[
-        {name:'Gold · XAUUSD',support:'4,000',reclaim:'4,035',window:'London morning / US data',source:'Gold API spot reference'},
-        {name:'Bitcoin · BTCUSD',support:'80,878',reclaim:'82,084',window:'US liquidity / crypto catalysts',source:'Coinbase spot receipt'},
-        {name:'Brent · Oil',support:'112.67',reclaim:'114.70',window:'London / US energy session',source:'Candle feed required'},
-        {name:'EURUSD',support:'1.1189',reclaim:'1.1240',window:'London / New York overlap',source:'Candle feed required'},
-        {name:'DXY',support:'Prior day low',reclaim:'Prior day high',window:'US macro releases',source:'Candle feed required'},
-        {name:'S&P 500',support:'Previous session low',reclaim:'Opening range high',window:'US cash open (DST-aware)',source:'Candle feed required'},
-        {name:'US Treasury yields',support:'Auction response low',reclaim:'Auction response high',window:'US data / Treasury auctions',source:'Candle feed required'}
-      ];
-      const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      const grid=document.getElementById('eye-grid');
-      grid.innerHTML=assets.map(a=>'<article style="border:1px solid #e4dced;border-radius:12px;padding:16px;background:white"><strong>'+escape(a.name)+'</strong><p style="color:#694d88;font-weight:700;margin:8px 0">DIRECTION WITHHELD</p><div>Downside watch: <b>'+escape(a.support)+'</b></div><div>Upside watch: <b>'+escape(a.reclaim)+'</b></div><p style="font-size:13px">Time: '+escape(a.window)+'</p><small>'+escape(a.source)+' · No verified candle trigger · WAIT 0R</small></article>').join('');
-      // Public reference packets never authorize signals. Missing OHLC, volume, spread or timestamps fail closed.
-      window.addEventListener('tfa:public-references',()=>{document.getElementById('eye-status').textContent='PRICE REFERENCES OBSERVED · CANDLE CONFIRMATION UNAVAILABLE · CAPITAL WAIT · 0R'});
-    </script>
+  <script type="module" src="../src/directional-eye.mjs"></script>
   <script type="module" src="../src/public-surfaces.ts"></script>
   <script type="module" src="../src/public-gold-launch.mjs"></script>
   <script type="module" src="../src/public-market-reference.mjs"></script>
