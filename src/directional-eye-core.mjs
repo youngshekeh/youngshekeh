@@ -1,17 +1,24 @@
 // Research model v1. All thresholds are unvalidated hypotheses, never win probabilities.
 export const ASSETS=['Gold','Bitcoin','Brent','EURUSD','DXY','S&P 500','Nasdaq','US 10Y'];
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
-export function validateCandles(rows,step,now){
- if(!Array.isArray(rows)||rows.length<60)return null;
- const closed=rows.filter(c=>finite(c?.t)&&c.t+step<=now);
- if(closed.length<60)return null;
- for(let i=0;i<closed.length;i++){
-  const c=closed[i];
-  if(![c.o,c.h,c.l,c.c,c.v].every(finite)||c.l<=0||c.v<0||c.h<Math.max(c.o,c.c)||c.l>Math.min(c.o,c.c)||c.h<c.l)return null;
-  if(i&&c.t-closed[i-1].t!==step)return null;
+export function inspectCandles(rows,step,now){
+ const base={status:'UNAVAILABLE',reason:'INSUFFICIENT_CANDLES',closed_rows:0,last_closed_at:null,age_seconds:null};
+ if(!Number.isFinite(now)||![60000,300000].includes(step))return {...base,reason:'INVALID_CLOCK_OR_STEP'};
+ if(!Array.isArray(rows)||rows.length<60)return base;
+ for(const c of rows){
+  if(!c||![c.t,c.o,c.h,c.l,c.c,c.v].every(finite)||c.t%step!==0||c.l<=0||c.v<0||c.h<Math.max(c.o,c.c)||c.l>Math.min(c.o,c.c)||c.h<c.l)return {...base,reason:'INVALID_CANDLE'};
+  if(c.t>Math.floor(now/step)*step)return {...base,reason:'FUTURE_CANDLE'};
  }
- const age=now-(closed.at(-1).t+step);
- return age>=0&&age<=step*2?closed:null;
+ const closed=rows.filter(c=>c.t+step<=now);
+ const last=closed.at(-1),age=last?now-(last.t+step):null;
+ const detail={...base,closed_rows:closed.length,last_closed_at:last?new Date(last.t+step).toISOString():null,age_seconds:age==null?null:Math.floor(age/1000)};
+ if(closed.length<60)return detail;
+ for(let i=1;i<closed.length;i++)if(closed[i].t-closed[i-1].t!==step)return {...detail,reason:'GAPPED_OR_DUPLICATE_CANDLES'};
+ if(age>step*2)return {...detail,reason:'STALE_CANDLES'};
+ return {...detail,status:'VALIDATED',reason:null};
+}
+export function validateCandles(rows,step,now){
+ return inspectCandles(rows,step,now).status==='VALIDATED'?rows.filter(c=>c.t+step<=now):null;
 }
 export function unavailable(asset,reason='Consistent 1m and 5m candles unavailable'){
  return {asset,state:'UNAVAILABLE',direction:'UNCONFIRMED',reason,readiness:null,probability:null,capital_permission:'0R',action:'WAIT',levels:null};
