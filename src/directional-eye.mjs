@@ -1,3 +1,4 @@
+import './bitcoin-liquidity.mjs';
 import './directional-eye.css';
 import {ASSETS,unavailable} from './directional-eye-core.mjs';
 const root=document.getElementById('directional-eye');
