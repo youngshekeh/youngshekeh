@@ -22,14 +22,16 @@ for(const [asset,c] of Object.entries(QUARTER_ASSETS)){
  };
 }
 const quarter=quarterlyPacket(zones,now);
-const spot=curatePublicReferences({
+// A fixture receipt must begin at response delivery, as a real API receipt
+// does; browser startup time is not the age of an unserved observation.
+const spot=()=>curatePublicReferences({
  gold:{symbol:'XAUUSD',currency:'USD',type:'INDICATIVE_SPOT',
-  source:'Gold API',price:4000,source_updated_at:at(now-4000),
+  source:'Gold API',price:4000,source_updated_at:at(Date.now()-4000),
   broker_verified:false,execution_quote:false},
  bitcoin:{symbol:'BTCUSD',currency:'USD',type:'SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED',
-  source:'Coinbase',price:80000,source_updated_at:null,observed_at:at(now-3000),
+  source:'Coinbase',price:80000,source_updated_at:null,observed_at:at(Date.now()-3000),
   broker_verified:false,execution_quote:false}
-},now);
+},Date.now());
 function macro(){
  const mk=id=>({
   symbol:id==='wti'?'CL=F':'DXY',
@@ -50,7 +52,7 @@ try{
  page.on('pageerror',error=>errors.push(error.stack||error.message));
  await page.route('**/api/public-market-reference',async route=>{
   requestCount.spot++;
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(spot)});
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(spot())});
  });
  await page.route('**/api/public-macro-reference',async route=>{
   requestCount.macro++;

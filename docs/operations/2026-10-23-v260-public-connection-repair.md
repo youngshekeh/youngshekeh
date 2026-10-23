@@ -19,4 +19,6 @@ Independent operational observations on October 23, 2026:
 
 Verification: add request-contract, allowlist, credential-isolation, concurrent-read, retry-after-failure, invalid-JSON and deadline regression cases. Add Chromium status → access → locked-checkout acceptance to the existing release workflow. Require all release checks and production READY before claiming deployment. Production browser acceptance must confirm Auth and billing observations display while launch/payment remain held.
 
+Local validation passed 749/749 Node tests and the production build. The first CI attempt exposed an existing browser fixture failure: the 30-second Bitcoin receipt expired during a slow Chrome startup before its first response. V256/V257 fixtures now date that synthetic receipt when served. Production freshness policy and notification-deduplication assertions remain unchanged. CI must pass again after this harness correction.
+
 Rollback: revert the shared reader, its three callers, and the regression/CI additions. No database, secret, Auth policy, cron schedule or Edge Function deployment is changed by V260.
