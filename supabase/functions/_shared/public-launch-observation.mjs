@@ -8,7 +8,10 @@ export const READ_BUDGETS=Object.freeze({
  'public-v69-database-incident-shield':6500,
  'public-v50-production-integrity':18000,
  'public-app-config':18000,
- 'public-v65-model-evidence-fabric':8000
+ 'public-v65-model-evidence-fabric':8000,
+ 'public-runtime-beacon':6000,
+ 'public-data-plane-matrix':12000,
+ 'public-v63-structural-core-fabric':6000
 });
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'content-type',
  'Access-Control-Allow-Methods':'GET, OPTIONS'};
@@ -76,15 +79,18 @@ export async function readObservation(path,{fetchImpl=globalThis.fetch,now=Date.
  }finally{signal.removeEventListener('abort',listener);}
 }
 export function createObservationHandler({paths,assemble,ttlFor,allowHead=false,
- fetchImpl=globalThis.fetch,now=Date.now}={}){
+ readTimeouts={},fetchImpl=globalThis.fetch,now=Date.now}={}){
  if(!Array.isArray(paths)||!paths.length||paths.some(path=>!Object.hasOwn(READ_BUDGETS,path))
-  ||typeof assemble!=='function'||typeof ttlFor!=='function')throw new TypeError('observation_handler_config_invalid');
+  ||typeof assemble!=='function'||typeof ttlFor!=='function'
+  ||Object.entries(readTimeouts).some(([path,ms])=>!paths.includes(path)||!Number.isInteger(ms)||ms<1||ms>READ_BUDGETS[path]))
+  throw new TypeError('observation_handler_config_invalid');
  let cache=null,cachedAt=0,inflight=null;
  async function current(){
   if(cache&&now()-cachedAt<ttlFor(cache))return cache;
   if(inflight)return inflight;
   inflight=(async()=>{
-   const rows=await Promise.all(paths.map(async path=>[path,await readObservation(path,{fetchImpl,now})]));
+   const rows=await Promise.all(paths.map(async path=>[path,await readObservation(path,{fetchImpl,now,
+    timeoutMs:readTimeouts[path]??READ_BUDGETS[path]})]));
    const observedAt=now(),result=assemble(Object.fromEntries(rows),observedAt);
    cache=result;cachedAt=observedAt;return result;
   })().finally(()=>{inflight=null});

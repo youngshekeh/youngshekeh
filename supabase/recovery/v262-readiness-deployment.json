@@ -17,6 +17,28 @@
       "original_bundle_sha256": "4bc3ba363802fbff97dd7f8c2296f2a477f8238ea8c41ad4a9ea210655a0b35a",
       "rollback_entrypoint": "supabase/recovery/v262-public-final-readiness-rollback/index.ts",
       "original_source_sha256": "6334548b44b0107a1517bd69eb860d22dcc90db8f0b274b03e4612ad76a19b09"
+    },
+    {
+      "name": "public-data-plane-matrix",
+      "original_version": 7,
+      "verify_jwt": false,
+      "original_bundle_sha256": "7c3be33db9e7bea4d956c869e502b74480e86e6cc04048b57d05872f20d581d4",
+      "rollback_entrypoint": "supabase/recovery/v262-public-data-plane-matrix-rollback/index.ts",
+      "original_source_sha256": "a57e11d07ee104e7c4e27884c03b7b666be689bd70235211b6c8a7d8643e76bf"
+    },
+    {
+      "name": "public-v50-production-integrity",
+      "original_version": 6,
+      "verify_jwt": false,
+      "original_bundle_sha256": "a295fa987dba1282d13da4b0f8bf91c8e9e2b91e73304e1a21d31ed3eea7aa5c",
+      "rollback_entrypoint": "supabase/recovery/v262-public-v50-production-integrity-rollback/index.ts",
+      "original_source_sha256": "c975cbba3a1c67942e40738320ff2e48a869d93fafea45d2db095f8ef21a2336"
     }
+  ],
+  "deployment_order": [
+    "public-data-plane-matrix",
+    "public-v50-production-integrity",
+    "public-v66-runtime-observatory",
+    "public-final-readiness"
   ]
 }
