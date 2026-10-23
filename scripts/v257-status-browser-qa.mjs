@@ -96,7 +96,7 @@ try{
   oilProof:await page.locator('#public-macro-proof').innerText()
  };
  assert.match(initial.oilProof,/market time valid/i);
- assert.match(initial.oilProof,/NOT BROKER LIVE/);
+ assert.match(initial.oilProof,/No broker certification/);
  assert.equal(initial.private,'LAUNCH HOLD');
  assert.equal(await page.locator('#public-quarterly').getAttribute('class'),'value good');
  assert.equal(await page.locator('#public-macro').getAttribute('class'),'value good');
