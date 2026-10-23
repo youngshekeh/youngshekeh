@@ -33,6 +33,14 @@
               <div><div class="em-instrument">Bitcoin</div><div class="em-symbol">BTC / USD</div></div>
               <div><div class="em-value" id="pmr-btc">Checking</div><div class="em-source" id="pmr-btc-info">Checking independent spot reference</div></div>
             </div>
+            <div class="em-row">
+              <div><div class="em-instrument">WTI crude futures</div><div class="em-symbol">CL=F / USD</div></div>
+              <div><div class="em-value" id="pmr-wti">Unavailable</div><div class="em-source" id="pmr-wti-info">Delayed NYMEX quote · verifying contract and market time</div></div>
+            </div>
+            <div class="em-row">
+              <div><div class="em-instrument">U.S. Dollar Index</div><div class="em-symbol">DXY / ICE</div></div>
+              <div><div class="em-value" id="pmr-dxy">Unavailable</div><div class="em-source" id="pmr-dxy-info">Delayed ICE index reference · verifying market time</div></div>
+            </div>
             <div class="em-bottom"><strong>Evidence before execution.</strong> Independent public reference prices, not broker bid/ask or tradeable signals. Historical observations are never presented as current.
               <span class="em-time" id="pmr-updated">Connecting to public sources</span>
               <a href="/market-observatory/">Open independent price observatory ↗</a>
@@ -90,5 +98,6 @@
   <script type="module" src="../src/public-surfaces.ts"></script>
   <script type="module" src="../src/public-gold-launch.mjs"></script>
   <script type="module" src="../src/public-market-reference.mjs"></script>
+  <script type="module" src="../src/public-macro-reference.mjs"></script>
 </body>
 </html>
