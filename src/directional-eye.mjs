@@ -48,14 +48,14 @@ if(root){
   }
  }
  async function refresh(){if(pending||document.hidden)return;pending=true;
-  const epoch=epochs.begin();controller=new AbortController();
-  const timeout=setTimeout(()=>controller?.abort(),8000);
+  const epoch=epochs.begin();const requestController=new AbortController();controller=requestController;
+  const timeout=setTimeout(()=>requestController.abort(),8000);
   root.querySelector('[data-refresh]').disabled=true;
-  try{const r=await fetch('/api/directional-eye',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const p=await r.json();
+  try{const r=await fetch('/api/directional-eye',{cache:'no-store',signal:requestController.signal});if(!r.ok)throw Error();const p=await r.json();
    if(!epochs.isCurrent(epoch))return;
    if(!validatedEyePacket(p,Date.now()))throw Error();packet=p;
    root.querySelector('[data-status]').textContent='Checked '+new Date().toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos'})+' WAT · Research model unvalidated';
-  }catch{if(epoch!==requestEpoch)return;packet=null;root.querySelector('[data-status]').textContent='Candle service unavailable · signals withheld';}
+  }catch{if(!epochs.isCurrent(epoch))return;packet=null;root.querySelector('[data-status]').textContent='Candle service unavailable · signals withheld';}
   finally{clearTimeout(timeout);if(epochs.isCurrent(epoch)){controller=null;pending=false;root.querySelector('[data-refresh]').disabled=false;paint();}}
  }
  root.querySelector('[data-refresh]').addEventListener('click',refresh);
