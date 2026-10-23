@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {composeGoldRead,readIndependentGold} from '../src/public-gold-independent.mjs';
@@ -21,3 +22,5 @@ test('display clears at freshness deadline even without another network response
 test('fixed independent provider handles HTTP errors and transport outages',async()=>{
  assert.equal(await readIndependentGold(async()=>new Response('',{status:503})),null);assert.equal(await readIndependentGold(async()=>{throw Error()}),null);let url;await readIndependentGold(async u=>{url=u;return new Response(JSON.stringify(ref()));});assert.equal(url,'https://api.gold-api.com/price/XAU');
 });
+
+test('independent Gold panel bypasses database research outage circuit',()=>{const src=readFileSync(new URL('../src/public-gold-launch.mjs',import.meta.url),'utf8');assert.doesNotMatch(src,/researchFetch|research-connection/);assert.match(src,/fetch\(GOLD_ENDPOINT/);});
