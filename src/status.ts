@@ -3,6 +3,7 @@ import {probePublicStatus} from './status-public-lane.mjs';
 import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
+import {probeStatusDependencies} from './status-dependency-admission.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -49,13 +50,20 @@ async function load() {
   if (refresh) refresh.disabled = true;
   try {
     // One failed endpoint must never erase the results of independent probes.
+    // Read the cheap central release incident verdict first, alongside Gold.
+    // A current DB incident makes additional auth and billing probes redundant.
+    // Market reference availability is handled separately by loadPublic().
     const results = await Promise.allSettled([
-      readEdge('public-auth-runtime-check'),
       readEdge('public-final-readiness'),
-      readEdge('public-billing-acceptance'),
       readSite('/api/public-gold-read'),
     ]);
-    const [auth, readiness, billing, gold] = results.map(completed);
+    const [readiness, gold] = results.map(completed);
+    const privateProbe = await probeStatusDependencies({
+      readiness,
+      readAuth:()=>readEdge('public-auth-runtime-check'),
+      readBilling:()=>readEdge('public-billing-acceptance'),
+    });
+    const {auth, billing} = privateProbe;
     // Do not amplify a known database incident with 107 independent private
     // QA probes. Defer the expensive OIDC relay until cheap launch inputs pass.
     // A deferred matrix is unverified, never a green QA or identity verdict.
@@ -107,6 +115,8 @@ async function load() {
       'Launch blockers: ' + blockers +
       ' · Backend hard blockers: ' + remoteBlockers +
       ' · Provider verification: ' + provider +
+      ' · Incident-aware probe admission: ' + privateProbe.admission.reason +
+      ' · Private auth/billing probes: ' + privateProbe.requests_sent + ' of 2' +
       ' · Private QA: ' + (qaAdmission.admitted ? 'REQUESTED AFTER PRECHECK PASS' : 'DEFERRED WITHOUT MAKING A PRIVATE QA REQUEST') +
       ' · Public Gold: ' + (gate.checks.public_gold_data ? 'FRESH BROKER TICK' : 'FRESH BROKER TICK NOT VERIFIED') +
       ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
