@@ -16,7 +16,7 @@ function assessment(price,minutes=0,assetZone=zone,source='Yahoo Finance'){
  return classifyQuarterAlert(assetZone,quote,now);
 }
 test('opening an alert-enabled page already at Q3 high seeds baseline, no retroactive notification',()=>{
- const observed=advanceQuarterWatch(new Map(),assessment(109.5),{armed:true,now:base});
+ const observed=advanceQuarterWatch(new Map(),assessment(109.8),{armed:true,now:base});
  assert.equal(observed.event,null);
  assert.equal(observed.reason,'FIRST_OBSERVATION_BASELINE');
  assert.equal(observed.ledger.get('wti')?.state,'AT_PREVIOUS_Q_HIGH_ZONE');
@@ -33,7 +33,7 @@ test('same vendor market timestamp cannot generate an event even if payload pric
 });
 test('new, time-ordered observation entering quarterly upper band fires once',()=>{
  const one=advanceQuarterWatch(new Map(),assessment(105,0),{armed:true,now:base});
- const two=advanceQuarterWatch(one.ledger,assessment(109.5,2),{armed:true,now:base+120000});
+ const two=advanceQuarterWatch(one.ledger,assessment(109.8,2),{armed:true,now:base+120000});
  assert.equal(two.reason,'NEW_VERIFIED_STATE_TRANSITION');
  assert.equal(two.event.previous_state,'BETWEEN_QUARTERLY_ZONES');
  assert.equal(two.event.state,'AT_PREVIOUS_Q_HIGH_ZONE');
@@ -42,7 +42,7 @@ test('new, time-ordered observation entering quarterly upper band fires once',()
  assert.equal(two.event.evidence,'TWO_DISTINCT_ORDERED_VENDOR_OBSERVATIONS');
  assert.equal(two.event.background_push_sent,false);
  assert.equal(two.event.capital_permission,'0R');
- const again=advanceQuarterWatch(two.ledger,assessment(109.5,2),{armed:true,now:base+123000});
+ const again=advanceQuarterWatch(two.ledger,assessment(109.8,2),{armed:true,now:base+123000});
  assert.equal(again.event,null);
 });
 test('crossing from upper band to above previous-quarter high is a distinct observation',()=>{
@@ -53,9 +53,9 @@ test('crossing from upper band to above previous-quarter high is a distinct obse
 });
 test('reaching prior level while alerts OFF is a baseline, not an event when user enables',()=>{
  let r=advanceQuarterWatch(new Map(),assessment(105,0),{armed:false,now:base});
- r=advanceQuarterWatch(r.ledger,assessment(109,1),{armed:false,now:base+60000});
+ r=advanceQuarterWatch(r.ledger,assessment(109.8,1),{armed:false,now:base+60000});
  assert.equal(r.event,null);
- r=advanceQuarterWatch(r.ledger,assessment(109,1),{armed:true,now:base+61000});
+ r=advanceQuarterWatch(r.ledger,assessment(109.8,1),{armed:true,now:base+61000});
  assert.equal(r.event,null);
  assert.equal(r.reason,'DUPLICATE_OR_OUT_OF_ORDER_SOURCE_TIMESTAMP');
  r=advanceQuarterWatch(r.ledger,assessment(111,2),{armed:true,now:base+120000});
@@ -67,7 +67,7 @@ test('disconnected market samples across a long gap are seeded rather than inven
  r=advanceQuarterWatch(r.ledger,assessment(111,40),{armed:true,now:base+40*60000});
  assert.equal(r.event,null);
  assert.equal(r.reason,'DISCONTINUOUS_EVIDENCE_BASELINE');
- r=advanceQuarterWatch(r.ledger,assessment(109,41),{armed:true,now:base+41*60000});
+ r=advanceQuarterWatch(r.ledger,assessment(109.8,41),{armed:true,now:base+41*60000});
  assert.equal(r.event.state,'AT_PREVIOUS_Q_HIGH_ZONE');
 });
 test('Bitcoin requires tightly adjacent Coinbase observations, not a stale gap',()=>{
@@ -77,7 +77,7 @@ test('Bitcoin requires tightly adjacent Coinbase observations, not a stale gap',
  r=advanceQuarterWatch(r.ledger,btcAssessment(87010,4),{armed:true,now:base+240000});
  assert.equal(r.event,null);
  assert.equal(r.reason,'DISCONTINUOUS_EVIDENCE_BASELINE');
- r=advanceQuarterWatch(r.ledger,btcAssessment(86400,5),{armed:true,now:base+300000});
+ r=advanceQuarterWatch(r.ledger,btcAssessment(86900,5),{armed:true,now:base+300000});
  assert.equal(r.event.state,'AT_PREVIOUS_Q_HIGH_ZONE');
 });
 test('new completed-quarter identity and provider symbol cannot re-use previous quarter baseline',()=>{
@@ -85,7 +85,7 @@ test('new completed-quarter identity and provider symbol cannot re-use previous 
  const changed={...assessment(111,2),quarter:'Q4 2026'};
  r=advanceQuarterWatch(r.ledger,changed,{armed:true,now:base+120000});
  assert.equal(r.event,null);assert.equal(r.reason,'DISCONTINUOUS_EVIDENCE_BASELINE');
- const other={...assessment(109,3),symbol:'BZ=F'};
+ const other={...assessment(109.8,3),symbol:'BZ=F'};
  r=advanceQuarterWatch(r.ledger,other,{armed:true,now:base+180000});
  assert.equal(r.event,null);
 });
@@ -106,11 +106,11 @@ test('wrong source, capital privileges, malformed status or future timestamp rem
 });
 test('cooldown avoids repeated same upper-zone alerts across oscillations',()=>{
  let r=advanceQuarterWatch(new Map(),assessment(105,0),{armed:true,now:base});
- r=advanceQuarterWatch(r.ledger,assessment(109,1),{armed:true,now:base+60000});
+ r=advanceQuarterWatch(r.ledger,assessment(109.8,1),{armed:true,now:base+60000});
  assert.ok(r.event);
  r=advanceQuarterWatch(r.ledger,assessment(105,2),{armed:true,now:base+120000});
  assert.equal(r.event,null);
- r=advanceQuarterWatch(r.ledger,assessment(109,3),{armed:true,now:base+180000});
+ r=advanceQuarterWatch(r.ledger,assessment(109.8,3),{armed:true,now:base+180000});
  assert.equal(r.event,null);assert.equal(r.reason,'EVENT_COOLDOWN');
 });
 test('invalid or unavailable snapshot cannot change the market observation ledger',()=>{
