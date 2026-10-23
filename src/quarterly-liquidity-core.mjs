@@ -42,7 +42,11 @@ export function parseYahooQuarterBars(payload,asset){
  const seen=new Set(),rows=[];
  for(let i=0;i<timestamp.length;i++){
   const sec=timestamp[i],high=hi[i],low=lo[i],t=sec*1000;
-  if(!Number.isSafeInteger(sec)||!finite(t)||!positive(high)||!positive(low)||high<low)return null;
+  // ICE DXY daily feed includes placeholder calendar rows without an OHLC
+  // observation. Skip a fully empty bar; never fabricate a high or low.
+  if(high==null&&low==null)continue;
+  if(!Number.isSafeInteger(sec)||!finite(t)||t<0||t>8.64e15
+    ||!positive(high)||!positive(low)||high<low)return null;
   const day=new Date(t).toISOString().slice(0,10);
   if(seen.has(day))return null;
   seen.add(day);rows.push({at:day,high,low});
