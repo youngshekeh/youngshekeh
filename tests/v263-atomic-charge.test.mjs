@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {webcrypto} from 'node:crypto';
-import ts from 'typescript';
+import {stripTypeScriptTypes} from 'node:module';
 import {boundedJson,curateVerifiedTransaction,fulfillVerifiedCharge}
  from '../supabase/functions/flutterwave-webhook/charge.mjs';
 const NOW=Date.parse('2026-10-24T00:00:00Z');
@@ -114,7 +114,7 @@ function webhook(fetchImpl){
  let handler;
  const source=file('supabase/functions/flutterwave-webhook/index.ts')
   .replace("import {fulfillVerifiedCharge} from './charge.mjs';",'');
- const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
+ const code=stripTypeScriptTypes(source,{mode:'strip'});
  const env={SUPABASE_URL:'https://project.example.invalid',SUPABASE_SERVICE_ROLE_KEY:'fixture-service-key',
   FLW_SECRET_KEY:'fixture-provider-key',FLW_SECRET_HASH:'fixture-webhook-secret'};
  runInNewContext(code,{Deno:{env:{get:k=>env[k]},serve:h=>{handler=h}},
