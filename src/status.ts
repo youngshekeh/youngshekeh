@@ -4,7 +4,7 @@ import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
 import {probeStatusDependencies} from './status-dependency-admission.mjs';
-import {assessMarketStatusFeed,inspectResearchSources} from './status-market-lane.mjs';
+import {inspectResearchSources} from './status-market-lane.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -140,9 +140,8 @@ async function load() {
 // The user can see verified public research availability immediately, without
 // waiting for private database prechecks to finish or time out.
 async function loadPublic(){
- let spotInput=null;
- const result=await probePublicStatus({
-  readReference:async()=>{spotInput=await readSite('/api/public-market-reference');return spotInput},
+ return probePublicStatus({
+  readReference:()=>readSite('/api/public-market-reference'),
   report(publicSurface){
    show('public-page',publicSurface.page_state,publicSurface.page_delivered);
    show('public-reference',publicSurface.reference_state,publicSurface.research_reference_available);
@@ -153,9 +152,6 @@ async function loadPublic(){
     ' · Read-only references, not broker bid/ask, trading permission or paid entitlement.';
   }
  });
- // Reuse the one existing Gold/BTC read, instead of amplifying provider demand.
- // Private launch status does not depend on this independent research result.
- return {result,spot:assessMarketStatusFeed('spot',spotInput)};
 }
 let marketExtrasInFlight=false;
 function displayResearchHealth(kind,report){
