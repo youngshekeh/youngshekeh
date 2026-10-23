@@ -1,6 +1,8 @@
 import './quarterly-zones.css';
 import {QUARTER_ASSETS,verifyQuarterlyPacket} from './quarterly-liquidity-core.mjs';
-import {classifyQuarterAlert,acceptQuarterAlert} from './quarterly-alert-rules.mjs';
+import {classifyQuarterAlert} from './quarterly-alert-rules.mjs';
+import {advanceQuarterWatch} from './quarterly-alert-observer.mjs';
+import {verifyMacroPacket} from './public-macro-reference-data.mjs';
 import {verifiedPublicReferences} from './v235-reference-integrity.mjs';
 // V253: Opt-in, local, open-tab research notifications only; no service worker.
 const root=document.getElementById('quarter-zones');
@@ -10,8 +12,8 @@ if(root){
  const status=select('[data-quarter-status]'),alertStatus=select('[data-quarter-alert-status]');
  const fmt=n=>typeof n==='number'&&Number.isFinite(n)
   ?new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(n):'Unavailable';
- let packet=null,btcPacket=null,active=false,alertsArmed=false,desktopGranted=false;
- let history=[],states=new Map(),timer=null,clockTimer=null,controller=null;
+ let packet=null,btcPacket=null,macroPacket=null,active=false,alertsArmed=false,desktopGranted=false;
+ let history=[],observations=new Map(),timer=null,clockTimer=null,controller=null;
  const notify=event=>{
   const message=event.asset_label+' · '+event.state.replaceAll('_',' ').toLowerCase()+
     ' · '+fmt(event.price)+' · '+event.quarter+' proxy '+fmt(event.level);
@@ -34,7 +36,8 @@ if(root){
    const title=document.createElement('strong');title.textContent=event.asset_label+' · '+event.state.replaceAll('_',' ');
    const details=document.createElement('span');details.textContent=
      'Price '+fmt(event.price)+' · reference '+fmt(event.level)+' · '+new Date(event.seen_at).toLocaleTimeString()+
-     ' · observed '+new Date(event.market_observed_at).toLocaleTimeString();
+     ' · source '+event.source+' · before '+new Date(event.previous_market_observed_at).toLocaleTimeString()+
+     ' → after '+new Date(event.market_observed_at).toLocaleTimeString();
    item.append(title,details);events.append(item);
   }
  }
@@ -50,8 +53,14 @@ if(root){
    p.textContent='Quarterly range unavailable · incomplete or unverified daily bars.';
    item.append(p);return item;
   }
-  const quote=asset==='bitcoin'?getBitcoinQuote(now):zone.quote?{
-   value:zone.quote.value,at:zone.quote.at,source:'Yahoo Finance'}:null;
+  const macro=(asset==='wti'||asset==='dxy')?verifyMacroPacket(macroPacket,now)[asset]:null;
+  // WTI / DXY use independent short-cache spot/market references first.
+  // Never mix XAU indicative spot with COMEX GC=F quarterly futures levels.
+  const quote=asset==='bitcoin'?getBitcoinQuote(now):macro?{
+   value:macro.value,at:macro.at,source:macro.source
+  }:zone.quote?{
+   value:zone.quote.value,at:zone.quote.at,source:'Yahoo Finance'
+  }:null;
   const classified=classifyQuarterAlert(zone,quote,now);
   const measure=document.createElement('p');measure.className='ob-quarter-price';
   measure.textContent=classified?fmt(classified.price):'Quote unavailable';
@@ -75,10 +84,12 @@ if(root){
    'Previous completed-quarter OHLC range; inner bands = 2% of range. Proxies, not actual order-book liquidity.'+
    (asset==='gold'?' Gold quarterly levels are COMEX futures, NOT XAU spot.':'');
   item.append(note);
-  if(alertsArmed&&classified){
-   const transition=acceptQuarterAlert(states,classified,now);
-   states=transition.state;if(transition.event)notify(transition.event);
-  }
+  // Record every valid source observation (also while alerts are OFF).
+  // Initial values, duplicate provider timestamps and gaps create no notifications.
+  // Only two source-ordered snapshots proving a NEW zone state may emit.
+  const evaluated=advanceQuarterWatch(observations,classified,{armed:alertsArmed,now});
+  observations=evaluated.ledger;
+  if(evaluated.event)notify(evaluated.event);
   return item;
  }
  function getBitcoinQuote(now){
@@ -93,7 +104,7 @@ if(root){
   status.textContent=n+' / '+Object.keys(QUARTER_ASSETS).length+
    ' QUARTERLY RANGES VERIFIED · '+(n?'RESEARCH ONLY':'AWAITING SOURCES');
   alertStatus.textContent=alertsArmed
-   ?'Tab alerts ON · '+(desktopGranted?'browser notifications allowed':'browser notifications not enabled')
+   ?'Watching new provider-timestamped zone transitions · '+(desktopGranted?'browser notifications allowed':'browser notifications not enabled')
    :'Tab alerts OFF · opt in to begin';
   renderEvents();
  }
@@ -103,10 +114,12 @@ if(root){
   controller=new AbortController();
   const timeout=window.setTimeout(()=>controller?.abort(),9500);
   try{
-   const [zonesRes,btcRes]=await Promise.allSettled([
+   const [zonesRes,btcRes,macroRes]=await Promise.allSettled([
     fetch('/api/public-quarterly-zones',{cache:'no-store',
       signal:controller.signal,headers:{Accept:'application/json'}}),
     fetch('/api/public-market-reference',{cache:'no-store',
+      signal:controller.signal,headers:{Accept:'application/json'}}),
+    fetch('/api/public-macro-reference',{cache:'no-store',
       signal:controller.signal,headers:{Accept:'application/json'}})
    ]);
    if(zonesRes.status==='fulfilled'&&zonesRes.value.ok){
@@ -114,7 +127,8 @@ if(root){
     packet=Object.keys(verifyQuarterlyPacket(value,Date.now())).length?value:null;
    }else packet=null;
    btcPacket=btcRes.status==='fulfilled'&&btcRes.value.ok?await btcRes.value.json():null;
-  }catch{packet=null;btcPacket=null}
+   macroPacket=macroRes.status==='fulfilled'&&macroRes.value.ok?await macroRes.value.json():null;
+  }catch{packet=null;btcPacket=null;macroPacket=null}
   finally{window.clearTimeout(timeout);controller=null;active=false;
    if(b)b.disabled=false;render()}
  }
@@ -123,7 +137,8 @@ if(root){
   alertsArmed=!alertsArmed;
   arm.textContent=alertsArmed?'Pause tab alerts':'Enable tab alerts';
   // Freshly enabling alerts never retroactively replays historical notifications.
-  if(!alertsArmed)states=new Map();
+  // Keep witnessed baselines when paused; enabling never retroactively alerts.
+  // No browser preferences are stored or sent to the server.
   render();
  });
  select('[data-quarter-permission]')?.addEventListener('click',async()=>{
@@ -138,12 +153,12 @@ if(root){
  select('[data-quarter-refresh]')?.addEventListener('click',()=>void fetchZoneData());
  const wake=()=>{render();if(!document.hidden)void fetchZoneData()};
  const start=()=>{if(timer!==null)return;
-  timer=window.setInterval(()=>{if(!document.hidden)void fetchZoneData()},180000);
+  timer=window.setInterval(()=>{if(!document.hidden)void fetchZoneData()},60000);
   clockTimer=window.setInterval(render,15000);
   document.addEventListener('visibilitychange',wake);
  };
  const stop=()=>{window.clearInterval(timer);window.clearInterval(clockTimer);timer=null;clockTimer=null;
-  document.removeEventListener('visibilitychange',wake);controller?.abort();packet=null;btcPacket=null;active=false};
+  document.removeEventListener('visibilitychange',wake);controller?.abort();packet=null;btcPacket=null;macroPacket=null;active=false};
  window.addEventListener('pagehide',stop);
  window.addEventListener('pageshow',()=>{start();wake()});
  start();render();void fetchZoneData();
