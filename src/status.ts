@@ -206,6 +206,40 @@ async function inspectExternalAuthGateway(){
   }
 }
 document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
+let recoveryTriageInFlight=false;
+async function inspectRecoveryTriage(){
+ if(recoveryTriageInFlight)return;
+ recoveryTriageInFlight=true;
+ const button=document.getElementById('recovery-triage-check');
+ if(button)button.disabled=true;
+ show('recovery-triage','CHECKING · HTTP TRANSPORT ONLY',false);
+ const info=document.getElementById('recovery-triage-detail');
+ try{
+  const result=await readSite('/api/public-recovery-triage');
+  const d=result.data||{};
+  const verified=result.response?.ok===true&&d.ok===true
+   &&freshEvidence(d.generated_at)
+   &&d.governance?.capital_permission==='0R'
+   &&d.governance?.live_order_submission_enabled===false
+   &&d.private_actions_executed===0&&d.database_jobs_modified===0;
+  const auth=verified?d.checks?.auth_http?.state:'NOT VERIFIED';
+  const rest=verified?d.checks?.postgrest_http?.state:'NOT VERIFIED';
+  const incident=verified&&d.checks?.database_incident_reported===true;
+  show('recovery-triage',incident?'DATABASE INCIDENT REPORTED · LAUNCH HOLD':
+   verified?'TRANSPORT CHECKED · LAUNCH STILL ON HOLD':'DIAGNOSTIC UNAVAILABLE · LAUNCH HOLD',false);
+  if(info)info.textContent='Auth HTTP: '+auth+' · PostgREST HTTP: '+rest+
+   ' · Database incident: '+(incident?'REPORTED':'NOT VERIFIED OR NOT REPORTED')+
+   ' · This does not certify a SQL query, login, a kernel receipt, billing, a broker price, or readiness. WAIT / 0R.';
+ }catch{
+  show('recovery-triage','DIAGNOSTIC UNAVAILABLE · LAUNCH HOLD',false);
+  if(info)info.textContent='On-demand network check failed; no private execution or scheduler changes attempted.';
+ }finally{
+  recoveryTriageInFlight=false;
+  if(button)button.disabled=false;
+ }
+}
+document.getElementById('recovery-triage-check')?.addEventListener('click',()=>void inspectRecoveryTriage());
+
 void loadMarketExtras();
 void loadPublic();
 void load();

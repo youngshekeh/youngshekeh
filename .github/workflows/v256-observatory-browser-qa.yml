@@ -1,4 +1,4 @@
-name: V256–V257 Chromium Quarterly Alerts and Market Status Acceptance
+name: V256–V258 Chromium Public Research and Recovery Acceptance
 on:
   pull_request:
     branches: [the-father-analytics-deploy]
@@ -32,3 +32,5 @@ jobs:
         run: node scripts/v256-observatory-browser-qa.mjs
       - name: Verify status-page Gold Oil DXY quarterly isolation in real Chrome
         run: node scripts/v257-status-browser-qa.mjs
+      - name: Verify manual-only safe Supabase recovery diagnostics in Chrome
+        run: node scripts/v258-recovery-triage-browser-qa.mjs

@@ -69,6 +69,15 @@
         <p id="auth-gateway-detail" class="muted">Inspect whether Vercel can reach both Supabase Auth endpoints directly. This does not verify password login, Google sign-in, account entitlement or commercial release.</p>
         <button id="auth-gateway-check" type="button" class="secondary">CHECK AUTH NETWORK PATH</button>
       </section>
+      <section class="card status-box" aria-label="On-demand database recovery triage">
+        <div class="label">OPERATOR DIAGNOSTIC · READ-ONLY</div>
+        <h2 class="status-section-heading">Check the recovery path.</h2>
+        <p class="muted">Checks independent external HTTP reachability for Supabase Auth and PostgREST, alongside the public incident verdict. HTTP responses do not certify sign-in, database queries, the sealed kernel, or commercial launch.</p>
+        <div id="recovery-triage" class="value wait" role="status" aria-live="polite">NOT CHECKED · NO AUTOMATIC PROBE</div>
+        <p id="recovery-triage-detail" class="muted">Runs only on your click. No database changes, service role, cron edits, financial execution, or account access.</p>
+        <button id="recovery-triage-check" class="secondary" type="button">CHECK READ-ONLY RECOVERY PATH</button>
+        <p class="muted">Provider incident investigation: <a href="https://supabase.com/dashboard/support/new" rel="noopener noreferrer" target="_blank">Supabase Support ↗</a>. Trading remains WAIT / 0R.</p>
+      </section>
       <section class="card status-box">
         <div id="detail" class="muted">Loading runtime observations...</div>
       </section>
