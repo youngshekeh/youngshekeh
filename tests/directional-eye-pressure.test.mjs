@@ -4,7 +4,7 @@ import {createEyeReadGate,EYE_CACHE_TTL_MS} from '../api/directional-eye.js';
 const packet=t=>({version:'directional-eye-v1',generated_at:new Date(t).toISOString(),research_only:true,live_orders:false,capital_permission:'0R'});
 test('concurrent readers share one provider request and preserve original timestamp',async()=>{
  let t=Date.UTC(2026,9,23,12),count=0,release;
- const gate=createEyeReadGate({now:()=>t,read:()=>{count++;return new Promise(r=>release=r);}});
+ const gate=createEyeReadGate({now:()=>t,read:()=>{count++;return count===1?new Promise(r=>release=r):Promise.resolve(packet(t));}});
  const a=gate(),b=gate();assert.equal(count,1);release(packet(t));
  const [first,second]=await Promise.all([a,b]);assert.equal(first,second);
  t+=5000;assert.equal(await gate(),first);assert.equal(count,1);
