@@ -16,7 +16,10 @@ if(root){
   for(const asset of ASSETS){
    let row=fresh?.assets?.find(x=>x.asset===asset)||unavailable(asset);
    if(row.expires_at&&Date.parse(row.expires_at)<Date.now())row=unavailable(asset,'Candle evidence expired');
-   const card=el('article','');card.className='eye-card';card.append(el('h3',asset),el('strong',`${row.state} · ${row.direction}`));
+   const card=el('article','');card.className='eye-card';
+   const status=el('strong',`${row.state} · ${row.direction}`);status.className='eye-state';
+   status.dataset.state=row.state==='UNAVAILABLE'?'unavailable':row.state==='TRIGGER'?'trigger':row.state==='ARMED'?'armed':'observe';
+   card.append(el('h3',asset),status);
    const dl=el('dl','');
    const pair=(k,v)=>dl.append(el('dt',k),el('dd',v));
    pair('Readiness / probability',row.readiness==null?'Unavailable':`${row.readiness}/100 rule completeness · probability uncalibrated`);
@@ -43,7 +46,10 @@ if(root){
      pair('Range provenance','Coinbase daily OHLC · current day incomplete · receipt freshness only');
     }else pair('Measured UTC ranges',ranges?.reason||'Unavailable or receipt expired');
    }
-   pair('Capital Permission','WAIT · 0R');card.append(dl,el('p',row.reason));grid.append(card);
+   pair('Capital Permission','WAIT · 0R');
+   const details=el('details','');details.className='eye-evidence';details.append(el('summary','Evidence & scenario details'),dl);
+   if(row.state==='TRIGGER'||row.state==='ARMED')details.open=true;
+   card.append(el('p',row.reason),details);grid.append(card);
    if(['ARMED','TRIGGER'].includes(row.state)&&row.forecast_id&&!records.has(row.forecast_id)&&records.size<500)records.set(row.forecast_id,Object.freeze({...row,captured_at:new Date().toISOString(),outcome:'PENDING',storage:'TAB_ONLY_NOT_CANONICAL'}));
   }
  }
