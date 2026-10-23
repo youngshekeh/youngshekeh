@@ -87,7 +87,7 @@ try{
  }));
  await page.waitForFunction(()=>document.querySelector('#public-macro')?.textContent?.includes('2/2'),null,{timeout:8000});
  await page.waitForFunction(()=>document.querySelector('#public-quarterly')?.textContent?.includes('9/9'));
- await page.waitForFunction(()=>document.querySelector('#public-reference')?.textContent?.includes('AVAILABLE'));
+ await page.waitForFunction(()=>document.querySelector('#public-reference')?.textContent?.includes('TWO CURRENT SOURCES'));
  await page.waitForFunction(()=>document.querySelector('#launch-gate')?.textContent?.includes('HOLD'));
  const initial={
   macro:await page.locator('#public-macro').innerText(),
