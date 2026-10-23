@@ -24,5 +24,5 @@ test('invalid payloads and provider HTTP failure have explicit safe diagnostics'
 test('provider requests use explicit bounded windows and expose interval diagnostics',async()=>{
  const original=globalThis.fetch,now=Date.UTC(2026,9,23,12),urls=[];
  globalThis.fetch=async url=>{const q=new URL(url).searchParams;urls.push(q);const step=Number(q.get('granularity'))*1000;return {ok:true,json:async()=>Array.from({length:65},(_,i)=>[(now-(65-i)*step)/1000,99,101,100,100,10])};};
- try{const p=await readEye(now);assert.equal(urls.length,3);for(const q of urls){const span=Date.parse(q.get('end'))-Date.parse(q.get('start'));assert.equal(span,299*Number(q.get('granularity'))*1000);}assert.equal(p.data_quality.bitcoin.one_minute.status,'VALIDATED');assert.equal(p.data_quality.bitcoin.five_minute.status,'VALIDATED');}finally{globalThis.fetch=original;}
+ try{const p=await readEye(now);assert.equal(urls.length,3);for(const q of urls){const span=Date.parse(q.get('end'))-Date.parse(q.get('start'));assert.equal(span,299*Number(q.get('granularity'))*1000);assert.equal(Date.parse(q.get('end'))%(Number(q.get('granularity'))*1000),0);}assert.equal(p.data_quality.bitcoin.one_minute.status,'VALIDATED');assert.equal(p.data_quality.bitcoin.five_minute.status,'VALIDATED');}finally{globalThis.fetch=original;}
 });
