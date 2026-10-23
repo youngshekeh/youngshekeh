@@ -3,7 +3,7 @@ import {measuredRanges} from '../src/directional-eye-ranges.mjs';
 const endpoint='https://api.exchange.coinbase.com/products/BTC-USD/candles';
 export async function readEye(now=Date.now()){
  const read=async granularity=>{
-  const end=Math.floor(now/60000)*60000;
+  const end=Math.floor(now/(granularity*1000))*granularity*1000;
   const start=end-299*granularity*1000;
   const query=new URLSearchParams({granularity:String(granularity),start:new Date(start).toISOString(),end:new Date(end).toISOString()});
   const r=await fetch(`${endpoint}?${query}`,{headers:{Accept:'application/json'},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(5000)});
