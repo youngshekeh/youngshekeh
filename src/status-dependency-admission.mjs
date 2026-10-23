@@ -11,7 +11,8 @@ export function assessStatusDependencyAdmission(readiness,now=Date.now()){
    && freshEvidence(body.generated_at,now);
  const dbHealthy=sourceCurrent && body.database_incident?.active===false;
  const reason=!sourceCurrent?'READINESS_NOT_VERIFIED'
-   :!dbHealthy?'DATABASE_INCIDENT_ACTIVE':'DATABASE_INCIDENT_CLEARED';
+   :body.database_incident?.active===true?'DATABASE_INCIDENT_ACTIVE'
+   :!dbHealthy?'DATABASE_INCIDENT_NOT_VERIFIED':'DATABASE_INCIDENT_CLEARED';
  return Object.freeze({
    admitted:dbHealthy,
    reason,
