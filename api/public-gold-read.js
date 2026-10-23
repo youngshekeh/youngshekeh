@@ -1,9 +1,9 @@
 // Fixed-path Gold data read: avoids query-parameter ambiguity at auth/bypass gateways.
-// Uses only existing approved read-only Supabase functions. No live trade API.
+// Fixed read-only broker, independent public reference and recovery sources. No live trade API.
 import {createFeedPressureGate,GOLD_FEED} from '../src/public-feed-pressure.mjs';
 import {curatePublicGold} from '../src/public-gold-curation.mjs';
 import {readGoldWithinBudget} from '../src/gold-read-budget.mjs';
-import {composeGoldRead,readIndependentGold} from '../src/public-gold-independent.mjs';
+import {readIndependentGold} from '../src/public-gold-independent.mjs';
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 async function publicRead(slug,ms){
  const controller=new AbortController();
@@ -18,10 +18,7 @@ async function publicRead(slug,ms){
  }finally{clearTimeout(timer);}
 }
 const feed=createFeedPressureGate({async read(){
- const [governed,independent]=await Promise.allSettled([
-  readGoldWithinBudget({read:publicRead,curate:curatePublicGold}),readIndependentGold()
- ]);
- const curated=composeGoldRead(governed.status==='fulfilled'?governed.value:null,independent.status==='fulfilled'?independent.value:null);
+ const curated=await readGoldWithinBudget({read:publicRead,curate:curatePublicGold,independent:readIndependentGold});
  if(curated?.ok!==true)throw new Error('no_public_gold');
  return curated;
 }});
