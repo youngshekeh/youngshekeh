@@ -1,5 +1,6 @@
 import './public-gold-launch.css';
 import {goldDisplay} from './public-gold-display.mjs';
+import {startGoldPanelLifecycle} from './gold-panel-lifecycle.mjs';
 
 // Public research surface. It cannot submit trades, elevate permission or infer a live quote.
 const GOLD_ENDPOINT = '/api/public-gold-read';
@@ -112,16 +113,8 @@ function setup() {
       busy = false;
     }
   }
-  void refresh();
-  const every = surface === 'gold-live' ? 5000 : 15000;
-  const expiryTimer=window.setInterval(paint,1000);
-  const timer = window.setInterval(() => {
-    if (!document.hidden) void refresh();
-  }, every);
-  document.addEventListener('visibilitychange',()=>{
-    if (!document.hidden && Date.now()-lastOk > 3000) void refresh();
-  });
-  window.addEventListener('pagehide',()=>{window.clearInterval(timer);window.clearInterval(expiryTimer);},{once:true});
+  startGoldPanelLifecycle({paint,refresh,every:surface==='gold-live'?5000:15000});
+
 }
 if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',setup,{once:true});
 else setup();
