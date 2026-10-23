@@ -14,6 +14,12 @@ export async function readGoldWithinBudget({read,curate,independent,now=Date.now
   catch{return missing()}
  };
  const brokerTask=attempt('public-gold-live-xauusd',BROKER_BUDGET_MS);
+ // Start the fixed recovery source after grace while a broker read remains stalled.
+ // This is only a latency optimization: curation still requires a fresh source timestamp.
+ let recoveryTask=null;
+ const startRecovery=()=>recoveryTask??=attempt('public-gold-live-api',REFERENCE_BUDGET_MS);
+ const recoveryTimer=setTimeout(startRecovery,brokerGraceMs);
+ brokerTask.finally(()=>clearTimeout(recoveryTimer));
  const independentTask=typeof independent==='function'?Promise.resolve().then(independent).catch(()=>null):Promise.resolve(null);
  const first=await Promise.race([
   brokerTask.then(broker=>({kind:'broker',broker})),
@@ -29,6 +35,7 @@ export async function readGoldWithinBudget({read,curate,independent,now=Date.now
   external=first.external;
   const indicative=typeof independent==='function'?composeGoldRead(curate({},now()),external,now()):null;
   if(indicative?.ok===true){
+   clearTimeout(recoveryTimer);
    let timer;
    try{
     broker=await Promise.race([brokerTask,new Promise(resolve=>{timer=setTimeout(()=>resolve(null),brokerGraceMs)})]);
@@ -39,6 +46,6 @@ export async function readGoldWithinBudget({read,curate,independent,now=Date.now
  const select=value=>typeof independent==='function'?composeGoldRead(value,external,now()):value;
  const primary=select(curate({broker},now()));
  if(primary?.ok===true)return primary;
- const reference=await attempt('public-gold-live-api',REFERENCE_BUDGET_MS);
+ const reference=await startRecovery();
  return select(curate({broker,reference},now()));
 }
