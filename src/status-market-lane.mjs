@@ -55,7 +55,7 @@ export function assessMarketStatusFeed(kind,read,now=Date.now()){
    :names.join(' · ')+'. No execution-grade quotes.'
  });
 }
-export async function inspectResearchSources({read,report=()=>{},now=Date.now()}={}){
+export async function inspectResearchSources({read,report=()=>{},now=Date.now}={}){
  if(typeof read!=='function')throw new TypeError('read_required');
  const sources=['macro','quarterly'];
  const results=await Promise.all(sources.map(async kind=>{
