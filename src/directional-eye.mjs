@@ -3,9 +3,10 @@ import './bitcoin-liquidity.mjs';
 import './directional-eye.css';
 import {ASSETS,unavailable} from './directional-eye-core.mjs';
 import {validatedEyePacket} from './directional-eye-packet.mjs';
+import {createResearchEpoch} from './research-request-epoch.mjs';
 const root=document.getElementById('directional-eye');
 if(root){
- let packet=null,pending=false,timer=null,expiry=null;const records=new Map();
+ let packet=null,pending=false,timer=null,expiry=null,controller=null;const epochs=createResearchEpoch();const records=new Map();
  const el=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n;};
  const fmt=x=>typeof x==='number'?new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(x):'Unavailable';
  function paint(){
@@ -46,17 +47,21 @@ if(root){
    if(['ARMED','TRIGGER'].includes(row.state)&&row.forecast_id&&!records.has(row.forecast_id)&&records.size<500)records.set(row.forecast_id,Object.freeze({...row,captured_at:new Date().toISOString(),outcome:'PENDING',storage:'TAB_ONLY_NOT_CANONICAL'}));
   }
  }
- async function refresh(){if(pending||document.hidden)return;pending=true;root.querySelector('[data-refresh]').disabled=true;
-  try{const r=await fetch('/api/directional-eye',{cache:'no-store',signal:AbortSignal.timeout(8000)});if(!r.ok)throw Error();const p=await r.json();
+ async function refresh(){if(pending||document.hidden)return;pending=true;
+  const epoch=epochs.begin();controller=new AbortController();
+  const timeout=setTimeout(()=>controller?.abort(),8000);
+  root.querySelector('[data-refresh]').disabled=true;
+  try{const r=await fetch('/api/directional-eye',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const p=await r.json();
+   if(!epochs.isCurrent(epoch))return;
    if(!validatedEyePacket(p,Date.now()))throw Error();packet=p;
    root.querySelector('[data-status]').textContent='Checked '+new Date().toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos'})+' WAT · Research model unvalidated';
-  }catch{packet=null;root.querySelector('[data-status]').textContent='Candle service unavailable · signals withheld';}
-  finally{pending=false;root.querySelector('[data-refresh]').disabled=false;paint();}
+  }catch{if(epoch!==requestEpoch)return;packet=null;root.querySelector('[data-status]').textContent='Candle service unavailable · signals withheld';}
+  finally{clearTimeout(timeout);if(epochs.isCurrent(epoch)){controller=null;pending=false;root.querySelector('[data-refresh]').disabled=false;paint();}}
  }
  root.querySelector('[data-refresh]').addEventListener('click',refresh);
  root.querySelector('[data-export]').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({model:'directional-eye-v1',canonical:false,records:[...records.values()]},null,2)],{type:'application/json'}));const a=el('a','');a.href=url;a.download='directional-eye-tab-observations.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
  function start(){if(timer!==null)return;timer=setInterval(refresh,60000);expiry=setInterval(paint,5000);}
- function stop(){clearInterval(timer);clearInterval(expiry);timer=null;expiry=null;}
+ function stop(){clearInterval(timer);clearInterval(expiry);timer=null;expiry=null;epochs.invalidate();controller?.abort();controller=null;pending=false;packet=null;root.querySelector('[data-status]').textContent='Research paused · evidence withheld';paint();}
  document.addEventListener('visibilitychange',()=>{paint();if(!document.hidden)void refresh();});
  window.addEventListener('pagehide',stop);window.addEventListener('pageshow',()=>{start();void refresh();});start();paint();void refresh();
 }
