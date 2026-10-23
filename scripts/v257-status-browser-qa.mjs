@@ -76,7 +76,16 @@ try{
  }));
  const resp=await page.goto(HOST+'/status/',{waitUntil:'domcontentloaded'});
  assert.equal(resp?.status(),200);
- await page.waitForFunction(()=>document.querySelector('#public-macro')?.textContent?.includes('2/2'));
+ await page.waitForTimeout(1100);
+ console.log('V257_TRACE',JSON.stringify({
+  macro:await page.locator('#public-macro').innerText(),
+  quarterly:await page.locator('#public-quarterly').innerText(),
+  spot:await page.locator('#public-reference').innerText(),
+  gate:await page.locator('#launch-gate').innerText(),
+  macroProof:await page.locator('#public-macro-proof').innerText(),
+  requests:requestCount,errors
+ }));
+ await page.waitForFunction(()=>document.querySelector('#public-macro')?.textContent?.includes('2/2'),null,{timeout:8000});
  await page.waitForFunction(()=>document.querySelector('#public-quarterly')?.textContent?.includes('9/9'));
  await page.waitForFunction(()=>document.querySelector('#public-reference')?.textContent?.includes('AVAILABLE'));
  await page.waitForFunction(()=>document.querySelector('#launch-gate')?.textContent?.includes('HOLD'));
