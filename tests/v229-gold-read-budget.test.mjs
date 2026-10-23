@@ -33,7 +33,9 @@ test('upstream HTTP failure cannot turn research quote positive',async()=>{
 test('browser shares strict V222 proof and public route shortens response time',()=>{
  const browser=readFileSync(new URL('../src/public-gold-launch.mjs',import.meta.url),'utf8');
  const api=readFileSync(new URL('../api/public-gold-read.js',import.meta.url),'utf8');
- assert.match(browser,/verifyPublicGoldQuote\(\{response:\{ok:response.ok\},data\}\)/);
+ const display=readFileSync(new URL('../src/public-gold-display.mjs',import.meta.url),'utf8');
+ assert.match(browser,/goldDisplay\(latest\)/);
+ assert.match(display,/verifyPublicGoldQuote/);
  assert.match(browser,/AbortSignal.timeout\(7500\)/);
  assert.match(api,/readGoldWithinBudget/);assert.doesNotMatch(api,/11500|9500/);
  assert.equal(verifyPublicGoldQuote({response:{ok:true},data:{ok:true,live_broker:{state:'BROKER_LIVE',
