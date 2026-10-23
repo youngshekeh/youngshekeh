@@ -1,7 +1,7 @@
 import {curateMacroQuote,curateMacroPacket,verifyMacroPacket,MACRO_GOVERNANCE}
  from '../src/public-macro-reference-data.mjs';
 // Yahoo/ICE/NYMEX redistribution license NOT verified; public research
-// diagnostics only, never licensed commerce or trading execution.
+// diagnostics only, never licensed commerce or trading execution. NOT execution-grade.
 const URLS=Object.freeze({
  wti:'https://query1.finance.yahoo.com/v8/finance/chart/CL%3DF?interval=1d&range=1d',
  dxy:'https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?interval=1d&range=1d'
