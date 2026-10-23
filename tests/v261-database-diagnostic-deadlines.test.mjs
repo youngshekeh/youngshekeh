@@ -30,7 +30,10 @@ test('outer deadlines leave room for SQL, Edge auth, and a truthful bounded resu
  }
  assert.ok(25000<26000&&26000+5000<35000&&35000<38000&&38000<40000);
  const hosting=JSON.parse(readFileSync(new URL('vercel.json',root),'utf8'));
+ // The public read-only feed has an independent 20s function cap and does not
+ // inherit the privileged scheduler's longer 40s diagnostic budget.
  assert.deepEqual(hosting.functions,{
+  'api/market-feed.js':{maxDuration:20},
   'api/connection-pressure-shadow.js':{maxDuration:40},
   'api/peak-minute-spreader-status.js':{maxDuration:40}
  });

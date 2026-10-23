@@ -1,0 +1,14 @@
+{
+  "release": "V263",
+  "function": "flutterwave-webhook",
+  "prior_version": 7,
+  "prior_verify_jwt": false,
+  "prior_ezbr_sha256": "0129a95daab959e5da8bd5227a1f143124199dc7e15bfe0c3ba79e53c83442fa",
+  "prior_updated_at": 1790731039865,
+  "rollback_entrypoint": "supabase/recovery/v263-flutterwave-webhook-rollback/index.ts",
+  "deployment_order": [
+    "atomic SQL migration after rollback-only integration assertions",
+    "webhook with unchanged verify_jwt=false and mandatory body signature verification"
+  ],
+  "checkout_remains_locked": true
+}
