@@ -1,4 +1,5 @@
 import './styles.css';
+import { goldEvidenceView } from './gold-evidence-view.mjs';
 import { paperQuoteView } from './paper-quote-view.mjs';
 import { createLiveMonitor, runBounded, marketAssetView } from './live-monitor.mjs';
 import { buildGoldSignalLifecycle } from './gold-signal-lifecycle.mjs';
@@ -409,9 +410,8 @@ async function loadGold() {
   const capital = '0R';
   const market = useShadow ? first(day?.market_session, 'SHADOW_MARKET') : canonicalMarket;
   const price = useShadow ? day?.current?.price : (market === 'UNAVAILABLE' ? null : canonicalPrice);
-  const evidenceState = useShadow
-    ? 'SHADOW_RESEARCH_ONLY'
-    : first(evidence?.calibration?.performance_state, evidence?.performance_state, 'UNKNOWN');
+  const evidenceView = goldEvidenceView(evidence, first(gold?.engine?.confidence_pct, gold?.confidence, evidence?.gold?.confidence, null));
+  const evidenceState = useShadow ? 'SHADOW_RESEARCH_ONLY' : evidenceView.state;
 
   set('gold-live-state', useShadow ? `SHADOW · ${first(day?.day_state?.day_state, 'DAY_STATE_UNAVAILABLE')}` : first(gold?.engine?.state, gold?.state, market));
   set('gold-live-copy', useShadow
@@ -428,7 +428,7 @@ async function loadGold() {
   set('gold-market', market);
   set('gold-price', price);
   set('gold-evidence', evidenceState);
-  set('gold-confidence', useShadow ? 'WITHHELD' : (evidenceState === 'EVIDENCE_STORE_UNAVAILABLE' ? null : first(gold?.engine?.confidence_pct, gold?.confidence, evidence?.gold?.confidence, null)));
+  set('gold-confidence', useShadow ? 'WITHHELD' : evidenceView.confidence);
 
   const q4GoldQuarter = Array.isArray(q4ZoneSource?.zones)
     ? q4ZoneSource.zones.find((zone: AnyJson) => String(zone?.timeframe).toLowerCase() === 'quarterly')
@@ -456,9 +456,7 @@ async function loadGold() {
     set('gold-structure', first(core?.structure_signals?.market_status, core?.market_status, 'UNKNOWN'));
     set('gold-structure-copy', first(core?.decision_compression?.what_matters_now, core?.interpretation, 'Structural context is conditional.'));
     set('gold-model', evidenceState);
-    set('gold-model-copy', evidenceState === 'EVIDENCE_STORE_UNAVAILABLE'
-      ? 'Probability, EV, MFE/MAE and signal reputation are withheld until immutable evidence is readable.'
-      : 'Observed model evidence is available subject to its sample and calibration gates.');
+    set('gold-model-copy', evidenceView.copy);
   }
   set('gold-firewall', `${action} · ${capital}`);
 

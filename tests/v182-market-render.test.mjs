@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {goldEvidenceView} from '../src/gold-evidence-view.mjs';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from 'node:module';
@@ -54,15 +55,18 @@ test('the actual Gold loader keeps the desk and firewall locked when research fe
   const start=frontend.indexOf('async function loadGold()');
   const goldSource=stripTypeScriptTypes(frontend.slice(start,frontend.indexOf('\nfunction renderV132ShadowStudies',start)));
   const values=new Map(), first=(...values)=>values.find(value=>value!=null && value!=='');
-  const gold={ok:true,market_status:'DELAYED_LIVE',price:4220,engine:{state:'HERO_REPAIR',action:'EVALUATE',capital_permission:'MAX_0.25R'}};
+  const gold={ok:true,market_status:'DELAYED_LIVE',price:4220,engine:{confidence_pct:98,state:'HERO_REPAIR',action:'EVALUATE',capital_permission:'MAX_0.25R'}};
   const desk={ok:true,current_read:{action_permitted:'EVALUATE',capital_permission:'MAX_0.25R'}};
-  const load=new Function('read','readLocal','set','first','setupBrokerGoldBridge',`${goldSource}\nreturn loadGold;`)(
+  const load=new Function('read','readLocal','set','first','setupBrokerGoldBridge','goldEvidenceView',`${goldSource}\nreturn loadGold;`)(
     async path=>path==='public-gold-live-xauusd'?gold:path==='public-gold-execution-desk'?desk:{},
-    async ()=>({}),(id,text)=>values.set(id,text),first,()=>{});
+    async ()=>({}),(id,text)=>values.set(id,text),first,()=>{},goldEvidenceView);
   const result=await load();
   assert.equal(result.available,true); assert.equal(values.get('gold-price'),4220);
   assert.equal(values.get('gold-live-state'),'HERO_REPAIR');
   assert.equal(values.get('gold-live-action'),'WAIT'); assert.equal(values.get('gold-live-capital'),'0R');
   assert.equal(values.get('gold-firewall'),'WAIT · 0R');
   assert.equal(values.get('v117-decision'),'WAIT · 0R');
+  assert.equal(values.get('gold-confidence'),null);
+  assert.equal(values.get('gold-model'),'EVIDENCE UNAVAILABLE');
+  assert.match(values.get('gold-model-copy'),/not verified/);
 });
