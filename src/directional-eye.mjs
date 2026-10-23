@@ -27,6 +27,10 @@ if(root){
     const qualityFresh=packet&&Date.now()-Date.parse(packet.generated_at)<60000;
     pair('Candle feed health',quality?`${quality.provider} · ${qualityFresh?quality.status:'EXPIRED CHECK'} · ${(quality.reason||'Integrity checks passed').replaceAll('_',' ')}`:'Unavailable');
     pair('Candle counts',quality?.one_minute_rows?`1m: ${quality.one_minute_rows} / 5m: ${quality.five_minute_rows}`:'Unavailable');
+    for(const [name,key] of [['1m','one_minute'],['5m','five_minute']]){
+     const detail=quality?.[key];
+     if(detail)pair(`${name} evidence check`,`${(detail.reason||detail.status).replaceAll('_',' ')} · last completed ${detail.last_closed_at?new Date(detail.last_closed_at).toLocaleTimeString('en-GB',{timeZone:'Africa/Lagos'})+' WAT':'unavailable'} · age at check ${detail.age_seconds??'—'}s`);
+    }
     const ranges=packet?.measured_ranges?.bitcoin;
     if(ranges?.status==='OBSERVED_RANGES'&&Date.parse(ranges.expires_at)>Date.now()){
      for(const [name,r] of Object.entries(ranges.periods))pair(`${name} observed UTC range`,r.status==='OBSERVED_IN_PROGRESS'?`${fmt(r.low)}–${fmt(r.high)} · ${r.daily_buckets} daily buckets · in progress`:'Period start unavailable');

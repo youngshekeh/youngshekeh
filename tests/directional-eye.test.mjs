@@ -40,3 +40,12 @@ test('sweep of both range extremes never invents a direction',()=>{
  const x=input();Object.assign(x.fiveMinute.at(-1),{o:100,h:105,l:95,c:100,v:30});
  assert.equal(evaluateEye(x).direction,'UNCONFIRMED');
 });
+test('candle inspection explains rejection without relaxing freshness or continuity',async()=>{
+ const {inspectCandles}=await import('../src/directional-eye-core.mjs');
+ const x=input();assert.equal(inspectCandles(x.oneMinute,60000,now).status,'VALIDATED');
+ assert.equal(inspectCandles(x.oneMinute,60000,now+180001).reason,'STALE_CANDLES');
+ const g=series(60000);g[20].t=g[19].t;
+ assert.equal(inspectCandles(g,60000,now).reason,'GAPPED_OR_DUPLICATE_CANDLES');
+ const f=series(60000);f.push({...f.at(-1),t:now+60000});assert.equal(inspectCandles(f,60000,now).reason,'FUTURE_CANDLE');
+ const bad=series(60000);bad[3].t+=1000;assert.equal(inspectCandles(bad,60000,now).reason,'INVALID_CANDLE');
+});
