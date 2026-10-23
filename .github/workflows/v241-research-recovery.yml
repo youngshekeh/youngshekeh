@@ -1,4 +1,4 @@
-name: V241–V259 Supabase incident and source safety release gate
+name: V241–V261 Supabase incident and source safety release gate
 on:
   pull_request:
     branches: [the-father-analytics-deploy]
@@ -18,4 +18,5 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tests/v241-*.test.mjs tests/v242-*.test.mjs tests/v243-*.test.mjs tests/v244-*.test.mjs tests/v245-*.test.mjs tests/v246-*.test.mjs tests/v247-*.test.mjs tests/v248-*.test.mjs tests/v249-*.test.mjs tests/v250-*.test.mjs tests/v251-*.test.mjs tests/v252-*.test.mjs tests/v253-*.test.mjs tests/v254-*.test.mjs tests/v255-*.test.mjs tests/v257-*.test.mjs tests/v258-*.test.mjs tests/v259-*.test.mjs tests/v260-*.test.mjs
+      - run: node --test tests/v261-*.test.mjs
       - run: node scripts/v247-cron-collision-audit.mjs > /dev/null
