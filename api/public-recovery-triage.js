@@ -21,10 +21,13 @@ async function getStatus(path,{accept='application/json',readiness=false}={}){
  }
 }
 export async function collectRecoveryTriage({probe=getStatus,now=Date.now}={}){
+ const safely=async(path,opts)=>{try{return await probe(path,opts)}catch{return{
+  transport:'ERROR',status:0,data:null
+ }}};
  const [auth,rest,readiness]=await Promise.all([
-  probe('/auth/v1/health'),
-  probe('/rest/v1/',{accept:'application/openapi+json'}),
-  probe('/functions/v1/public-final-readiness',{readiness:true})
+  safely('/auth/v1/health'),
+  safely('/rest/v1/',{accept:'application/openapi+json'}),
+  safely('/functions/v1/public-final-readiness',{readiness:true})
  ]);
  return assessRecoveryTriage({auth,rest,readiness},now());
 }
