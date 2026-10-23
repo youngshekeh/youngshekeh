@@ -21,8 +21,33 @@ export async function readEye(now=Date.now()){
   assets:ASSETS.map(a=>a==='Bitcoin'?bitcoin:unavailable(a)),windows:timingWindows(now),
   measured_ranges:{bitcoin:await dailyRequest},data_quality:{bitcoin:bitcoinFeed,other_assets:'NO_VERIFIED_CANDLE_ADAPTER'},ledger_status:'NO_CANONICAL_WRITE',calibration:'UNVALIDATED',capital_permission:'0R',live_orders:false};
 }
+// Instance-local single flight reduces public Coinbase load without sharing stale research.
+// Cache retains original generated_at and expires after ten seconds; failures are not cached.
+export const EYE_CACHE_TTL_MS=10000;
+export function createEyeReadGate({read=readEye,now=Date.now}={}){
+ if(typeof read!=='function'||typeof now!=='function')throw new TypeError('read and clock required');
+ let cache=null,pending=null;
+ return async function observe(){
+  const t=now();
+  if(cache&&t>=cache.at&&t-cache.at<EYE_CACHE_TTL_MS)return cache.body;
+  if(pending)return pending;
+  let work;
+  work=(async()=>{
+   try{
+    const body=await read(now());
+    const age=now()-Date.parse(body?.generated_at||'');
+    if(body?.version!=='directional-eye-v1'||body.research_only!==true||body.live_orders!==false||body.capital_permission!=='0R'||!Number.isFinite(age)||age< -5000||age>60000)throw Error('invalid_research_packet');
+    cache={at:now(),body};
+    return body;
+   }catch(e){cache=null;throw e;}
+  })().finally(()=>{if(pending===work)pending=null});
+  pending=work;return work;
+ };
+}
+const observeEye=createEyeReadGate();
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'method_not_allowed'});}
- return res.status(200).json(await readEye());
+ try{return res.status(200).json(await observeEye());}
+ catch{return res.status(503).json({error:'research_feed_unavailable',capital_permission:'0R',live_orders:false});}
 }
