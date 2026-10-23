@@ -21,6 +21,7 @@ export function classifyQuarterAlert(zone,quote,now=Date.now()){
    current<=lower?ALERT_CLASSES.LOWER:ALERT_CLASSES.INSIDE;
  return Object.freeze({
   asset:zone.asset,asset_label:zone.label,state:status,
+  symbol:zone.symbol,source:quote.source,
   price:current,market_observed_at:quote.at,level:status===ALERT_CLASSES.ABOVE_HIGH||
    status===ALERT_CLASSES.UPPER?hi:status===ALERT_CLASSES.BELOW_LOW||
    status===ALERT_CLASSES.LOWER?lo:null,
