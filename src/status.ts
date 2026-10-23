@@ -156,5 +156,34 @@ document.getElementById('status-refresh')?.addEventListener('click',()=>{
  void loadPublic();
  void load();
 });
+
+let authGatewayInFlight=false;
+async function inspectExternalAuthGateway(){
+  if(authGatewayInFlight)return;
+  authGatewayInFlight=true;
+  const button=document.getElementById('auth-gateway-check');
+  if(button)button.disabled=true;
+  show('auth-gateway','CHECKING EXTERNAL AUTH PATH',false);
+  const detail=document.getElementById('auth-gateway-detail');
+  try{
+    const result=await readSite('/api/public-auth-gateway');
+    const data=result.data||{};
+    const current=result.response?.ok===true && data.ok===true
+      && freshEvidence(data.generated_at);
+    const state=current&&typeof data.state==='string'?data.state:'CHECK UNAVAILABLE';
+    // External path reachability never changes the private Auth or launch gate.
+    show('auth-gateway',state+' · NOT SIGN-IN CERTIFIED',false);
+    if(detail)detail.textContent='Supabase Auth health: '+(current?data.checks?.health?.status||0:'UNVERIFIED')
+      +' · Settings: '+(current?data.checks?.settings?.status||0:'UNVERIFIED')
+      +' · Diagnostic vantage: Vercel external request. This is not browser login, checkout, database recovery or broker proof.';
+  }catch{
+    show('auth-gateway','CHECK UNAVAILABLE',false);
+    if(detail)detail.textContent='External Auth network check failed. Private login and commercial launch remain unverified.';
+  }finally{
+    authGatewayInFlight=false;
+    if(button)button.disabled=false;
+  }
+}
+document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
 void loadPublic();
 void load();
