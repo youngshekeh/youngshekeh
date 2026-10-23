@@ -10,3 +10,14 @@ test('valid source candles reach Bitcoin detector without granting execution',as
  globalThis.fetch=async url=>{const step=Number(new URL(url).searchParams.get('granularity'))*1000;return {ok:true,json:async()=>Array.from({length:350},(_,i)=>[(now-(350-i)*step)/1000,99,101,100,100,10]).reverse()};};
  try{const r=await readEye(now);const b=r.assets.find(x=>x.asset==='Bitcoin');assert.notEqual(b.state,'UNAVAILABLE');assert.equal(b.source,'Coinbase Exchange BTC-USD');assert.equal(b.probability,null);assert.equal(b.capital_permission,'0R');assert.equal(r.ledger_status,'NO_CANONICAL_WRITE');}finally{globalThis.fetch=original;}
 });
+test('invalid payloads and provider HTTP failure have explicit safe diagnostics',async()=>{
+ const original=globalThis.fetch;
+ try{
+  globalThis.fetch=async()=>({ok:false,status:429});
+  assert.equal((await readEye()).data_quality.bitcoin.reason,'PROVIDER_HTTP_ERROR');
+  for(const rows of [[],[[0,100,99,100,100,1]],[[0,99,101,100,100,-1]],[[0,99,101,100,Infinity,1]]]){
+   globalThis.fetch=async()=>({ok:true,json:async()=>rows});
+   const p=await readEye();assert.equal(p.data_quality.bitcoin.reason,'INVALID_PROVIDER_PAYLOAD');assert.equal(p.assets.find(x=>x.asset==='Bitcoin').state,'UNAVAILABLE');
+  }
+ }finally{globalThis.fetch=original;}
+});

@@ -46,7 +46,7 @@ export function evaluateEye({asset,oneMinute,fiveMinute,source,now=Date.now()}={
   invalidation:trigger-sign*atr,targets:[trigger+sign*atr,trigger+sign*2*atr],
   projected_distance:2*atr};
  return {asset,state,direction,readiness,probability:null,source,
-  observed_at:new Date(last.t+300000).toISOString(),expires_at:new Date(last.t+900000).toISOString(),
+  observed_at:new Date(last.t+300000).toISOString(),expires_at:new Date(Math.min(last.t+900000,one.at(-1).t+180000)).toISOString(),
   forecast_id:`EYE1-${asset.replaceAll(' ','')}-${last.t}-${state}-${direction}`,
   evidence:{compressed,near,sweep:sweepUp||sweepDown,volume_anomaly:pressure,confirmed},levels,
   horizon_minutes:60,capital_permission:'0R',action:'WAIT',
