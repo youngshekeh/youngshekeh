@@ -90,9 +90,10 @@ export function calculateQuarterlyZones(parsed,asset,now=Date.now()){
   const month=new Date(Date.parse(bounds.previous_start));month.setUTCMonth(month.getUTCMonth()+m);
   if((counts.get(month.toISOString().slice(0,7))||0)<c.months)return null;
  }
- if(qtd.length<3||qtd.some(x=>!positive(x.high)||!positive(x.low)||x.high<x.low))return null;
+ if(qtd.some(x=>!positive(x.high)||!positive(x.low)||x.high<x.low))return null;
  const high=Math.max(...prev.map(r=>r.high)),low=Math.min(...prev.map(r=>r.low));
- const currentHigh=Math.max(...qtd.map(r=>r.high)),currentLow=Math.min(...qtd.map(r=>r.low));
+ const currentHigh=qtd.length?Math.max(...qtd.map(r=>r.high)):null;
+ const currentLow=qtd.length?Math.min(...qtd.map(r=>r.low)):null;
  if(!positive(high)||!positive(low)||high<=low)return null;
  const width=(high-low)*0.02; // precisely 2% of observed prior-quarter range, never orderbook
  const newest=parsed.rows.reduce((latest,r)=>r.at>latest?r.at:latest,'');
