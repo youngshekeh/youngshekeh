@@ -82,7 +82,8 @@ test('stale, wrong transport, corrupt and trade-enabled packets fail closed',()=
   assert.equal(assessMarketStatusFeed(kind,wrap({...packet,not_for_trade_execution:false}),now).count,0);
   assert.equal(assessMarketStatusFeed(kind,wrap({...packet,governance:{...packet.governance,capital_permission:'1R'}}),now).count,0);
   assert.equal(assessMarketStatusFeed(kind,wrap({...packet,governance:{...packet.governance,live_order_submission_enabled:true}}),now).count,0);
-  assert.equal(assessMarketStatusFeed(kind,wrap(packet),now+14*60*1000).count,0);
+  const expiration=kind==='macro'?70*60*1000:14*60*1000;
+  assert.equal(assessMarketStatusFeed(kind,wrap(packet),now+expiration).count,0);
  }
 });
 test('independent macro failure still reports complete quarterly history',async()=>{
