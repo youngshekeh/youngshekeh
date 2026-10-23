@@ -112,7 +112,7 @@ test('recovery diagnostic is click-only, fixed-host and can never mutate DB or c
  assert.match(route,/const PROJECT='https:\/\/mpcelmjiycjpdyyflisn.supabase.co'/);
  assert.match(route,/CACHE_MS=90000/);
  assert.match(route,/BUDGET_MS=4700/);
- assert.match(route,/getStatus\('\/rest\/v1\/'/);
+ assert.match(route,/safely\('\/rest\/v1\/'/);
  assert.match(ui,/recovery-triage-check/);
  assert.match(ui,/freshEvidence\(d.generated_at\)/);
  assert.doesNotMatch(ui,/void inspectRecoveryTriage\(\);\s*void load/);
