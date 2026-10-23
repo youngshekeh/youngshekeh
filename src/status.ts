@@ -210,6 +210,6 @@ async function inspectExternalAuthGateway(){
   }
 }
 document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
-void loadPublic();
 void loadMarketExtras();
+void loadPublic();
 void load();
