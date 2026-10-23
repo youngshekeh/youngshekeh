@@ -1,4 +1,4 @@
-name: V256–V259 Chromium Research, Recovery and Operator Support Acceptance
+name: V256–V260 Chromium Research, Recovery and Public Connection Acceptance
 on:
   pull_request:
     branches: [the-father-analytics-deploy]
@@ -34,3 +34,5 @@ jobs:
         run: node scripts/v257-status-browser-qa.mjs
       - name: Verify manual-only recovery and source-safe support report in Chrome
         run: node scripts/v258-recovery-triage-browser-qa.mjs
+      - name: Verify public acceptance CORS requests and payment hold in Chrome
+        run: node scripts/v260-public-acceptance-browser-qa.mjs

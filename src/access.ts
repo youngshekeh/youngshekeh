@@ -1,17 +1,10 @@
-      const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
-      const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
+import {readPublicAcceptance} from './public-acceptance-connection.mjs';
 
       async function load() {
         const state = document.getElementById('state');
         const detail = document.getElementById('detail');
         try {
-          const response = await fetch(
-            `${SUPABASE}/functions/v1/public-auth-runtime-check`,
-            {
-              headers: { apikey: KEY, Accept: 'application/json' },
-            }
-          );
-          const data = await response.json();
+          const {response,data} = await readPublicAcceptance('public-auth-runtime-check');
           const ok = response.ok && data?.ok === true && data?.state === 'PASSWORD_AUTH_READY' && data?.auth_health?.ok === true && data?.auth_settings?.email_password === true;
           state.textContent = ok ? 'READY' : 'CHECK';
           state.className = `value ${ok ? 'good' : 'wait'}`;

@@ -29,9 +29,11 @@ for(const [asset,c] of Object.entries(QUARTER_ASSETS)){
  };
 }
 const quarterly=quarterlyPacket(zoneFixtures,Date.now());
-const stampA=new Date(Date.now()-11000).toISOString();
-let stampB=null,btcStage=0,requests={quarterly:0,spot:0,macro:0};
+// Chrome startup can exceed the 30-second Coinbase receipt TTL on a busy
+// runner. Date the first mock receipt when served, not before browser launch.
+let stampA=null,stampB=null,btcStage=0,requests={quarterly:0,spot:0,macro:0};
 function spotPacket(){
+ if(stampA===null)stampA=new Date(Date.now()-1000).toISOString();
  const next=btcStage===1;
  return {ok:true,reference_only:true,not_for_trade_execution:true,
   governance:safety,assets:{
