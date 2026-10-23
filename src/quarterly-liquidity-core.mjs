@@ -1,15 +1,15 @@
 // V253 | Auditable range-derived quarterly liquidity PROXIES; never order-book liquidity.
 // All periods UTC. A missing month of source bars invalidates the whole quarter.
 export const QUARTER_ASSETS=Object.freeze({
- gold:{symbol:'GC=F',exchange:'CMX',kind:'FUTURE',label:'Gold COMEX futures',unit:'USD / oz',months:12},
- bitcoin:{symbol:'BTC-USD',exchange:'Coinbase Exchange',kind:'SPOT',label:'Bitcoin spot',unit:'USD / BTC',months:25},
- brent:{symbol:'BZ=F',exchange:'NYM',kind:'FUTURE',label:'Brent futures',unit:'USD / bbl',months:12},
- wti:{symbol:'CL=F',exchange:'NYM',kind:'FUTURE',label:'WTI futures',unit:'USD / bbl',months:12},
- eurusd:{symbol:'EURUSD=X',exchange:'CCY',kind:'CURRENCY',label:'EUR / USD',unit:'USD per EUR',months:12},
- dxy:{symbol:'DX-Y.NYB',exchange:'NYB',kind:'INDEX',label:'U.S. Dollar Index',unit:'index points',months:12},
- spx:{symbol:'^GSPC',exchange:'SNP',kind:'INDEX',label:'S&P 500 index',unit:'index points',months:12},
- nasdaq:{symbol:'^IXIC',exchange:'NIM',kind:'INDEX',label:'Nasdaq Composite',unit:'index points',months:12},
- treasury:{symbol:'^TNX',exchange:'CGI',kind:'INDEX',label:'U.S. 10Y yield index',unit:'index value, not bond price',months:12}
+ gold:{symbol:'GC=F',exchange:'CMX',kind:'FUTURE',label:'Gold COMEX futures',unit:'USD / oz',months:16},
+ bitcoin:{symbol:'BTC-USD',exchange:'Coinbase Exchange',kind:'SPOT',label:'Bitcoin spot',unit:'USD / BTC',months:27},
+ brent:{symbol:'BZ=F',exchange:'NYM',kind:'FUTURE',label:'Brent futures',unit:'USD / bbl',months:16},
+ wti:{symbol:'CL=F',exchange:'NYM',kind:'FUTURE',label:'WTI futures',unit:'USD / bbl',months:16},
+ eurusd:{symbol:'EURUSD=X',exchange:'CCY',kind:'CURRENCY',label:'EUR / USD',unit:'USD per EUR',months:16},
+ dxy:{symbol:'DX-Y.NYB',exchange:'NYB',kind:'INDEX',label:'U.S. Dollar Index',unit:'index points',months:16},
+ spx:{symbol:'^GSPC',exchange:'SNP',kind:'INDEX',label:'S&P 500 index',unit:'index points',months:16},
+ nasdaq:{symbol:'^IXIC',exchange:'NIM',kind:'INDEX',label:'Nasdaq Composite',unit:'index points',months:16},
+ treasury:{symbol:'^TNX',exchange:'CGI',kind:'INDEX',label:'U.S. 10Y yield index',unit:'index value, not bond price',months:16}
 });
 // Nasdaq Composite, NOT Nasdaq-100. Gold zones use GC futures, NOT XAU spot.
 // Treasury ^TNX is an index indicator, NOT Treasury cash security or futures.
