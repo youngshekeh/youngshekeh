@@ -106,6 +106,17 @@ test('malformed, duplicate, future and non-positive price candles fail closed',(
  const future=yahoo('gold');future.chart.result[0].timestamp[0]=999999999999;
  assert.equal(parseYahooQuarterBars(future,'gold'),null);
 });
+test('new quarter retains completed-quarter levels when no QTD bars exist yet',()=>{
+ const early=Date.parse('2026-10-01T00:20:00Z');
+ const parsed=parseYahooQuarterBars(yahoo('gold'), 'gold', now);
+ const older={...parsed,rows:parsed.rows.filter(x=>x.at<'2026-10-01')};
+ const zone=calculateQuarterlyZones(older,'gold',early);
+ assert.ok(zone);
+ assert.equal(zone.previous_quarter,'Q3 2026');
+ assert.equal(zone.sample_days_qtd,0);
+ assert.equal(zone.current_qtd_low,null);
+ assert.equal(zone.current_qtd_high,null);
+});
 test('derived zones use previous quarter extreme and exactly 2% inner band',()=>{
  const zone=calculateQuarterlyZones(parseYahooQuarterBars(yahoo('brent'),'brent'),'brent',now);
  const width=(zone.previous_high-zone.previous_low)*.02;
