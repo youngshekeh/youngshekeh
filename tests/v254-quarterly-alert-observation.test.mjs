@@ -127,7 +127,9 @@ test('production UI polls three independent market sources, no background servic
  assert.match(src,/asset==='wti'\|\|asset==='dxy'/);
  for(const path of ['/api/public-quarterly-zones','/api/public-market-reference','/api/public-macro-reference'])
   assert.ok(src.includes(path),path);
- assert.match(src,/window\.setInterval\(\(\)=>\{if\(!document.hidden\)void fetchZoneData\(\)\},60000\)/);
+ assert.match(src,/timers\.set\(kind,window\.setInterval/);
+ assert.match(src,/plan\.intervalMs/);
+ assert.match(src,/readMarketFeed\(kind/);
  assert.match(src,/Notification\.requestPermission\(\)/);
  assert.match(src,/alertsArmed=false/);
  assert.match(html,/Tab alerts OFF/);
