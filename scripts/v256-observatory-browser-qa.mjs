@@ -119,7 +119,7 @@ try{
  await page.waitForFunction(()=>document.querySelector('[data-quarter-events]')?.querySelectorAll('li').length===1);
  const eventText=await page.locator('[data-quarter-events] li').first().innerText();
  assert.match(eventText,/Bitcoin spot/i);
- assert.match(eventText,/AT_PREVIOUS_Q_HIGH_ZONE/);
+ assert.match(eventText,/AT PREVIOUS Q HIGH ZONE/);
  assert.match(eventText,/Coinbase/i);
  const logs=await page.evaluate(()=>window.__v256NotificationLog);
  assert.equal(logs.length,1,'one requested notification delivered to constructor');
