@@ -4,6 +4,7 @@ import { evaluateLaunchReadiness, freshEvidence } from './launch-readiness.mjs';
 import {verifyPublicGoldQuote} from './public-gold-evidence.mjs';
 import {assessQaAdmission} from './qa-admission.mjs';
 import {probeStatusDependencies} from './status-dependency-admission.mjs';
+import {assessMarketStatusFeed,inspectResearchSources} from './status-market-lane.mjs';
 
 const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const KEY = 'sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
@@ -139,8 +140,9 @@ async function load() {
 // The user can see verified public research availability immediately, without
 // waiting for private database prechecks to finish or time out.
 async function loadPublic(){
- return probePublicStatus({
-  readReference:()=>readSite('/api/public-market-reference'),
+ let spotInput=null;
+ const result=await probePublicStatus({
+  readReference:async()=>{spotInput=await readSite('/api/public-market-reference');return spotInput},
   report(publicSurface){
    show('public-page',publicSurface.page_state,publicSurface.page_delivered);
    show('public-reference',publicSurface.reference_state,publicSurface.research_reference_available);
@@ -151,9 +153,32 @@ async function loadPublic(){
     ' · Read-only references, not broker bid/ask, trading permission or paid entitlement.';
   }
  });
+ // Reuse the one existing Gold/BTC read, instead of amplifying provider demand.
+ // Private launch status does not depend on this independent research result.
+ return {result,spot:assessMarketStatusFeed('spot',spotInput)};
+}
+let marketExtrasInFlight=false;
+function displayResearchHealth(kind,report){
+ const id=kind==='macro'?'public-macro':'public-quarterly';
+ show(id,report.state,report.full);
+ const el=document.getElementById(id+'-proof');
+ if(el)el.textContent=report.source+' · '+report.detail+
+  (report.observed_at?' · Oldest verified market observation: '+new Date(report.observed_at).toLocaleString():'')+
+  ' · WAIT / 0R · No broker certification.';
+}
+async function loadMarketExtras(){
+ if(marketExtrasInFlight)return;
+ marketExtrasInFlight=true;
+ try{
+  await inspectResearchSources({
+   read:async kind=>readSite(kind==='macro'?'/api/public-macro-reference':'/api/public-quarterly-zones'),
+   report:displayResearchHealth
+  });
+ }finally{marketExtrasInFlight=false}
 }
 document.getElementById('status-refresh')?.addEventListener('click',()=>{
  void loadPublic();
+ void loadMarketExtras();
  void load();
 });
 
@@ -186,4 +211,5 @@ async function inspectExternalAuthGateway(){
 }
 document.getElementById('auth-gateway-check')?.addEventListener('click',()=>void inspectExternalAuthGateway());
 void loadPublic();
+void loadMarketExtras();
 void load();
