@@ -12,7 +12,7 @@ const sample=()=>({
  macro:null,
  quarterly:{ok:true,generated_at:at(now-7000),reference_only:true,not_for_trade_execution:true,
   assets:{gold:{source_last_daily_bar:'2026-10-23',is_actual_orderbook_liquidity:false,
-     zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'},
+     source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'},
     bitcoin:{source_last_daily_bar:'2026-10-24',is_actual_orderbook_liquidity:false,
      zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'}}},
  recovery:{ok:true,generated_at:at(now-500),state:'DATABASE INCIDENT REPORTED'}

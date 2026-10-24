@@ -29,7 +29,7 @@ export function evaluateHomeEvidence(data={},now=Date.now()){
  const btcReceipt=bitcoin&&btcAt!==null&&bitcoin.source==='Coinbase'
   &&Number.isFinite(bitcoin.price)&&bitcoin.price>0
   &&bitcoin.execution_quote===false;
- const btcProviderTime=isoAge(bitcoin?.source_updated_at,now,120_000);
+ const btcProviderTime=btcReceipt?isoAge(bitcoin?.source_updated_at,now,120_000):null;
  const macroFresh=macro?.ok===true&&isoAge(macro.generated_at,now,120_000)!==null
   &&macro.reference_only===true&&macro.not_for_trade_execution===true;
  const qFresh=quarterly?.ok===true&&quarterly.reference_only===true
@@ -41,7 +41,9 @@ export function evaluateHomeEvidence(data={},now=Date.now()){
   &&qGold.is_actual_orderbook_liquidity===false
   &&qBitcoin.is_actual_orderbook_liquidity===false
   &&qGold.zone_method==='PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'
-  &&qBitcoin.zone_method===qGold.zone_method;
+  &&qBitcoin.zone_method===qGold.zone_method
+  &&qGold.source_rights==='COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED'
+  &&qBitcoin.source_rights==='COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED';
  const coreIncident=recovery?.ok===true
   &&isoAge(recovery.generated_at,now,10*60_000)!==null
   &&recovery.state==='DATABASE INCIDENT REPORTED';
