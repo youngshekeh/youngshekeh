@@ -55,7 +55,7 @@ test('handler never writes membership rows and existing webhook is not changed',
 });
 test('operator evidence is aggregate, fail-closed and does not claim paid accounts',()=>{
  const doc=read('docs/operations/2026-10-24-v273-member-term-integrity.md');
- assert.match(doc,/four.*missing.*period/i);
+ assert.match(doc,/\*\*4 missing current_period_end\*\*/);
  assert.match(doc,/No payment data was modified/);
  assert.match(doc,/not proof of four paid customers/i);
 });
