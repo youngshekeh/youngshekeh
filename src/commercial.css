@@ -34,3 +34,7 @@
 .commerce-step p{margin:0;font-size:13px}
 @media(max-width:990px){.commerce-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:580px){.commerce-grid{grid-template-columns:1fr}.commerce-shell{padding-top:22px}.commerce-nav{margin-bottom:45px}.commerce-title{font-size:44px}}
+
+.commerce-proof{font-size:12px;color:#d2c8dd;line-height:1.5;margin:8px 0 12px}
+.commerce-brief-link{display:inline-block;margin-top:14px;font-size:12px;color:#d8c7ff;text-underline-offset:4px}
+#commercial-recheck:disabled{opacity:.55;cursor:default}

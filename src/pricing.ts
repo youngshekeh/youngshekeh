@@ -1,35 +1,34 @@
-import {ALLOWED_PLANS,priceFor,fresh} from './commercial-gates.mjs';
-const BASE='https://mpcelmjiycjpdyyflisn.supabase.co';
-const KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
-function el(id:string){return document.getElementById(id)}
-function put(id:string,value:string){const target=el(id);if(target)target.textContent=value}
-async function load(){
-  try{
-    const response=await fetch(BASE+'/functions/v1/public-billing-acceptance',{
-      headers:{apikey:KEY,Accept:'application/json'},cache:'no-store',
-      signal:AbortSignal.timeout(6500)
-    });
-    if(!response.ok)throw new Error('billing_acceptance_unavailable');
-    const data=await response.json();
-    const valid=data?.ok===true&&fresh(data?.generated_at);
-    for(const plan of ALLOWED_PLANS){
-      const amount=valid?priceFor(plan,data):null;
-      put('price-'+plan,amount===null?'Price withheld':
-        new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(amount)+'/month');
-      put('note-'+plan,amount===null?'Price requires provider confirmation':'Provider plan verified · Payment acceptance checked separately');
-    }
-    const commerciallyReady=valid&&data?.ready_for_checkout===true&&data?.live_flow_verified===true&&data?.state==='LIVE_FLOW_VERIFIED';
-    put('commercial-state',commerciallyReady?'PAYMENT PROVIDER · VERIFIED':'COMMERCIAL ENQUIRIES · OPEN');
-    put('commercial-detail',commerciallyReady
-      ? 'Provider pricing and historical payment evidence verified. Each new checkout still requires fresh platform, identity, subscription and kernel acceptance.'
-      : 'Self-service payment is on hold until the billing provider and live system pass acceptance. You can request a research quote or commercial membership information without any charge.');
-  }catch{
-    for(const plan of ALLOWED_PLANS){
-      put('price-'+plan,'Price withheld');
-      put('note-'+plan,'Live provider verification unavailable');
-    }
-    put('commercial-state','COMMERCIAL ENQUIRIES · OPEN');
-    put('commercial-detail','Payment provider verification is temporarily unavailable. No plan price or subscription purchase is being inferred. Request a confirmed quote by email.');
-  }
+import {ALLOWED_PLANS} from './commercial-gates.mjs';
+import {readPublicAcceptance} from './public-acceptance-connection.mjs';
+import {assessCommercialCatalog} from './commercial-catalog.mjs';
+function put(id:string,value:string){const el=document.getElementById(id);if(el)el.textContent=value}
+const retry=document.getElementById('commercial-recheck') as HTMLButtonElement|null;
+let pending=false;
+// This page NEVER authorizes a charge; production checkout's server guard is unverified.
+function render(state:ReturnType<typeof assessCommercialCatalog>){
+ for(const plan of ALLOWED_PLANS){
+  const row=state.plans[plan];
+  put('price-'+plan,row.usd_per_month===null?'Price withheld':
+   new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(row.usd_per_month)+'/month');
+  put('note-'+plan,row.usd_per_month===null?'Price requires provider confirmation':
+   'Provider-verified catalog price · Checkout requires separate approval');
+ }
+ put('commercial-state',state.state);
+ put('commercial-detail',state.detail);
+ put('commercial-proof',state.source_current
+  ?'Provider catalog checked · '+state.verified_plan_count+'/'+ALLOWED_PLANS.length+' plan prices individually verified · Payment not enabled'
+  :'Provider unverified · No inferred prices · Payment not enabled');
 }
+async function load(){
+ if(pending)return;
+ pending=true;
+ if(retry){retry.disabled=true;retry.textContent='Checking provider…';}
+ put('commercial-state','SELF-SERVICE PAYMENTS · ON HOLD');
+ try{
+  // Shared simple, credentialless cross-origin GET avoids an apikey-triggered CORS preflight.
+  render(assessCommercialCatalog(await readPublicAcceptance('public-billing-acceptance')));
+ }catch{render(assessCommercialCatalog(null))}
+ finally{pending=false;if(retry){retry.disabled=false;retry.textContent='Recheck provider';}}
+}
+retry?.addEventListener('click',()=>void load());
 void load();
