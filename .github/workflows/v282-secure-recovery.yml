@@ -1,0 +1,29 @@
+name: V282 Secure Read-only Recovery Admission
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/runtime-recovery.js'
+      - 'src/runtime-recovery-guard.mjs'
+      - 'tests/v282-runtime-recovery-admission.test.mjs'
+      - '.github/workflows/v282-secure-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-recovery-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Syntax and import review
+        run: |
+          node --check api/runtime-recovery.js
+          node --check src/runtime-recovery-guard.mjs
+      - name: Test safe staging, incident hold, untrusted hosts and governance
+        run: node --test tests/v282-runtime-recovery-admission.test.mjs
