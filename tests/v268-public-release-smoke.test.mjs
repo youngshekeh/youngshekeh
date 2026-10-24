@@ -27,6 +27,7 @@ const good=()=>({
 const assess=x=>assessV268PublicRelease(x,{expectedSha:sha,now});
 test('public research requires exact deployed commit, fresh BTC and 0R even on closed weekends',()=>{
  const x=assess(good());
+ assert.deepEqual(x.blockers,[]);
  assert.equal(x.state,'PUBLIC_RESEARCH_ACCEPTED_COMMERCIAL_UNVERIFIED');
  assert.equal(x.public_research_pass,true);
  assert.equal(x.checks.database_incident_reported,true);
