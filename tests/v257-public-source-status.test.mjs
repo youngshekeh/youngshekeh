@@ -43,6 +43,25 @@ function historical(){
  }
  return quarterlyPacket(zones,now);
 }
+test('V266 source status labels verified weekend closure without reporting quotes or recovery',()=>{
+ const sat=Date.parse('2026-10-24T12:00:00.000Z');
+ const packet=curateMacroPacket({},sat);
+ const unavailable={response:{ok:false,status:503},data:packet};
+ const reading=assessMarketStatusFeed('macro',unavailable,sat);
+ assert.equal(reading.state,'WEEKEND CLOSED · NO CURRENT QUOTE');
+ assert.equal(reading.available,false);
+ assert.equal(reading.full,false);
+ assert.equal(reading.count,0);
+ assert.equal(reading.licensed_for_commercial_resale,false);
+ assert.equal(reading.risk,'WAIT / 0R · NOT BROKER LIVE');
+ assert.match(reading.detail,/Provider connectivity is not verified/);
+ assert.equal(assessMarketStatusFeed('macro',unavailable,sat+130000).state,'SOURCE UNAVAILABLE');
+ assert.equal(assessMarketStatusFeed('macro',unavailable,Date.parse('2026-10-26T12:00:00Z')).state,'SOURCE UNAVAILABLE');
+ assert.equal(assessMarketStatusFeed('spot',unavailable,sat).state,'SOURCE UNAVAILABLE');
+ assert.equal(assessMarketStatusFeed('macro',{...unavailable,
+  data:{...packet,governance:{...packet.governance,capital_permission:'1R'}}},sat).state,'SOURCE UNAVAILABLE');
+ assert.equal(assessMarketStatusFeed('macro',{response:{ok:false,status:503},data:{ok:false}},sat).state,'SOURCE UNAVAILABLE');
+});
 test('all three read-only sources show distinct verified coverage',()=>{
  for(const [kind,packet,count] of [['spot',spot(),2],['macro',macro(),2],['quarterly',historical(),9]]){
   const r=assessMarketStatusFeed(kind,wrap(packet),now);

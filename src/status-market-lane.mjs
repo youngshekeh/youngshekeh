@@ -1,6 +1,6 @@
 // V257 public market source-health truth. Never substitutes for private release gates.
 import {verifiedPublicReferences} from './v235-reference-integrity.mjs';
-import {verifyMacroPacket} from './public-macro-reference-data.mjs';
+import {verifyMacroPacket,isMacroWeekendClosed} from './public-macro-reference-data.mjs';
 import {verifyQuarterlyPacket,QUARTER_ASSETS} from './quarterly-liquidity-core.mjs';
 const EXPECTED=Object.freeze({spot:2,macro:2,quarterly:Object.keys(QUARTER_ASSETS).length});
 const SOURCE_NAMES=Object.freeze({
@@ -18,6 +18,27 @@ export function assessMarketStatusFeed(kind,read,now=Date.now()){
   reference_only:true,licensed_for_commercial_resale:false,
   risk:'WAIT / 0R · NOT BROKER LIVE',detail:'No sufficiently verified current provider evidence'
  });
+ // Only a fresh, server-authored, explicitly source-free weekend packet
+ // distinguishes a scheduled closure from an unknown provider outage.
+ // Never count this as current market data or as commercial/engine readiness.
+ if(kind==='macro'&&response?.status===503&&read?.data?.ok===false
+   &&read.data.state==='REFERENCES_UNAVAILABLE'
+   &&read.data.market_session==='WEEKEND_CLOSED'
+   &&read.data.sources_verified===0&&read.data.assets?.wti===null
+   &&read.data.assets?.dxy===null
+   &&read.data.data_rights==='RESEARCH_EVALUATION_ONLY_COMMERCIAL_LICENSE_NOT_VERIFIED'
+   &&read.data.reference_only===true&&read.data.not_for_trade_execution===true
+   &&read.data.governance?.action_permitted==='WAIT'
+   &&read.data.governance?.capital_permission==='0R'
+   &&read.data.governance?.live_order_submission_enabled===false
+   &&isMacroWeekendClosed(now)){
+  const timestamp=Date.parse(String(read.data.generated_at||''));
+  if(Number.isFinite(timestamp)&&timestamp<=now+5000&&now-timestamp<=120000){
+   return Object.freeze({...unavailable(),
+    state:'WEEKEND CLOSED · NO CURRENT QUOTE',
+    detail:'WTI futures and DXY weekend closure; no current vendor quote. Provider connectivity is not verified.'});
+  }
+ }
  if(response?.ok!==true||read?.data?.ok!==true)return unavailable();
  const data=read.data;
  let names=[],ages=[],lastDaily=[];

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {curateMacroQuote,curateMacroPacket,verifyMacroPacket,MACRO_MAX_AGE_MS}
+import {curateMacroQuote,curateMacroPacket,verifyMacroPacket,MACRO_MAX_AGE_MS,isMacroWeekendClosed}
  from '../src/public-macro-reference-data.mjs';
 import {readMacroReferences} from '../api/public-macro-reference.js';
 const fixed=Date.parse('2026-10-23T14:22:30.000Z');
@@ -14,6 +14,29 @@ const fixture=(id,time=unix,price=id==='wti'?102.50:101.73)=>({chart:{result:[{
  shortName:id==='wti'?'Crude Oil Dec 26':'ICE US Dollar Index - Index - C',
  longName:id==='wti'?'WTI Crude Oil':'US Dollar Index'}
 }],error:null}});
+test('V266 conservative UTC weekend closure never assumes weekday holidays or Sunday trading',()=>{
+ for(const at of ['2026-10-24T00:00:00Z','2026-10-24T23:59:59Z',
+  '2026-10-25T00:01:00Z','2026-10-25T19:59:00Z'])
+  assert.equal(isMacroWeekendClosed(Date.parse(at)),true,at);
+ for(const at of ['2026-10-23T23:59:59Z','2026-10-25T20:00:00Z',
+  '2026-10-26T01:00:00Z'])
+  assert.equal(isMacroWeekendClosed(Date.parse(at)),false,at);
+ assert.equal(isMacroWeekendClosed(NaN),false);
+});
+test('V266 closed weekend skips both upstream source calls and returns no executable prices',async()=>{
+ let reads=0;
+ const stamp=Date.parse('2026-10-24T12:00:00Z');
+ const body=await readMacroReferences({read:async()=>{reads++;throw Error('must not read')},now:()=>stamp});
+ assert.equal(reads,0);
+ assert.equal(body.ok,false);
+ assert.equal(body.state,'REFERENCES_UNAVAILABLE');
+ assert.equal(body.market_session,'WEEKEND_CLOSED');
+ assert.equal(body.sources_verified,0);
+ assert.deepEqual(body.assets,{wti:null,dxy:null});
+ assert.equal(body.governance.action_permitted,'WAIT');
+ assert.equal(body.governance.capital_permission,'0R');
+ assert.equal(verifyMacroPacket(body,stamp).count,0);
+});
 test('WTI is contract-labeled NYMEX futures, never WTI spot',()=>{
  const r=curateMacroQuote(fixture('wti'),'wti',fixed);
  assert.equal(r.symbol,'CL=F');

@@ -1,6 +1,15 @@
 // V252 independent PUBLIC delayed market observation lane. NOT execution-grade.
 export const MACRO_MAX_AGE_MS=65*60*1000; // accounts for documented exchange data delays
 export const MACRO_FUTURE_SKEW_MS=5000;
+// V266: conservative weekly closure only, not an exchange holiday calendar.
+// Saturday UTC and Sunday before 20:00 UTC are reliably before futures reopen.
+// Remaining sessions retain independently timestamped provider checks.
+export function isMacroWeekendClosed(now=Date.now()){
+ const date=new Date(now);
+ if(!Number.isFinite(date.getTime()))return false;
+ const day=date.getUTCDay();
+ return day===6||(day===0&&date.getUTCHours()<20);
+}
 export const MACRO_GOVERNANCE=Object.freeze({
  action_permitted:'WAIT',capital_permission:'0R',
  live_order_submission_enabled:false,machine_execution_allowed:false,market_data_only:true
@@ -45,6 +54,7 @@ export function curateMacroPacket({wti=null,dxy=null}={},now=Date.now()){
   ok:count>0,version:'v252-public-oil-dxy-delayed-references-v1',
   state:count===2?'BOTH_DELAYED_REFERENCES':count===1?'PARTIAL_DELAYED_REFERENCES':'REFERENCES_UNAVAILABLE',
   generated_at:new Date(now).toISOString(),independent_of_private_kernel:true,
+  market_session:count===0&&isMacroWeekendClosed(now)?'WEEKEND_CLOSED':'UNVERIFIED',
   reference_only:true,not_for_trade_execution:true,
   data_rights:'RESEARCH_EVALUATION_ONLY_COMMERCIAL_LICENSE_NOT_VERIFIED',
   assets:Object.freeze({wti,dxy}),sources_verified:count,expected_sources:2,
