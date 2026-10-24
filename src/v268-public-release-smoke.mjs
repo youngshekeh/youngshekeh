@@ -14,7 +14,7 @@ const FRESH_MS=15*60_000, BTC_FRESH_MS=10*60_000;
 const present=(s)=>typeof s==='string'&&s.length>0;
 const current=(stamp,now,ttl)=>{
  const t=Date.parse(String(stamp??''));
- return Number.isFinite(t)&&t<=now+60_000&&now-t>=0&&now-t<=ttl;
+ return Number.isFinite(t)&&t<=now+60_000&&now-t>=-60_000&&now-t<=ttl;
 };
 const received=(item)=>item?.status===200&&item?.body?.ok===true;
 const hasSafety=(p)=>p?.action_permitted==='WAIT'&&p?.capital_permission==='0R';
@@ -54,7 +54,7 @@ export function assessV268PublicRelease(probes,{expectedSha,now=Date.now()}={}){
  if(!referenceSafe)advisories.push('INDEPENDENT_REFERENCE_NOT_VERIFIED');
  const quarter=probes?.quarterly;
  const zone=quarter?.body;
- const assets=zone?.assets&&typeof zone.assets==='object'?Object.values(zone.assets):[];
+ const assets=zone?.assets&&typeof zone.assets==='object'?Object.values(zone.assets).filter(Boolean):[];
  const quarterlySafe=received(quarter)&&zone.reference_only===true
   &&zone.not_for_trade_execution===true&&assets.length>0
   &&assets.every(a=>a?.is_actual_orderbook_liquidity===false

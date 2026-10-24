@@ -16,10 +16,10 @@ const good=()=>({
   {key:'gold',price:4000,market_time:at(now-8*3600000),state:'MARKET_CLOSED',
    action:'WAIT',capital_permission:'0R'},
   {key:'bitcoin',price:80000,market_time:at(now-15000)}]}),
- reference:packet({reference_only:true,not_for_trade_execution:true,governance:g}),
+ reference:packet({reference_only:true,not_for_trade_execution:true,governance:{...g}}),
  quarterly:packet({reference_only:true,not_for_trade_execution:true,
   assets:{gold:{source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',
-   is_actual_orderbook_liquidity:false,governance:g}}}),
+   is_actual_orderbook_liquidity:false,governance:{...g}}}}),
  recovery:packet({state:'DATABASE INCIDENT REPORTED',private_actions_executed:0,
   database_jobs_modified:0,governance:{...g,commercial_launch_certified:false},
   checks:{readiness_source_current:true,database_incident_reported:true}})
@@ -84,6 +84,11 @@ test('optional upstream outages stay unverified, never magically certified or pr
  assert.equal(a.checks.recovery_read_only,false);
  assert.equal(a.commercial_launch_certified,false);
  assert.equal(a.private_kernel_certified,false);
+});
+test('partially available quarterly research remains distinct from a falsely licensed claim',()=>{
+ const p=good();p.quarterly.body.assets.bitcoin=null;
+ assert.equal(assess(p).public_research_pass,true);
+ assert.equal(assess(p).checks.quarterly_research,true);
 });
 test('positive unsafe independent sources cannot be dismissed as transient outages',()=>{
  for(const key of ['reference','quarterly','recovery']){
