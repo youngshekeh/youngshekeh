@@ -61,6 +61,14 @@ export function buildSupabaseSupportPacket(diagnostic,now=Date.now()){
   '- PostgreSQL logged statement cancellations and startup timeouts across multiple pg_cron jobs.',
   '- Scheduled V180 kernel seal verification returned HTTP 503 KERNEL_SEAL / DATABASE_SEAL_TRANSPORT_TIMEOUT.',
   '',
+  'Separately observed on 2026-10-24 (UTC; static historical operator evidence, not a live log query):',
+  '- At 04:34:38 and 04:34:46 UTC, PostgREST logged PGRST003: timed out acquiring connection from the internal pool.',
+  '- At 04:39–04:40 UTC, Supavisor logged repeated DbHandler authentication timeouts after 15000ms.',
+  '- At 04:36–04:37 UTC, PostgreSQL logged several pg_cron startup timeouts; a simple management SELECT still timed out.',
+  '- Public final readiness was BUILD_HOLD and the private V180 kernel remained fail-closed on the mandatory seal.',
+  '- PGRST003 is a connection acquisition timeout (HTTP 504), not proof that credentials are invalid.',
+  '- Management API regional incidents do not on their own explain this project data-plane outage.',
+  '',
   'Requested diagnosis (not assumed cause):',
   '1. Verify Postgres backend and pooler connectivity, auth-backend lookup, worker availability, CPU/IO pressure and connections in eu-west-1.',
   '2. Determine whether regional networking, pooler authentication, database load, or workers explain the observed timeouts.',
@@ -69,7 +77,7 @@ export function buildSupabaseSupportPacket(diagnostic,now=Date.now()){
   'Safety: HTTP reachability does not establish a successful login or SQL query. This snapshot does not prove a verified private kernel, broker quote, subscription, or commercial readiness. Trading is OFF; WAIT / 0R. No passwords, API secrets, session data or customer records are included.',
   '',
   'Relevant operational runbook:',
-  'https://github.com/youngshekeh/youngshekeh/blob/the-father-analytics-deploy/docs/operations/2026-10-23-v258-supabase-recovery-triage.md',
+  'https://github.com/youngshekeh/youngshekeh/blob/the-father-analytics-deploy/docs/operations/2026-10-24-v267-p0-database-incident.md',
   '',
   'Please provide an incident/case ID, your findings, and a safe recovery plan.'
  ].join('\n');

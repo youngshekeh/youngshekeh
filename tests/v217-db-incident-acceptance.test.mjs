@@ -42,6 +42,32 @@ test('only known technical incident codes are retained; customer payloads never 
  assert.doesNotMatch(text,/private\.test|password|eyJhb/);
  assert.match(text,/PGRST002/);
 });
+test('V267 recognizes current PostgREST pool and Supavisor auth timeouts without leaking raw logs',()=>{
+ const errors=[
+  {timestamp:recent,event_message:'{"code":"PGRST003","message":"Timed out acquiring connection from connection pool.","private":"not-for-display"}'},
+  {timestamp:recent,event_message:'DbHandler: Authentication timeout after 15000ms user@example.private'},
+  {timestamp:new Date(now-2*3600000).toISOString(),event_message:'PGRST003'},
+  {timestamp:recent,event_message:'Normal authentication check succeeded'}
+ ];
+ const evidence=summarizeIncident(errors,now);
+ assert.equal(evidence.codes.PGRST003,1);
+ assert.equal(evidence.codes.POOLER_AUTH_TIMEOUT,1);
+ assert.equal(evidence.recent_event_count,3);
+ assert.doesNotMatch(JSON.stringify(evidence),/not-for-display|example.private/);
+ const support=supportSummary(evidence);
+ assert.match(support,/PGRST003: 1/);
+ assert.match(support,/POOLER_AUTH_TIMEOUT: 1/);
+ assert.doesNotMatch(support,/not-for-display|example.private/);
+ for(const message of ['PGRST003','DbHandler: Authentication timeout after 15000ms']){
+  const data=clean();
+  data.incident=summarizeIncident([{timestamp:recent,event_message:message}],now);
+  const verdict=assessDatabaseRecovery(data,now);
+  assert.equal(verdict.state,'LAUNCH_HOLD');
+  assert.ok(verdict.blockers.includes('RECENT_DATABASE_ERRORS'));
+  assert.equal(verdict.governance.automatic_checkout_unlock,false);
+  assert.equal(verdict.governance.real_orders,false);
+ }
+});
 test('strict recovery is only for final operator QA, never automatic payment release',()=>{
  const result=assessDatabaseRecovery(clean(),now);
  assert.equal(result.ready_for_operator_final_qa,true);
