@@ -41,7 +41,10 @@ async function validateMember(token:string){
     cache:'no-store',signal:AbortSignal.timeout(6500)
   });
   const data=await response.json().catch(()=>({ok:false}));
-  return response.ok&&data?.ok!==false&&data?.access_state!=='denied';
+  return response.ok&&data?.ok===true&&(
+    (data?.is_owner===true&&data?.access_state==='owner')
+    ||(data?.access_state==='granted'&&data?.subscription?.period_valid===true)
+  );
 }
 async function verifyCheckout(){
   if(!CHECKOUT_SERVER_GUARD_DEPLOYED){
