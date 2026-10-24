@@ -72,8 +72,33 @@ export function twoDistinctSealedCycles(runs,now=Date.now()){
  }
  return false;
 }
+// V270: a single successful management SELECT during a flapping outage is
+// insufficient evidence. Proof must be from two distinct read-only SQL probes,
+// with independent UTC DB timestamps and at least 60 seconds separation.
+// No network, mutation, provider credentials or automatic incident clearance.
+export function twoStableSqlReads(samples,now=Date.now()){
+ if(!Array.isArray(samples)||samples.length<2||samples.length>64)return false;
+ const ids=new Map();
+ for(const sample of samples){
+  if(!sample||sample.ok!==true||sample.check!=='SELECT_NOW'
+   ||sample.source!=='SUPABASE_MANAGEMENT_SQL'
+   ||typeof sample.probe_id!=='string'
+   ||!/^[A-Za-z0-9_-]{1,128}$/.test(sample.probe_id)
+   ||sample.error!=null
+   ||!fresh(sample.observed_at,now))return false;
+  const observed=validTime(sample.observed_at);
+  const dbAt=validTime(sample.database_time);
+  if(dbAt===null||Math.abs(dbAt-observed)>30_000)return false;
+  const older=ids.get(sample.probe_id);
+  if(older!==undefined&&older!==observed)return false;
+  ids.set(sample.probe_id,observed);
+ }
+ const times=[...ids.values()].sort((a,b)=>a-b);
+ if(times.length<2||now-times[times.length-1]>5*60_000)return false;
+ return times[times.length-1]-times[0]>=60_000;
+}
 export function assessDatabaseRecovery({
- observed_at,incident,management_sql,postgrest_probe,cron,heartbeat_runs,payment
+ observed_at,incident,management_sql,management_sql_samples,postgrest_probe,cron,heartbeat_runs,payment
 }={},now=Date.now()){
  const blockers=[];
  if(!fresh(observed_at,now))blockers.push('OBSERVATION_NOT_FRESH');
@@ -83,6 +108,10 @@ export function assessDatabaseRecovery({
    blockers.push('RECENT_DATABASE_ERRORS');
  if(management_sql?.ok!==true||!fresh(management_sql?.observed_at,now))
    blockers.push('MANAGEMENT_SQL_NOT_VERIFIED');
+ // Separately gate sustained SQL evidence; a single success cannot cure a
+ // pooler/auth outage that fails before or after the sampled query.
+ if(!twoStableSqlReads(management_sql_samples,now))
+   blockers.push('MANAGEMENT_SQL_STABILITY_NOT_VERIFIED');
  if(postgrest_probe?.ok!==true||postgrest_probe?.schema_cache_ready!==true
    ||!fresh(postgrest_probe?.observed_at,now))
    blockers.push('POSTGREST_CACHE_NOT_VERIFIED');

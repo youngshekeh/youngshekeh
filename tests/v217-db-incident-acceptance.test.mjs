@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {summarizeIncident,assessDatabaseRecovery,supportSummary,DB_INCIDENT_SCHEMA,twoDistinctSealedCycles} from '../src/db-incident-acceptance.mjs';
+import {summarizeIncident,assessDatabaseRecovery,supportSummary,DB_INCIDENT_SCHEMA,twoDistinctSealedCycles,twoStableSqlReads} from '../src/db-incident-acceptance.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const now=Date.parse('2026-10-20T19:37:35Z');
 const recent=new Date(now-1000).toISOString();
@@ -9,6 +9,13 @@ const clean=()=>({
  observed_at:recent,
  incident:summarizeIncident([],now),
  management_sql:{ok:true,observed_at:recent},
+ management_sql_samples:[
+  {probe_id:'probe-01',source:'SUPABASE_MANAGEMENT_SQL',check:'SELECT_NOW',
+   ok:true,observed_at:new Date(now-4*60_000).toISOString(),
+   database_time:new Date(now-4*60_000).toISOString()},
+  {probe_id:'probe-02',source:'SUPABASE_MANAGEMENT_SQL',check:'SELECT_NOW',
+   ok:true,observed_at:recent,database_time:recent}
+ ],
  postgrest_probe:{ok:true,schema_cache_ready:true,observed_at:recent},
  cron:{active_jobs:58,enabled:'on',recent_startup_timeouts:0,observed_at:recent},
  heartbeat_runs:[
@@ -136,6 +143,61 @@ test('V269 two valid unique IDs at different times qualify regardless of row ord
  assert.equal(twoDistinctSealedCycles([{...a,governance:{...a.governance,capital_permission:'1R'}},b],now),false);
  assert.equal(twoDistinctSealedCycles([],now),false);
 });
+test('V270 requires two independent successful SQL queries over time, not one lucky SELECT',()=>{
+ const p=clean();
+ assert.equal(twoStableSqlReads(p.management_sql_samples,now),true);
+ assert.equal(assessDatabaseRecovery(p,now).ready_for_operator_final_qa,true);
+ for(const change of [
+  [],
+  [p.management_sql_samples[0]],
+  [p.management_sql_samples[1],p.management_sql_samples[1]],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   probe_id:'probe-01'}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   observed_at:new Date(Date.parse(p.management_sql_samples[0].observed_at)+59_999).toISOString(),
+   database_time:new Date(Date.parse(p.management_sql_samples[0].observed_at)+59_999).toISOString()}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   database_time:new Date(now-15*60_000).toISOString()}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   source:'UNVERIFIED'}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   check:'SELECT_ALL_CUSTOMERS'}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   ok:false,error:'Connection terminated due to connection timeout'}],
+  [p.management_sql_samples[0],{...p.management_sql_samples[1],
+   observed_at:new Date(now-12*60_000).toISOString()}]
+ ]){
+  const data=clean();data.management_sql_samples=change;
+  assert.equal(twoStableSqlReads(change,now),false);
+  const verdict=assessDatabaseRecovery(data,now);
+  assert.equal(verdict.state,'LAUNCH_HOLD');
+  assert.ok(verdict.blockers.includes('MANAGEMENT_SQL_STABILITY_NOT_VERIFIED'));
+  assert.equal(verdict.governance.automatic_checkout_unlock,false);
+  assert.equal(verdict.governance.real_orders,false);
+ }
+});
+test('V270 rejected SQL failures cannot be overwritten by a later success',()=>{
+ const p=clean(),bad={probe_id:'failed-03',source:'SUPABASE_MANAGEMENT_SQL',
+  check:'SELECT_NOW',ok:false,observed_at:recent,database_time:recent,
+  error:'Management connection timeout'};
+ p.management_sql_samples.push(bad);
+ assert.equal(twoStableSqlReads(p.management_sql_samples,now),false);
+ assert.equal(assessDatabaseRecovery(p,now).state,'LAUNCH_HOLD');
+});
+test('V270 identical delivery replay is allowed only alongside another actual SQL probe',()=>{
+ const p=clean(),[a,b]=p.management_sql_samples;
+ assert.equal(twoStableSqlReads([a,a,b],now),true);
+ assert.equal(twoStableSqlReads([a,a],now),false);
+ assert.equal(twoStableSqlReads([a,b,{...a,observed_at:recent,
+  database_time:recent}],now),false);
+ const delayed=[{...a,observed_at:new Date(now-9*60_000).toISOString(),
+  database_time:new Date(now-9*60_000).toISOString()},
+  {...b,observed_at:new Date(now-6*60_000).toISOString(),
+   database_time:new Date(now-6*60_000).toISOString()}];
+ assert.equal(twoStableSqlReads(delayed,now),false,
+  'missing recent successful query cannot certify recovery');
+ assert.equal(twoStableSqlReads(new Array(65).fill(a),now),false);
+});
 test('failed signed webhook and absent entitlements hold paid launch',()=>{
  const data=clean();data.payment.signed_webhook_verified=false;
  assert.ok(assessDatabaseRecovery(data,now).blockers.includes('PAYMENT_FULFILMENT_NOT_VERIFIED'));
@@ -149,6 +211,7 @@ test('checked-in incident evidence is redacted and accurately remains launch HOL
  const verdict=assessDatabaseRecovery({...data,incident},nowAt);
  assert.equal(verdict.state,'LAUNCH_HOLD');
  assert.ok(verdict.blockers.includes('RECENT_DATABASE_ERRORS'));
+ assert.ok(verdict.blockers.includes('MANAGEMENT_SQL_STABILITY_NOT_VERIFIED'));
  assert.ok(verdict.blockers.includes('POSTGREST_CACHE_NOT_VERIFIED'));
  assert.ok(verdict.blockers.includes('TWO_DISTINCT_KERNEL_CYCLES_NOT_VERIFIED'));
  assert.ok(verdict.blockers.includes('PAYMENT_FULFILMENT_NOT_VERIFIED'));
