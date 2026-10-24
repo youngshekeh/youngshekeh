@@ -25,7 +25,7 @@ async function load(){
  if(retry){retry.disabled=true;retry.textContent='Checking provider…';}
  put('commercial-state','SELF-SERVICE PAYMENTS · ON HOLD');
  try{
-  // Shared simple, credentialless cross-origin GET avoids an apikey-triggered CORS preflight.
+  // Shared credentialless cross-origin GET avoids unnecessary CORS preflight.
   render(assessCommercialCatalog(await readPublicAcceptance('public-billing-acceptance')));
  }catch{render(assessCommercialCatalog(null))}
  finally{pending=false;if(retry){retry.disabled=false;retry.textContent='Recheck provider';}}
