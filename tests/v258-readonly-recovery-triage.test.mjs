@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {classifyTransport,assessRecoveryTriage} from '../src/read-only-recovery-triage.mjs';
-import {collectRecoveryTriage} from '../api/public-recovery-triage.js';
+import {collectRecoveryTriage,recoveryProbeDeadline} from '../api/public-recovery-triage.js';
 const now=Date.parse('2026-10-23T17:52:00Z');
 const r=Object.freeze({transport:'HTTP_RESPONSE',status:200});
 const incident=()=>({
@@ -79,6 +79,12 @@ test('diagnostic sanitizes unexpected incident codes and arbitrary blocker names
  assert.equal(v.checks.blockers.includes('SECRET_DO_NOT_ECHO'),false);
  assert.equal(JSON.stringify(v).includes('DATABASE_PASSWORD_LEAK'),false);
 });
+test('only the fixed current incident source receives an extended bounded observation window',()=>{
+ assert.equal(recoveryProbeDeadline('/auth/v1/health'),4700);
+ assert.equal(recoveryProbeDeadline('/rest/v1/'),4700);
+ assert.equal(recoveryProbeDeadline('/functions/v1/public-final-readiness'),9000);
+ assert.equal(recoveryProbeDeadline('/functions/v1/public-final-readiness?cache=1'),4700);
+});
 test('probe uses three fixed endpoints, independently, with no supplied user URL',async()=>{
  const calls=[];
  const v=await collectRecoveryTriage({now:()=>now,probe:async(path,opts)=>{
@@ -112,6 +118,8 @@ test('recovery diagnostic is click-only, fixed-host and can never mutate DB or c
  assert.match(route,/const PROJECT='https:\/\/mpcelmjiycjpdyyflisn.supabase.co'/);
  assert.match(route,/CACHE_MS=90000/);
  assert.match(route,/BUDGET_MS=4700/);
+ assert.match(route,/READINESS_BUDGET_MS=9000/);
+ assert.match(route,/signal:AbortSignal\.timeout\(recoveryProbeDeadline\(path\)\)/);
  assert.match(route,/safely\('\/rest\/v1\/'/);
  assert.match(ui,/recovery-triage-check/);
  assert.match(ui,/freshEvidence\(d.generated_at\)/);
