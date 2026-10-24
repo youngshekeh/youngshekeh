@@ -1,7 +1,10 @@
 import {assessRecoveryTriage} from '../src/read-only-recovery-triage.mjs';
 const PROJECT='https://mpcelmjiycjpdyyflisn.supabase.co';
 const PUBLIC_KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
-const BUDGET_MS=4700,CACHE_MS=90000;
+// V265: keep cheap Auth/REST probes bounded; allow incident synthesis to finish
+// under current provider pressure without asserting recovery from a timeout.
+const BUDGET_MS=4700,READINESS_BUDGET_MS=9000,CACHE_MS=90000;
+export const recoveryProbeDeadline=(path)=>path==='/functions/v1/public-final-readiness'?READINESS_BUDGET_MS:BUDGET_MS;
 let cache=null,lastAt=0,pending=null;
 async function getStatus(path,{accept='application/json',readiness=false}={}){
  try{
@@ -9,7 +12,7 @@ async function getStatus(path,{accept='application/json',readiness=false}={}){
    method:'GET',redirect:'error',cache:'no-store',
    headers:{apikey:PUBLIC_KEY,Accept:accept,
     'User-Agent':'TFA-V258-READONLY-OPERATOR-TRIAGE/1.0'},
-   signal:AbortSignal.timeout(BUDGET_MS)
+   signal:AbortSignal.timeout(recoveryProbeDeadline(path))
   });
   let data=null;
   if(readiness&&response.ok)data=await response.json().catch(()=>null);

@@ -34,6 +34,7 @@ test('outer deadlines leave room for SQL, Edge auth, and a truthful bounded resu
  // inherit the privileged scheduler's longer 40s diagnostic budget.
  assert.deepEqual(hosting.functions,{
   'api/market-feed.js':{maxDuration:20},
+  'api/public-recovery-triage.js':{maxDuration:20},
   'api/connection-pressure-shadow.js':{maxDuration:40},
   'api/peak-minute-spreader-status.js':{maxDuration:40}
  });
