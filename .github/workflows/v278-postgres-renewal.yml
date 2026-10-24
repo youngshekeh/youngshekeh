@@ -1,0 +1,57 @@
+name: V278 Disposable PostgreSQL Renewal Verification
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - '.github/workflows/v278-postgres-renewal.yml'
+      - 'docs/operations/candidates/v278-atomic-renewal-candidate.sql'
+      - 'scripts/v278-test-renewal-postgres.mjs'
+      - 'tests/fixtures/v277-postgres-schema.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-renewal-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: v278_disposable_ci_only
+          POSTGRES_DB: v278_isolated_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d v278_isolated_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: v278_isolated_test
+      PGUSER: postgres
+      PGPASSWORD: v278_disposable_ci_only
+      PGCONNECT_TIMEOUT: '5'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install PostgreSQL client if needed
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+      - name: Syntax check isolated runner
+        run: node --check scripts/v278-test-renewal-postgres.mjs
+      - name: Test atomic renewal, duplicate replay, rollback and concurrent callbacks
+        run: node scripts/v278-test-renewal-postgres.mjs
+      - name: Confirm live charging remains disabled
+        run: |
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
