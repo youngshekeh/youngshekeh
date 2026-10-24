@@ -6,6 +6,14 @@ const previewText=document.getElementById('research-preview-text');
 const link=document.getElementById('research-email-link') as HTMLAnchorElement;
 const copy=document.getElementById('research-copy') as HTMLButtonElement;
 const download=document.getElementById('research-download') as HTMLButtonElement;
+// Only known plan IDs prefill a local email enquiry; no submission occurs.
+const enquiryPlan=new URLSearchParams(window.location.search).get('plan')?.toLowerCase()||'';
+if(['pro','executive','business','enterprise'].includes(enquiryPlan)&&form){
+ const select=form.elements.namedItem('service') as HTMLSelectElement|null;
+ const focus=form.elements.namedItem('focus') as HTMLInputElement|null;
+ if(select)select.value='membership-or-licensing';
+ if(focus&&!focus.value)focus.value='Membership enquiry: '+enquiryPlan.toUpperCase();
+}
 let draft:string|null=null;
 function collect(){
   const data=new FormData(form);
