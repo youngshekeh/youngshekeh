@@ -38,7 +38,8 @@ test('server precharge requires independent signed billing evidence and private 
   "billing?.gates?.signed_payment_evidence==='PASS'",
   "billing?.gates?.active_entitlement_evidence==='PASS'",
   "status:'eq.SUCCEEDED'","const unique=new Map<string,number>()",
-  "if(conflicting||!separated)throw new Error('two_kernel_successes_not_verified')",
+  "if(conflicting||!separated)",
+  "throw new Error('two_kernel_successes_not_verified')",
   "Math.abs(a-b)>=60_000"
  ])assert.ok(src.includes(x),x);
 });
