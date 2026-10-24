@@ -1,4 +1,4 @@
-import {curateMacroQuote,curateMacroPacket,verifyMacroPacket,MACRO_GOVERNANCE}
+import {curateMacroQuote,curateMacroPacket,verifyMacroPacket,MACRO_GOVERNANCE,isMacroWeekendClosed}
  from '../src/public-macro-reference-data.mjs';
 // Yahoo/ICE/NYMEX redistribution license NOT verified; public research
 // diagnostics only, never licensed commerce or trading execution. NOT execution-grade.
@@ -18,8 +18,11 @@ async function providerRead(url){
  return data;
 }
 export async function readMacroReferences({read=providerRead,now=Date.now}={}){
- const [a,b]=await Promise.allSettled([read(URLS.wti),read(URLS.dxy)]);
  const timestamp=now();
+ // Closed-weekend research quotes cannot become live; skip unnecessary vendor calls.
+ // The 503 and explicit zero-source packet remain fail-closed, including commerce.
+ if(isMacroWeekendClosed(timestamp))return curateMacroPacket({},timestamp);
+ const [a,b]=await Promise.allSettled([read(URLS.wti),read(URLS.dxy)]);
  return curateMacroPacket({
   wti:a.status==='fulfilled'?curateMacroQuote(a.value,'wti',timestamp):null,
   dxy:b.status==='fulfilled'?curateMacroQuote(b.value,'dxy',timestamp):null
