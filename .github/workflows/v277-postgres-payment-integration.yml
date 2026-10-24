@@ -1,0 +1,58 @@
+name: V277 Disposable PostgreSQL Payment Fulfillment Verification
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - '.github/workflows/v277-postgres-payment-integration.yml'
+      - 'scripts/v277-test-atomic-postgres.mjs'
+      - 'tests/fixtures/v277-postgres-schema.sql'
+      - 'docs/operations/candidates/v276-atomic-fulfillment-candidate.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-atomic-payment-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: v277_disposable_ci_only
+          POSTGRES_DB: v277_isolated_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d v277_isolated_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: v277_isolated_test
+      PGUSER: postgres
+      PGPASSWORD: v277_disposable_ci_only
+      PGCONNECT_TIMEOUT: '5'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Install PostgreSQL client if absent
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+      - name: Validate the isolated integration runner
+        run: node --check scripts/v277-test-atomic-postgres.mjs
+      - name: Run real SQL, rollback and two independent concurrent sessions
+        run: node scripts/v277-test-atomic-postgres.mjs
+      - name: Confirm pre-existing no-payment release guard
+        run: |
+          node --test tests/v276-concurrent-entitlement-guard.test.mjs
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
