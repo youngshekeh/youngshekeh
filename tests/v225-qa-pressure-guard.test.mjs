@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 const raw=readFileSync(new URL('../api/autonomous-qa-matrix.js',import.meta.url),'utf8');
-const source=raw.replace(/^import .*;\s*$/m,'')
+const source=raw.replace(/^import .*;\s*$/gm,'')
   .replace('export default async function handler','async function handler');
 function fixture({body={ok:false,state:'INCOMPLETE'}, token='verified-oidc', status=200, hold=false}={}){
  let time=0, calls=0, tokens=0, release;
@@ -13,8 +13,8 @@ function fixture({body={ok:false,state:'INCOMPLETE'}, token='verified-oidc', sta
    return {ok:status>=200&&status<300,status,json:async()=>body};
  };
  const getVercelOidcToken=async()=>{tokens++;return token};
- const handler=new Function('fetch','getVercelOidcToken','Date','URL','AbortSignal',
-   source+'\nreturn handler;')(fetch,getVercelOidcToken,Clock,URL,AbortSignal);
+ const handler=new Function('fetch','getVercelOidcToken','preflightV285QaAdmission','Date','URL','AbortSignal',
+   source+'\nreturn handler;')(fetch,getVercelOidcToken,async()=>({admitted:true}),Clock,URL,AbortSignal);
  const run=async(url='/api/autonomous-qa-matrix?ui_bucket=123',method='GET')=>{
    const headers=new Map();let code=200;
    const res={setHeader:(k,v)=>headers.set(k.toLowerCase(),v),
@@ -37,13 +37,13 @@ test('first incomplete private QA triggers a bounded fail-closed instance cooldo
 test('a running private QA does not admit overlapping requests or expose its response',async()=>{
  const f=fixture({hold:true,body:{ok:true,state:'PASS'}});
  const first=f.run();
- await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ for(let i=0;i<9;i++)await Promise.resolve();
  const second=await f.run('/api/autonomous-qa-matrix?commercial_acceptance=1');
  assert.equal(second.code,503);
  assert.equal(second.payload.error,'private_qa_temporarily_unavailable');
  assert.equal(second.headers.get('x-tfa-qa-pressure'),'IN_PROGRESS');
  f.release();assert.equal((await first).code,200);assert.equal(f.calls(),1);
- const third=f.run();await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ const third=f.run();for(let i=0;i<9;i++)await Promise.resolve();
  f.release();assert.equal((await third).code,200);assert.equal(f.calls(),2);
 });
 test('healthy QA stays current and is never served from negative cache',async()=>{
