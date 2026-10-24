@@ -121,8 +121,21 @@ export function assessRecoveryDiagnostics({preflight,release,quota=empty,edge=em
    state:Object.freeze({healthy:canonicalHealthy,status:bounded(state.status,599)??0,
     restricted:s.health?.edge_runtime==='RESTRICTED_QUOTA',blockers:Object.freeze(blockers)}),
    qa:Object.freeze({pass:qaPass,status:bounded(qa.status,599)??0,
-    total:bounded(a.summary?.total),passed:bounded(a.summary?.passed),failed:bounded(a.summary?.failed)})
+    total:bounded(a.summary?.total),passed:bounded(a.summary?.passed),failed:bounded(a.summary?.failed),
+    state:qaPass?'PASS':'UNVERIFIED'}),
+   // Read-only compatibility fields for the existing V142 visual panel. These
+   // only mirror sanitized diagnostics and NEVER imply commercial readiness.
+   live_quota_probe:Object.freeze({clear:quotaClear,status:bounded(quota.status,599)??0,
+    latency_ms:elapsed(quota)}),
+   external_edge_acceptance:Object.freeze({verified:edgeVerified,status:bounded(edge.status,599)??0,
+    latency_ms:elapsed(edge),transport_passed:null,total:null}),
+   canonical_state:Object.freeze({ok:canonicalHealthy,
+    edge_runtime:canonicalHealthy?'HEALTHY':'UNVERIFIED',
+    smoke_state:canonicalHealthy?'FRESH':'UNVERIFIED',smoke_age_minutes:null,blockers:Object.freeze(blockers)})
   }),
+  divergence:Object.freeze({provider_recovery_evidence:quotaClear&&edgeVerified,
+   canonical_edge_restriction_stale:quotaClear&&edgeVerified
+     &&s.health?.edge_runtime==='RESTRICTED_QUOTA'}),
   actions:Object.freeze(!preflight.admitted
    ?['PRESERVE_INCIDENT_HOLD','REQUEST_PROVIDER_REVIEW','DO_NOT_RUN_PRIVATE_QA']
    :!quotaClear||!edgeVerified

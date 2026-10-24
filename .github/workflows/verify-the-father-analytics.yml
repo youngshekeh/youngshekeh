@@ -43,19 +43,23 @@ jobs:
           grep -q "set('v141-orders', 'OFF')" src/public-surfaces.ts
           grep -q "set('v141-promotion', 'DISABLED')" src/public-surfaces.ts
           grep -q 'V141 · RUNTIME RECOVERY SENTINEL' dist/gold-live/index.html
-      - name: Verify V142 recovery engine invariants
+      - name: Verify retained V142 display and V282 secure backend recovery invariants
         run: |
           test -f api/runtime-recovery.js
-          grep -q 'v142-runtime-recovery-engine-v1' api/runtime-recovery.js
-          grep -q 'recovery_fresh=' api/runtime-recovery.js
-          grep -q "capital_permission: '0R'" api/runtime-recovery.js
-          grep -q "live_order_routing: false" api/runtime-recovery.js
-          grep -q "automatic_policy_promotion: false" api/runtime-recovery.js
+          test -f src/runtime-recovery-guard.mjs
+          grep -q 'v282-secure-recovery-admission-v1' src/runtime-recovery-guard.mjs
+          grep -q "RECOVERY_ORIGIN='https://thefatheranalytics.com'" src/runtime-recovery-guard.mjs
+          grep -q "capital_permission:'0R'" src/runtime-recovery-guard.mjs
+          grep -q "live_order_routing:false" src/runtime-recovery-guard.mjs
+          grep -q "automatic_policy_promotion:false" src/runtime-recovery-guard.mjs
+          grep -q "RECOVERY_PATHS.triage" api/runtime-recovery.js
+          grep -q "credentials:'omit'" api/runtime-recovery.js
           grep -q 'V142 · RUNTIME RECOVERY ENGINE' gold-live/index.html
           grep -q "loadV142RuntimeRecoveryEngine()" src/public-surfaces.ts
           grep -q "set('v142-orders', 'OFF')" src/public-surfaces.ts
           grep -q "set('v142-promotion', 'DISABLED')" src/public-surfaces.ts
           grep -q 'V142 · RUNTIME RECOVERY ENGINE' dist/gold-live/index.html
+          node --test tests/v282-runtime-recovery-admission.test.mjs
       - name: Verify V143 stability confirmation invariants
         run: |
           test -f api/stability-confirmation.js

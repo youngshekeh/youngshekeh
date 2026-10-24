@@ -52,6 +52,9 @@ test('active Supabase incident makes only two cheap public calls, never state/QA
  ].sort());
  assert.equal(r.governance.capital_permission,'0R');
  assert.equal(r.readiness.commercial_launch_certified,false);
+ assert.equal(r.evidence.live_quota_probe.clear,false);
+ assert.equal(r.evidence.external_edge_acceptance.verified,false);
+ assert.equal(r.evidence.canonical_state.ok,false);
 });
 test('stale/missing/invalid triage cannot trigger any private read',async()=>{
  for(const patch of [{generated_at:iso(now-250_000)},{checks:{database_incident_reported:false}},
@@ -107,6 +110,10 @@ test('passing all SIX diagnostics never certifies kernel, account, payment, DB r
  assert.equal(r.state,'DIAGNOSTICS_PASSED_PRIVATE_CERTIFICATION_PENDING');
  assert.equal(r.evidence.qa.pass,true);
  assert.equal(r.recovery_score,80);
+ assert.equal(r.evidence.live_quota_probe.clear,true);
+ assert.equal(r.evidence.external_edge_acceptance.verified,true);
+ assert.equal(r.evidence.canonical_state.smoke_state,'FRESH');
+ assert.equal(r.evidence.qa.state,'PASS');
  for(const key of ['private_kernel_certified','authenticated_login_certified',
    'provider_payment_verified','commercial_launch_certified',
    'database_recovered_certified','broker_quote_certified'])
