@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 
 const original = await readFile(new URL('../api/autonomous-qa-matrix.js', import.meta.url), 'utf8');
 const source = original
-  .replace(/^import .*;\s*$/m, '')
+  .replace(/^import .*;\s*$/gm, '')
   .replace('export default async function handler', 'async function handler');
 
 function buildHandler({body, upstreamStatus = 200, token = 'oidc-fixture'} = {}) {
@@ -19,9 +19,9 @@ function buildHandler({body, upstreamStatus = 200, token = 'oidc-fixture'} = {})
   };
   const getVercelOidcToken = async () => token;
   const handler = new Function(
-    'getVercelOidcToken','fetch','URL','AbortSignal',
+    'getVercelOidcToken','preflightV285QaAdmission','fetch','URL','AbortSignal',
     `${source}\nreturn handler;`
-  )(getVercelOidcToken, fetch, URL, AbortSignal);
+  )(getVercelOidcToken, async()=>({admitted:true}), fetch, URL, AbortSignal);
   return {handler, fetchCalls};
 }
 
