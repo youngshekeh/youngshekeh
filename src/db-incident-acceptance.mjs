@@ -4,7 +4,7 @@
 export const DB_INCIDENT_SCHEMA='TFA-DB-RECOVERY-V217';
 const MAX_EVIDENCE_AGE_MS=10*60_000;
 const MAX_SUCCESS_AGE_MS=15*60_000;
-const ERROR_TYPES=Object.freeze(['PGRST002','57014','CRON_STARTUP_TIMEOUT','MANAGEMENT_SQL_TIMEOUT','KERNEL_SEAL','POLICY']);
+const ERROR_TYPES=Object.freeze(['PGRST002','PGRST003','POOLER_AUTH_TIMEOUT','57014','CRON_STARTUP_TIMEOUT','MANAGEMENT_SQL_TIMEOUT','KERNEL_SEAL','POLICY']);
 function validTime(s){const t=Date.parse(String(s??''));return Number.isFinite(t)?t:null;}
 function fresh(s,now=Date.now(),ttl=MAX_EVIDENCE_AGE_MS){
  const t=validTime(s);return t!==null&&t<=now+60_000&&now-t<=ttl;
@@ -12,7 +12,11 @@ function fresh(s,now=Date.now(),ttl=MAX_EVIDENCE_AGE_MS){
 function classify(raw){
  const s=String(raw??'').slice(0,1800);
  const found=[];
- if(/PGRST002/.test(s))found.push('PGRST002');
+ if(/\bPGRST002\b/.test(s))found.push('PGRST002');
+ // V267: PostgREST connection acquisition and Supavisor backend auth failures
+ // are recovery blockers, even if REST schema cache and unrelated probes pass.
+ if(/\bPGRST003\b/.test(s))found.push('PGRST003');
+ if(/DbHandler:\s*Authentication timeout after \d+ms/i.test(s))found.push('POOLER_AUTH_TIMEOUT');
  if(/\b57014\b/.test(s)||/canceling statement due to statement timeout/i.test(s))found.push('57014');
  if(/cron job \d+ job startup timeout/i.test(s))found.push('CRON_STARTUP_TIMEOUT');
  if(/Connection terminated due to connection timeout/i.test(s))found.push('MANAGEMENT_SQL_TIMEOUT');
@@ -92,15 +96,15 @@ export function supportSummary(incident,{projectRef='mpcelmjiycjpdyyflisn',regio
  const totals=incident?.codes??{};
  const count=code=>Number.isInteger(totals[code])&&totals[code]>=0?totals[code]:0;
  return [
-  '# Supabase incident: PostgREST schema cache build timeouts and cron startup failures',
+  '# Supabase incident: database connection pool, authentication and cron worker timeouts',
   '',
   'Project ref: '+safeId+' | Region: '+safeRegion,
   'Snapshot UTC: '+(validTime(incident?.observed_at)?new Date(incident.observed_at).toISOString():'UNVERIFIED'),
   'Classified events (sample of last hour; may overlap across error types):',
   ...ERROR_TYPES.map(code=>'- '+code+': '+count(code)),
   '',
-  'Observed impact: REST schema cache unavailable, repeated statement cancellation, unreliable authenticated kernel and intermittent management SQL connection timeouts.',
-  'Request provider investigation of PostgREST schema introspection cost, database compute/IO, connection pool, cron startup contention and catalog cache reloads.',
+  'Observed impact: PostgREST pool acquisition, Supavisor backend auth, SQL/cron worker timeouts and intermittent authenticated kernel failure; exact root cause remains unverified.',
+  'Request provider investigation of PostgREST pool saturation, Supavisor auth backend, database compute/IO, connection limits and cron worker contention; avoid assumed root cause.',
   'Configured schemas public and graphql_public were previously confirmed present. Do not assume missing schema without a new check.',
   'No credentials, full log payloads or customer records included.',
   'No production DDL or global cron changes were made by this diagnostics release.'

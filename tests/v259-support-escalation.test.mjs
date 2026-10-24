@@ -24,6 +24,10 @@ test('a current read-only incident produces the correct support handoff with no 
  assert.match(p.message,/POSTGREST_RUNTIME_UNAVAILABLE/);
  assert.match(p.message,/EAUTHQUERY/);
  assert.match(p.message,/pg_cron/);
+ assert.match(p.message,/PGRST003/);
+ assert.match(p.message,/2026-10-24/);
+ assert.match(p.message,/static historical operator evidence, not a live log query/);
+ assert.match(p.message,/docs\/operations\/2026-10-24-v267-p0-database-incident\.md/);
  assert.match(p.message,/PLEASE/i); // see explicit provider response request wording
  assert.equal(p.provider_ticket_created,false);
  assert.equal(p.credentials_included,false);
