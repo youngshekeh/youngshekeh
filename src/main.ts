@@ -1,6 +1,8 @@
 import './styles.css';
 import './autonomous.css';
 import './mission.css';
+import './institutional-home.css';
+import {mountInstitutionalHome} from './institutional-home';
 import {usablePrivateState} from './private-state-bridge.mjs';
 
 const cleanRoute = new Set(['/access', '/member', '/owner', '/status']);
@@ -9,6 +11,7 @@ if (cleanRoute.has(window.location.pathname)) {
 }
 
 document.documentElement.classList.add('js');
+mountInstitutionalHome();
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const finePointer = window.matchMedia('(pointer: fine)');
