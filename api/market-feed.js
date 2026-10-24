@@ -42,7 +42,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Monitor','V182');
   res.setHeader('X-TFA-Live-XAUUSD','V186');
-  res.setHeader('X-TFA-Feed-Pressure-Version','V223');
+  res.setHeader('X-TFA-Feed-Pressure-Version','V281');
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return res.status(405).json({ok:false,state:'UNAVAILABLE',error:'method_not_allowed'});
@@ -55,6 +55,8 @@ export default async function handler(req,res){
   const observed=await feeds.observe(feed);
   res.setHeader('X-TFA-Feed-Pressure',observed.mode);
   if(observed.ok)return res.status(200).json(observed.body);
+  // Per-instance local failure suppression, NOT a predicted database recovery time.
+  res.setHeader('Retry-After',String(Math.max(1,Math.min(60,Number(observed.retry_after_seconds)||4))));
   return res.status(503).json({ok:false,state:'UNAVAILABLE',error:'public_feed_unavailable',
     governance:{action_permitted:'WAIT',capital_permission:'0R',live_order_submission_enabled:false}});
 }

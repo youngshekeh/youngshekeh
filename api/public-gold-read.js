@@ -35,6 +35,8 @@ export default async function handler(req,res){
  const result=await feed.observe(GOLD_FEED);
  res.setHeader('X-TFA-Gold-Pressure',result.mode);
  if(result.ok&&result.body?.ok===true)return res.status(200).json(result.body);
+ // Gold failures retry sooner (maximum 12s) without serving stale quotes.
+ res.setHeader('Retry-After',String(Math.max(1,Math.min(12,Number(result.retry_after_seconds)||4))));
  return res.status(503).json({ok:false,state:'UNAVAILABLE',
    market_status:'UNAVAILABLE',error:'no_fresh_attributed_gold_quote',
    live_broker:{state:'NOT_VERIFIED'},feed:{},
