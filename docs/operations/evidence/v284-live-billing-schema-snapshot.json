@@ -1,0 +1,84 @@
+{
+  "version": "v284-live-billing-metadata-snapshot-v1",
+  "observed_at_utc": "2026-10-24T22:39:00Z",
+  "source": "READ_ONLY_SUPABASE_information_schema_pg_indexes_pg_constraint_and_plan_aggregate",
+  "postgres_version": "17.6",
+  "project_region": "eu-west-1",
+  "no_customer_rows_copied": true,
+  "tables": {
+    "plans": {
+      "id": "text",
+      "price_monthly_usd": "numeric",
+      "is_active": "boolean"
+    },
+    "billing_plan_mappings": {
+      "provider": "text",
+      "plan_id": "text",
+      "provider_plan_id": "text",
+      "currency": "text",
+      "recurring": "boolean",
+      "is_active": "boolean"
+    },
+    "checkout_intents": {
+      "id": "uuid",
+      "user_id": "uuid",
+      "plan_id": "text",
+      "provider": "text",
+      "provider_reference": "text",
+      "amount": "numeric",
+      "currency": "text",
+      "status": "text",
+      "updated_at": "timestamp with time zone"
+    },
+    "payment_events": {
+      "id": "uuid",
+      "provider": "text",
+      "provider_event_key": "text",
+      "event_type": "text",
+      "user_id": "uuid",
+      "plan_id": "text",
+      "amount": "numeric",
+      "currency": "text",
+      "status": "text",
+      "raw_payload": "jsonb"
+    },
+    "subscriptions": {
+      "id": "uuid",
+      "user_id": "uuid",
+      "plan_id": "text",
+      "status": "text",
+      "provider": "text",
+      "provider_customer_id": "text",
+      "provider_subscription_id": "text",
+      "current_period_end": "timestamp with time zone",
+      "updated_at": "timestamp with time zone"
+    }
+  },
+  "unique_index_names": [
+    "billing_plan_mappings_pkey",
+    "billing_plan_mappings_provider_plan_unique",
+    "checkout_intents_provider_reference_key",
+    "checkout_intents_one_open_per_user_plan_provider",
+    "payment_events_provider_provider_event_key_key",
+    "payment_events_flutterwave_transaction_unique",
+    "subscriptions_user_id_key",
+    "subscriptions_provider_customer_unique",
+    "subscriptions_provider_subscription_unique"
+  ],
+  "actual_active_provider_plan_monthly_usd": {
+    "pro": 79,
+    "executive": 499,
+    "business": 1500,
+    "enterprise": 5000
+  },
+  "paid_checkouts": 1,
+  "successful_event_rows": 1,
+  "valid_future_paid_term_rows": 0,
+  "installed_v276_v278_functions": 0,
+  "limits": [
+    "Point-in-time snapshot, not a production database clone",
+    "Plan prices are live 2026-10-24 metadata, not provider charge authorization",
+    "Signed HMAC verification, payout account, refund and cancellation not certified",
+    "No user identifiers, provider plan IDs, payment payloads or authentication secrets exported"
+  ]
+}
