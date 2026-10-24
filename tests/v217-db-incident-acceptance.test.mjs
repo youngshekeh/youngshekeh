@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import {summarizeIncident,assessDatabaseRecovery,supportSummary,DB_INCIDENT_SCHEMA} from '../src/db-incident-acceptance.mjs';
+import {summarizeIncident,assessDatabaseRecovery,supportSummary,DB_INCIDENT_SCHEMA,twoDistinctSealedCycles} from '../src/db-incident-acceptance.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const now=Date.parse('2026-10-20T19:37:35Z');
 const recent=new Date(now-1000).toISOString();
@@ -103,6 +103,38 @@ test('two distinct finished kernel executions must be sealed and at least one mi
  assert.ok(assessDatabaseRecovery(data,now).blockers.includes('TWO_DISTINCT_KERNEL_CYCLES_NOT_VERIFIED'));
  data.heartbeat_runs[0].seal.transport='SQL_POOLER_VERIFIED';data.heartbeat_runs[0].finished_at=data.heartbeat_runs[1].finished_at;
  assert.ok(assessDatabaseRecovery(data,now).blockers.includes('TWO_DISTINCT_KERNEL_CYCLES_NOT_VERIFIED'));
+});
+test('V269 duplicate and contradictory sealed kernel receipts never grant false two-cycle proof',()=>{
+ const fixture=clean(),a=fixture.heartbeat_runs[0],b=fixture.heartbeat_runs[1];
+ assert.equal(twoDistinctSealedCycles([a,b],now),true);
+ assert.equal(twoDistinctSealedCycles([a,a],now),false);
+ const duplicateOld={...a,finished_at:new Date(now-14*60000).toISOString()};
+ assert.equal(twoDistinctSealedCycles([a,duplicateOld,b],now),false,
+  'a reused ID with different times is contradictory even with a distinct other ID');
+ const duplicatedSame={...a};
+ assert.equal(twoDistinctSealedCycles([a,duplicatedSame,b],now),true,
+  'identical retransmissions cannot replace a second cycle, but do not invalidate it');
+ const sameClock={...b,finished_at:a.finished_at};
+ assert.equal(twoDistinctSealedCycles([a,sameClock],now),false);
+ const near={...b,finished_at:new Date(Date.parse(a.finished_at)+59_999).toISOString()};
+ assert.equal(twoDistinctSealedCycles([a,near],now),false);
+ assert.equal(twoDistinctSealedCycles([a,b,{...a,run_id:'other',seal:{sealed:false}}],now),true,
+  'failed extra evidence cannot count as a valid cycle');
+ const invalid=clean();invalid.heartbeat_runs=[a,duplicateOld,b];
+ const verdict=assessDatabaseRecovery(invalid,now);
+ assert.equal(verdict.state,'LAUNCH_HOLD');
+ assert.ok(verdict.blockers.includes('TWO_DISTINCT_KERNEL_CYCLES_NOT_VERIFIED'));
+ assert.equal(verdict.governance.real_orders,false);
+ assert.equal(verdict.governance.automatic_checkout_unlock,false);
+});
+test('V269 two valid unique IDs at different times qualify regardless of row order',()=>{
+ const fixture=clean(),[a,b]=fixture.heartbeat_runs;
+ const extra={...a,run_id:'third',finished_at:new Date(now-5*60000).toISOString()};
+ assert.equal(twoDistinctSealedCycles([extra,a,b],now),true);
+ assert.equal(twoDistinctSealedCycles([b,a],now),true);
+ assert.equal(twoDistinctSealedCycles(new Array(257).fill(a),now),false);
+ assert.equal(twoDistinctSealedCycles([{...a,governance:{...a.governance,capital_permission:'1R'}},b],now),false);
+ assert.equal(twoDistinctSealedCycles([],now),false);
 });
 test('failed signed webhook and absent entitlements hold paid launch',()=>{
  const data=clean();data.payment.signed_webhook_verified=false;
