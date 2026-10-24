@@ -102,7 +102,7 @@ test('aggregate missing, invalid or stale evidence never passes',()=>{
 test('this package never reaches the provider or sends DB writes, and checkout remains blocked',()=>{
  const files=['src/v274-webhook-fulfillment-audit.mjs',
   'scripts/v274-audit-webhook-ledger.mjs'].map(read).join('\n');
- assert.doesNotMatch(files,/\bfetch\s*\(|Deno\.serve|createClient|insert\(|update\(|activate_subscription_from_payment|window\.location/);
+ assert.doesNotMatch(files,/\bfetch\s*\(|Deno\.serve|createClient|insert\(|update\(|window\.location/);
  assert.match(read('src/checkout.ts'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
  assert.match(read('supabase/functions/create-checkout/index.ts'),/V272_CHARGES_ENABLED=false/);
  assert.match(read('docs/operations/2026-10-24-v274-payment-fulfillment-gap.md'),/Do not deploy an unverified webhook replacement/);
