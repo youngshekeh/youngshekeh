@@ -16,7 +16,7 @@ test('valid provider-verified paid period allows the display of paid membership'
  assert.match(o.label,/PAID/);
 });
 test('HTTP 200 without a valid member-session semantic payload cannot grant access',()=>{
- for(const v of [null,{}, {ok:false,...base}, {...base,ok:false},
+ for(const v of [null,{}, {...base,ok:false},
   {...base,version:'untrusted-v1'},{...base,user:{id:'unverified'}},
   {...base,access_state:'owner',is_owner:false},
   {...base,access_state:'granted',subscription:{...base.subscription,period_valid:false}},
