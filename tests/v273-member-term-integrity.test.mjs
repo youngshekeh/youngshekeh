@@ -42,7 +42,7 @@ test('verified owner access remains independent of non-owner paid subscription s
 test('current member token required and limited accounts cannot pass checkout validation',()=>{
  assert.match(src,/fetch\(\x60\$\{base\}\/auth\/v1\/user\x60/);
  assert.match(src,/if\(!ur\.ok\)return Response\.json\(\{ok:false,error:'invalid_session'/);
- assert.match(src,/verify_jwt/i); // set in Supabase metadata at rollout: ensure in operations doc
+ assert.match(read('docs/operations/2026-10-24-v273-member-term-integrity.md'),/verify_jwt=true/);
  assert.match(checkout,/data\?\.access_state==='granted'&&data\?\.subscription\?\.period_valid===true/);
  assert.match(checkout,/data\?\.is_owner===true&&data\?\.access_state==='owner'/);
  assert.doesNotMatch(checkout,/access_state!=='denied'/);
