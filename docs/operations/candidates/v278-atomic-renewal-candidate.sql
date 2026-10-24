@@ -60,11 +60,6 @@ BEGIN
    AND m.recurring=true AND m.provider_plan_id IS NOT NULL
  ) THEN RAISE EXCEPTION 'V278_PLAN_AND_AMOUNT_PARITY_REJECTED'; END IF;
 
- -- An exact provider cycle must attach to the existing committed paid term.
- -- Small clock/date slack admits billing boundary conversion only.
- IF abs(extract(epoch FROM (p_period_start-v_sub.current_period_end)))>36*3600
- THEN RAISE EXCEPTION 'V278_PROVIDER_PERIOD_CONTINUITY_REQUIRED'; END IF;
-
  -- Durable duplicate check AFTER serial lock. Both unique indexes apply:
  -- (provider,event_key), and (provider,raw_payload.transaction_id).
  IF EXISTS (
@@ -100,6 +95,11 @@ BEGIN
   END IF;
   RAISE EXCEPTION 'V278_LEGACY_OR_PARTIAL_RENEWAL_REQUIRES_RECONCILIATION';
  END IF;
+
+ -- An exact provider cycle must attach to the existing committed paid term.
+ -- Small clock/date slack admits billing boundary conversion only.
+ IF abs(extract(epoch FROM (p_period_start-v_sub.current_period_end)))>36*3600
+ THEN RAISE EXCEPTION 'V278_PROVIDER_PERIOD_CONTINUITY_REQUIRED'; END IF;
 
  -- A *different* payment for an already-credited cycle is NOT another month.
  IF p_period_end<=v_sub.current_period_end
