@@ -52,6 +52,26 @@ function allowedRun(r,now){
   &&typeof r?.run_id==='string'&&r.run_id.length>0&&r.run_id.length<129
   &&fresh(r?.finished_at,now,MAX_SUCCESS_AGE_MS);
 }
+// V269 verified-cycle pairing. Fail closed on contradictory replays, and
+// select a qualifying pair by ID (never by the latest two raw receipt rows).
+export function twoDistinctSealedCycles(runs,now=Date.now()){
+ if(!Array.isArray(runs)||runs.length>256)return false;
+ const ids=new Map();
+ for(const run of runs){
+  if(!allowedRun(run,now))continue;
+  const completed=validTime(run.finished_at);
+  const previous=ids.get(run.run_id);
+  if(previous!==undefined&&previous!==completed)return false;
+  ids.set(run.run_id,completed);
+ }
+ const distinct=[...ids.entries()];
+ for(let i=0;i<distinct.length;i++){
+  for(let j=i+1;j<distinct.length;j++){
+   if(Math.abs(distinct[i][1]-distinct[j][1])>=60_000)return true;
+  }
+ }
+ return false;
+}
 export function assessDatabaseRecovery({
  observed_at,incident,management_sql,postgrest_probe,cron,heartbeat_runs,payment
 }={},now=Date.now()){
@@ -69,13 +89,10 @@ export function assessDatabaseRecovery({
  if(cron?.active_jobs!==58||cron?.enabled!=='on'||cron?.recent_startup_timeouts!==0
    ||!fresh(cron?.observed_at,now))
    blockers.push('SCHEDULER_RUNTIME_NOT_VERIFIED');
- const runs=Array.isArray(heartbeat_runs)?heartbeat_runs:[];
- const good=runs.filter(r=>allowedRun(r,now));
- const distinct=[...new Set(good.map(r=>r.run_id))];
- const runTimes=good.map(r=>validTime(r.finished_at)).filter(x=>x!==null).sort((a,b)=>b-a);
- // Two receipts must represent two separate completed cycles, not repeated
- // delivery of a single event or near-simultaneous duplicate responses.
- if(distinct.length<2||runTimes.length<2||runTimes[0]-runTimes[1]<60_000)
+ // Require two DIFFERENT run IDs whose verified completion times are
+ // >=60s apart. Re-delivered receipts cannot substitute for a second cycle.
+ // An ID reused with contradictory timestamps is not reliable evidence.
+ if(!twoDistinctSealedCycles(heartbeat_runs,now))
    blockers.push('TWO_DISTINCT_KERNEL_CYCLES_NOT_VERIFIED');
  if(payment?.full_live_acceptance!==true||payment?.signed_webhook_verified!==true
    ||payment?.entitlement_verified!==true||!fresh(payment?.observed_at,now))
