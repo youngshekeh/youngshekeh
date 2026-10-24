@@ -1,4 +1,5 @@
 import { getVercelOidcToken } from '@vercel/oidc';
+import { preflightV285QaAdmission } from '../src/v285-qa-upstream-admission.mjs';
 
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-autonomous-qa';
 // V225: one expensive private QA evaluation per Vercel worker instance.
@@ -26,6 +27,13 @@ export default async function handler(req,res){
   if(qaBusy)return denied(res,'IN_PROGRESS');
   qaBusy=true;
   try{
+  // V285: isolate expensive private OIDC QA while Supabase reports an incident.
+  // The public preflight is read-only, bounded and cannot turn a launch gate green.
+  const admission=await preflightV285QaAdmission();
+  if(!admission.admitted){
+    qaRetryAt=Date.now()+QA_NEGATIVE_COOLDOWN_MS;
+    return denied(res,'UPSTREAM_'+admission.reason);
+  }
   let oidcToken='';
   try{
     oidcToken=await getVercelOidcToken();
