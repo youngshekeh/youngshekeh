@@ -1,4 +1,5 @@
-import {evaluateHomeEvidence,HOMEPAGE_PUBLIC_ENDPOINTS} from './institutional-evidence.mjs';
+import {HOMEPAGE_PUBLIC_ENDPOINTS} from './institutional-evidence.mjs';
+import {evaluateInstitutionalProof} from './institutional-evidence-v280.mjs';
 type Json=Record<string,any>;
 const perspectives:Record<string,{title:string;caption:string;detail:string}>={
  session:{title:'Session / near-term evidence',caption:'Observe before framing a setup',
@@ -35,14 +36,29 @@ export function mountInstitutionalHome(){
  for(const button of document.querySelectorAll<HTMLButtonElement>('[data-lens-horizon]')){
   button.addEventListener('click',()=>select(button.dataset.lensHorizon||'session'));
  }
- let running=false;
+ let running=false,lastCheck=0,latest:ReturnType<typeof evaluateInstitutionalProof>|null=null;
+ const renderProof=()=>{
+   if(!latest)return;
+   text('lens-proof-gold',latest.verified.gold?'SOURCE VERIFIED':'WITHHELD');
+   text('lens-proof-btc',latest.verified.bitcoin?'RECEIPT ONLY':'WITHHELD');
+   const horizon=lens.dataset.horizon||'session';
+   text('lens-proof-horizon',latest.horizon[horizon as keyof typeof latest.horizon]??'NOT VERIFIED');
+ };
+ for(const b of document.querySelectorAll<HTMLButtonElement>('[data-lens-horizon]'))
+   b.addEventListener('click',renderProof);
  const refresh=async()=>{
-  if(running)return;running=true;recheck.disabled=true;
+  if(running)return;
+  const now=Date.now();
+  if(lastCheck&&now-lastCheck<20_000){
+   text('source-ledger-updated','Checked recently · try again in '+Math.ceil((20_000-(now-lastCheck))/1000)+'s');
+   return;
+  }
+  lastCheck=now;running=true;recheck.disabled=true;
   text('source-ledger-updated','Checking source provenance…');
   try{
    // EXACT allowlist, each one-time read is anonymous. Do not poll provider APIs.
    const observed=await Promise.all(HOMEPAGE_PUBLIC_ENDPOINTS.map(safeFetch));
-   const snapshot=evaluateHomeEvidence({
+   const snapshot=evaluateInstitutionalProof({
     references:observed[0],macro:observed[1],quarterly:observed[2],recovery:observed[3]
    });
    for(const row of snapshot.items){
@@ -54,6 +70,9 @@ export function mountInstitutionalHome(){
     if(badge)badge.textContent=row.verdict;
     if(detail)detail.textContent=row.detail;
    }
+   latest=snapshot;
+   renderProof();
+   text('source-ledger-summary',snapshot.source_summary);
    const core=snapshot.core_status==='DATABASE INCIDENT REPORTED'?' · private core: INCIDENT':' · private core: not certified';
    text('source-ledger-updated','Evidence checked '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+core);
   }finally{running=false;recheck.disabled=false;}
