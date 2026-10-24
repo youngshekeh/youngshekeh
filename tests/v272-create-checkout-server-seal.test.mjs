@@ -27,7 +27,8 @@ test('POST guard precedes ALL session, database, checkout-intent and provider op
  assert.ok(start>=0&&seal>start&&auth>seal&&customer>seal&&precharge>customer&&intent>precharge&&money>intent);
  assert.match(src,/req.method==='OPTIONS'/);
  assert.match(src,/req.method!=='POST'/);
- assert.match(src,/verify_jwt/i);
+ // JWT enforcement is supplied by Supabase function deployment metadata, not Deno source.
+ assert.match(src,/auth\.toLowerCase\(\)\.startsWith\('bearer '\)/);
 });
 test('server precharge requires independent signed billing evidence and private run separation',()=>{
  for(const x of [
