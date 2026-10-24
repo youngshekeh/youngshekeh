@@ -70,3 +70,11 @@ body.home-public .institutional-lens{padding:80px 0 86px;color:#271e30}
 @media(max-width:930px){.institutional-lens .lens-grid{grid-template-columns:1fr}.institutional-lens .lens-brief{min-height:auto}.institutional-lens .source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){body.home-public .institutional-lens{padding:50px 0}.institutional-lens .lens-section-header,.institutional-lens .source-header{display:block}.institutional-lens .lens-section-header p{margin-top:18px}.institutional-lens .source-actions{align-items:flex-start;margin-top:18px}.institutional-lens .lens-stage{min-height:226px}.institutional-lens .lens-depth{width:240px;height:105px}.institutional-lens .lens-visual{padding:18px 17px;min-height:auto}.institutional-lens .lens-visual-header{flex-wrap:wrap}.institutional-lens .source-grid{grid-template-columns:1fr}.institutional-lens .lens-brief{padding:23px}.institutional-lens [data-source-row]{min-height:150px}.institutional-lens .lens-stage-footer{grid-template-columns:1fr}.institutional-lens .lens-time-switch button{font-size:9px;padding:9px}}
 @media(prefers-reduced-motion:reduce){.institutional-lens .lens-depth,.institutional-lens .lens-time-switch button{transition:none!important}}
+
+/* V280 institutional evidence strip: source-backed badges, never probabilities. */
+.institutional-lens .lens-proof-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:5px 0 0}
+.institutional-lens .lens-proof-strip>div{border:1px solid rgba(212,186,237,.24);border-top-color:rgba(243,200,107,.6);padding:12px;border-radius:5px;background:rgba(255,255,255,.035);min-width:0}
+.institutional-lens .lens-proof-strip span{display:block;color:#bcaacb;font-size:8px;font-weight:800;letter-spacing:.12em}
+.institutional-lens .lens-proof-strip strong{display:block;margin-top:8px;color:#f5eafa;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+.institutional-lens #source-ledger-summary{max-width:310px;font-size:10px;font-weight:800;color:#67467d;text-align:right;line-height:1.5}
+@media(max-width:650px){.institutional-lens .lens-proof-strip{grid-template-columns:1fr 1fr}.institutional-lens .lens-proof-strip>div:last-child{grid-column:1/-1}.institutional-lens #source-ledger-summary{text-align:left}}
