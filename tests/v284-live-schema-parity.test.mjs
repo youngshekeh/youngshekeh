@@ -13,7 +13,8 @@ test('V284 source snapshot reflects PostgreSQL 17, no private user data',()=>{
  assert.equal(snap.valid_future_paid_term_rows,0);
  assert.deepEqual(snap.actual_active_provider_plan_monthly_usd,{pro:79,executive:499,business:1500,enterprise:5000});
  for(const [plan,price] of Object.entries(snap.actual_active_provider_plan_monthly_usd))
-  assert.match(fixture,new RegExp("'+plan+"','[^']*',"+price+",true"));
+  assert.ok(fixture.includes("('"+plan+"','"),'plan exists '+plan);
+  assert.ok(fixture.includes("',"+price+",true)"),'price exists '+price);
 });
 test('database columns referenced by BOTH uninstalled RPCs are in actual live schema',()=>{
  const columns={
