@@ -75,7 +75,9 @@ test('private checkout endpoint performs acceptance BEFORE checkout DB writes or
   assert.match(src,/commercial_acceptance_not_verified/);
   assert.match(src,/final\?\.state==='FULL_ACCEPTANCE_READY'/);
   assert.match(src,/billing\?\.state==='LIVE_FLOW_VERIFIED'/);
-  assert.match(src,/new Set\(runs\.map/);
+  assert.match(src,/const unique=new Map<string,number>\(\)/);
+  assert.match(src,/if\(conflicting\|\|!separated\)/);
+  assert.match(src,/Math\.abs\(a-b\)>=60_000/);
   assert.match(src,/status:'eq\.SUCCEEDED'/);
   assert.match(src,/throw new Error\('recent_kernel_receipts_unavailable'\)/);
 });
