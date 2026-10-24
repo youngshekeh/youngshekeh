@@ -1,0 +1,25 @@
+name: V283 Incident-Aware Public Edge Probe Throttle
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/provider-edge-acceptance.js'
+      - 'src/v283-provider-edge-admission.mjs'
+      - 'tests/v283-provider-edge-admission.test.mjs'
+      - '.github/workflows/v283-public-edge-load-shed.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-incident-throttle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/v283-provider-edge-admission.mjs && node --check api/provider-edge-acceptance.js
+      - run: node --test tests/v283-provider-edge-admission.test.mjs
