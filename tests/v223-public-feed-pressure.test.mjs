@@ -40,6 +40,7 @@ test('a failed or non-success response is not promoted to HTTP success',async()=
  time+=1000;assert.equal((await gate.observe(GOLD_FEED)).mode,'FAILURE_COOLDOWN');
  assert.equal(calls,1);
  time+=3000;assert.equal((await gate.observe(GOLD_FEED)).ok,false);
+ time+=4000;assert.equal((await gate.observe(GOLD_FEED)).mode,'FAILURE_COOLDOWN');
  time+=4000;assert.equal((await gate.observe(GOLD_FEED)).ok,true);
  assert.equal(calls,3);
 });
