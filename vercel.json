@@ -6,10 +6,18 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/market-feed.js": { "maxDuration": 20 },
-    "api/public-recovery-triage.js": { "maxDuration": 20 },
-    "api/connection-pressure-shadow.js": { "maxDuration": 40 },
-    "api/peak-minute-spreader-status.js": { "maxDuration": 40 }
+    "api/market-feed.js": {
+      "maxDuration": 20
+    },
+    "api/public-recovery-triage.js": {
+      "maxDuration": 20
+    },
+    "api/connection-pressure-shadow.js": {
+      "maxDuration": 40
+    },
+    "api/peak-minute-spreader-status.js": {
+      "maxDuration": 40
+    }
   },
   "ignoreCommand": "case \"$VERCEL_GIT_COMMIT_REF\" in tfa-q4-visuals|tfa-machine-q4-v2|tfa-machine-q4-v3) exit 1;; the-father-analytics-deploy) case \"$VERCEL_GIT_COMMIT_MESSAGE\" in *\"[deploy]\"*) exit 1;; *) exit 0;; esac;; *) exit 0;; esac",
   "headers": [
@@ -51,6 +59,28 @@
         {
           "key": "X-Permitted-Cross-Domain-Policies",
           "value": "none"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, nosnippet"
+        }
+      ]
+    },
+    {
+      "source": "/(member|owner|checkout|access)/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow, noarchive"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store"
         }
       ]
     }

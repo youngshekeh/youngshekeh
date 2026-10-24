@@ -1,0 +1,72 @@
+/* V279: restrained institutional editorial. Layered 3D is conceptual, not fabricated tape. */
+body.home-public .institutional-lens{padding:80px 0 86px;color:#271e30}
+.institutional-lens .lens-kicker{font-size:10px;font-weight:800;letter-spacing:.16em;color:#73578b}
+.institutional-lens .lens-section-header{display:flex;align-items:end;justify-content:space-between;gap:34px;margin-bottom:26px}
+.institutional-lens .lens-section-header h2{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:clamp(39px,4.3vw,61px);letter-spacing:-.05em;line-height:1.08;margin:12px 0 0;color:#241a2d}
+.institutional-lens .lens-section-header h2 em{color:#7b5896;font-style:normal}
+.institutional-lens .lens-section-header p{max-width:375px;margin:0 0 4px;color:#5f5468;font-size:14px;line-height:1.8}
+.institutional-lens .lens-grid{display:grid;grid-template-columns:minmax(0,1.62fr) minmax(250px,.78fr);gap:15px}
+.institutional-lens .lens-visual{position:relative;overflow:hidden;isolation:isolate;min-height:565px;padding:23px 25px 17px;border:1px solid #30213e;background:radial-gradient(ellipse at 42% 43%,#332440 0%,#21162e 43%,#120e1a 85%);border-radius:13px;color:#f2eaf6;box-shadow:0 30px 65px rgba(48,29,61,.19)}
+.institutional-lens .lens-visual::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(105deg,transparent 20%,rgba(232,204,255,.07) 50%,transparent 80%)}
+.institutional-lens .lens-visual-header{display:flex;justify-content:space-between;gap:15px;align-items:start}
+.institutional-lens .lens-overline{display:block;font-size:9px;font-weight:800;letter-spacing:.16em;color:#bca2ce}
+.institutional-lens .lens-visual-header strong{display:block;margin-top:7px;font-size:17px;letter-spacing:-.02em;color:#fff}
+.institutional-lens .lens-0r{white-space:nowrap;border:1px solid rgba(240,205,142,.43);border-radius:4px;padding:8px 10px;color:#f3dbad;font-size:10px;letter-spacing:.08em}
+.institutional-lens .lens-time-switch{position:relative;z-index:3;display:flex;gap:6px;margin:23px 0 4px;flex-wrap:wrap}
+.institutional-lens .lens-time-switch button{font:inherit;font-size:10px;font-weight:800;letter-spacing:.07em;border:1px solid rgba(210,190,227,.19);border-radius:5px;color:#c8b9d7;background:rgba(255,255,255,.025);padding:10px 13px;cursor:pointer;transition:background .2s,border-color .2s}
+.institutional-lens .lens-time-switch button[aria-pressed="true"]{background:#f5e6c7;color:#281b30;border-color:#f5e6c7}
+.institutional-lens .lens-time-switch button:focus-visible,.institutional-lens .source-actions button:focus-visible{outline:3px solid #c5a1ff;outline-offset:3px}
+.institutional-lens .lens-stage{position:relative;min-height:276px;perspective:850px;transform-style:preserve-3d;overflow:hidden}
+.institutional-lens .lens-stage-grid{position:absolute;inset:13px 0;opacity:.4;background-image:linear-gradient(rgba(200,180,230,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(200,180,230,.055) 1px,transparent 1px);background-size:34px 34px;mask-image:radial-gradient(ellipse,#000 20%,transparent 78%)}
+.institutional-lens .lens-depth{position:absolute;left:50%;top:53%;width:min(67%,345px);height:125px;border:1px solid rgba(234,199,250,.48);background:linear-gradient(135deg,rgba(163,127,220,.23),rgba(45,31,75,.03) 55%,rgba(252,216,151,.13));transform:translate(-50%,-50%) rotateX(61deg) rotateZ(-37deg);transform-style:preserve-3d;box-shadow:0 0 30px rgba(193,140,255,.10),inset 0 0 30px rgba(204,145,235,.06);transition:transform .65s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+.institutional-lens .lens-depth span{display:block;padding:10px;color:#fff3d6;font-size:9px;letter-spacing:.15em;font-weight:800;transform:rotateZ(0)}
+.institutional-lens .lens-depth-back{transform:translate(-46%,-91%) rotateX(61deg) rotateZ(-37deg);border-color:rgba(200,181,229,.33);opacity:.66}
+.institutional-lens .lens-depth-middle{transform:translate(-51%,-57%) rotateX(61deg) rotateZ(-37deg);border-color:rgba(197,145,235,.54);opacity:.81}
+.institutional-lens .lens-depth-front{transform:translate(-56%,-23%) rotateX(61deg) rotateZ(-37deg);border-color:rgba(248,218,166,.83);box-shadow:0 0 60px rgba(215,164,250,.14)}
+.institutional-lens .lens-visual[data-horizon="weekly"] .lens-depth-back{transform:translate(-45%,-98%) rotateX(61deg) rotateZ(-27deg)}
+.institutional-lens .lens-visual[data-horizon="weekly"] .lens-depth-middle{transform:translate(-51%,-56%) rotateX(61deg) rotateZ(-27deg)}
+.institutional-lens .lens-visual[data-horizon="weekly"] .lens-depth-front{transform:translate(-57%,-17%) rotateX(61deg) rotateZ(-27deg)}
+.institutional-lens .lens-visual[data-horizon="quarterly"] .lens-depth-back{transform:translate(-43%,-101%) rotateX(60deg) rotateZ(-17deg)}
+.institutional-lens .lens-visual[data-horizon="quarterly"] .lens-depth-middle{transform:translate(-51%,-58%) rotateX(60deg) rotateZ(-17deg)}
+.institutional-lens .lens-visual[data-horizon="quarterly"] .lens-depth-front{transform:translate(-59%,-16%) rotateX(60deg) rotateZ(-17deg)}
+.institutional-lens .lens-stage-axis{position:absolute;font-size:9px;letter-spacing:.12em;color:#ddc8ee}
+.institutional-lens .lens-axis-x{right:6%;bottom:14%}
+.institutional-lens .lens-axis-y{left:7%;top:20%;writing-mode:vertical-rl}
+.institutional-lens .lens-center-mark{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);font-family:Georgia,serif;font-size:26px;color:#f8dda5;text-shadow:0 1px 22px #be8de6}
+.institutional-lens .lens-stage-footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid rgba(224,192,242,.2);padding-top:16px}
+.institutional-lens .lens-stage-footer span{font-size:9px;color:#b9a7c7;letter-spacing:.12em}
+.institutional-lens .lens-stage-footer strong{display:block;font-size:13px;margin-top:6px;color:#f4eafa;line-height:1.35}
+.institutional-lens .lens-disclosure{color:#beaecb;font-size:11px;line-height:1.6;margin:15px 0 0}
+.institutional-lens .lens-brief{display:flex;flex-direction:column;min-height:565px;border:1px solid #e0d9e3;border-radius:13px;background:#fffdfb;padding:29px 26px;color:#32243a}
+.institutional-lens .lens-brief .lens-overline{color:#856b97}
+.institutional-lens .lens-brief h3{font-family:Georgia,serif;font-size:clamp(25px,2.4vw,31px);line-height:1.16;letter-spacing:-.025em;margin:15px 0 24px}
+.institutional-lens .lens-axis-row{display:grid;gap:7px;padding:14px 0;border-top:1px solid #ede7ef}
+.institutional-lens .lens-axis-row b{font-size:10px;letter-spacing:.09em;color:#73558d}
+.institutional-lens .lens-axis-row span{font-size:12px;color:#615769;line-height:1.5}
+.institutional-lens .lens-deep-link{display:flex;justify-content:space-between;align-items:center;gap:15px;background:#2e2039;color:#faf4ff;text-decoration:none;font-size:12px;font-weight:800;border-radius:5px;padding:14px 16px;margin-top:auto}
+.institutional-lens .lens-deep-link:hover{background:#51345e}
+.institutional-lens .lens-brief>p{font-size:10px;line-height:1.6;color:#786e7e;margin:13px 0 0}
+.institutional-lens .source-header{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:64px 0 18px;scroll-margin-top:90px}
+.institutional-lens .source-header h3{font-family:Georgia,serif;letter-spacing:-.04em;color:#23192b;font-size:clamp(28px,3.1vw,42px);margin:8px 0}
+.institutional-lens .source-header p{font-size:13px;color:#665c6b;line-height:1.65;margin:0;max-width:610px}
+.institutional-lens .source-actions{display:flex;flex-direction:column;align-items:flex-end;gap:11px}
+.institutional-lens #source-ledger-updated{color:#796c7e;font-size:10px;text-align:right}
+.institutional-lens #source-ledger-refresh{border:1px solid #a99ab2;background:#fff;color:#382742;padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer;border-radius:5px}
+.institutional-lens #source-ledger-refresh:disabled{opacity:.55;cursor:default}
+.institutional-lens .source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.institutional-lens [data-source-row]{border:1px solid #e1d9e4;border-radius:9px;padding:19px 17px 16px;background:#fff;min-height:213px;display:flex;flex-direction:column;gap:13px;box-shadow:0 5px 20px rgba(41,24,49,.03)}
+.institutional-lens [data-source-row]>div{display:flex;justify-content:space-between;gap:8px}
+.institutional-lens .source-index{font-size:10px;color:#a291aa}
+.institutional-lens .source-name{color:#40314a;font-size:10px;font-weight:850;letter-spacing:.07em;text-align:right}
+.institutional-lens [data-source-verdict]{font-size:14px;line-height:1.25;color:#684879}
+.institutional-lens [data-source-state="current"] [data-source-verdict]{color:#286e52}
+.institutional-lens [data-source-state="limited"] [data-source-verdict]{color:#8a682f}
+.institutional-lens [data-source-state="historical"] [data-source-verdict]{color:#73518e}
+.institutional-lens [data-source-row] p{font-size:12px;line-height:1.55;color:#52485a;margin:0}
+.institutional-lens [data-source-row] small{margin-top:auto;font-size:10px;line-height:1.5;color:#8b7f91}
+.institutional-lens .source-governance{font-size:11px;color:#685d6e;line-height:1.75;margin:18px 0 0}
+.institutional-lens .source-governance strong{color:#3e2a49}
+.institutional-lens .source-governance a{color:#674182;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:930px){.institutional-lens .lens-grid{grid-template-columns:1fr}.institutional-lens .lens-brief{min-height:auto}.institutional-lens .source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){body.home-public .institutional-lens{padding:50px 0}.institutional-lens .lens-section-header,.institutional-lens .source-header{display:block}.institutional-lens .lens-section-header p{margin-top:18px}.institutional-lens .source-actions{align-items:flex-start;margin-top:18px}.institutional-lens .lens-stage{min-height:226px}.institutional-lens .lens-depth{width:240px;height:105px}.institutional-lens .lens-visual{padding:18px 17px;min-height:auto}.institutional-lens .lens-visual-header{flex-wrap:wrap}.institutional-lens .source-grid{grid-template-columns:1fr}.institutional-lens .lens-brief{padding:23px}.institutional-lens [data-source-row]{min-height:150px}.institutional-lens .lens-stage-footer{grid-template-columns:1fr}.institutional-lens .lens-time-switch button{font-size:9px;padding:9px}}
+@media(prefers-reduced-motion:reduce){.institutional-lens .lens-depth,.institutional-lens .lens-time-switch button{transition:none!important}}
