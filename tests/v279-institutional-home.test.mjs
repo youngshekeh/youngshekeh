@@ -12,9 +12,9 @@ const sample=()=>({
  macro:null,
  quarterly:{ok:true,generated_at:at(now-7000),reference_only:true,not_for_trade_execution:true,
   assets:{gold:{source_last_daily_bar:'2026-10-23',is_actual_orderbook_liquidity:false,
-     source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'},
+     source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'},
     bitcoin:{source_last_daily_bar:'2026-10-24',is_actual_orderbook_liquidity:false,
-     zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'}}},
+     source_rights:'COMMERCIAL_REDISTRIBUTION_NOT_VERIFIED',zone_method:'PRIOR_COMPLETED_QUARTER_OHLC_RANGE_2PCT_INNER_BANDS'}}},
  recovery:{ok:true,generated_at:at(now-500),state:'DATABASE INCIDENT REPORTED'}
 });
 const getRow=(a,key)=>a.items.find(x=>x.key===key);
@@ -93,4 +93,32 @@ test('security headers, crawl exclusions and no payment or execution changes',()
  assert.match(get('src/checkout.ts'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
  assert.match(get('supabase/functions/create-checkout/index.ts'),/V272_CHARGES_ENABLED=false/);
  assert.match(get('public/sitemap.xml'),/market-observatory/);
+});
+
+test('V280 requires BOTH historical vendor rights declarations, never grants commerce',()=>{
+ const a=sample();
+ assert.equal(getRow(evaluateHomeEvidence(a,now),'quarterly').state,'historical');
+ for(const key of ['gold','bitcoin']){
+  const missing=sample();delete missing.quarterly.assets[key].source_rights;
+  assert.equal(getRow(evaluateHomeEvidence(missing,now),'quarterly').state,'withheld',key);
+  const unknown=sample();unknown.quarterly.assets[key].source_rights='UNSPECIFIED';
+  assert.equal(getRow(evaluateHomeEvidence(unknown,now),'quarterly').state,'withheld',key);
+  const licenseClaim=sample();licenseClaim.quarterly.assets[key].source_rights='COMMERCIAL_LICENSE_APPROVED';
+  assert.equal(getRow(evaluateHomeEvidence(licenseClaim,now),'quarterly').state,'withheld',key);
+ }
+ const decision=evaluateHomeEvidence(sample(),now);
+ assert.equal(decision.commerce_permitted,false);
+ assert.equal(decision.broker_quote_certified,false);
+ assert.equal(decision.capital_permission,'0R');
+ assert.equal(decision.version,'v280-institutional-evidence-v1');
+});
+test('V280 malformed 200 quarterly payloads fail closed without crashing homepage',()=>{
+ for(const quarterly of [{ok:true,generated_at:at(now),reference_only:true,not_for_trade_execution:true},
+ {ok:true,generated_at:at(now),reference_only:true,not_for_trade_execution:true,assets:null},
+ {ok:true,generated_at:at(now),reference_only:true,not_for_trade_execution:true,assets:{}},
+ {ok:true,generated_at:at(now),reference_only:true,not_for_trade_execution:true,assets:{gold:null,bitcoin:null}}]){
+  const input=sample();input.quarterly=quarterly;
+  assert.doesNotThrow(()=>evaluateHomeEvidence(input,now));
+  assert.equal(getRow(evaluateHomeEvidence(input,now),'quarterly').state,'withheld');
+ }
 });

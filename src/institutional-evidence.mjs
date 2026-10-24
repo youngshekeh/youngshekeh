@@ -35,8 +35,8 @@ export function evaluateHomeEvidence(data={},now=Date.now()){
  const qFresh=quarterly?.ok===true&&quarterly.reference_only===true
   &&quarterly.not_for_trade_execution===true
   &&isoAge(quarterly.generated_at,now,15*60_000)!==null;
- const qGold=qFresh?quarterly.assets?.gold:null;
- const qBitcoin=qFresh?quarterly.assets?.bitcoin:null;
+ const qGold=qFresh?quarterly?.assets?.gold:null;
+ const qBitcoin=qFresh?quarterly?.assets?.bitcoin:null;
  const qValid=qGold&&qBitcoin
   &&qGold.is_actual_orderbook_liquidity===false
   &&qBitcoin.is_actual_orderbook_liquidity===false
@@ -48,7 +48,7 @@ export function evaluateHomeEvidence(data={},now=Date.now()){
   &&isoAge(recovery.generated_at,now,10*60_000)!==null
   &&recovery.state==='DATABASE INCIDENT REPORTED';
  return Object.freeze({
-  version:'v279-institutional-evidence-v1',
+  version:'v280-institutional-evidence-v1',
   core_status:coreIncident?'DATABASE INCIDENT REPORTED':'PRIVATE CORE NOT CERTIFIED',
   items:Object.freeze([
    goldValid?item('gold','SOURCE TIME VERIFIED',
