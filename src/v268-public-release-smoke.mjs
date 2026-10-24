@@ -38,7 +38,7 @@ export function assessV268PublicRelease(probes,{expectedSha,now=Date.now()}={}){
  const gold=rows.find(x=>x?.key==='gold');
  const btc=rows.find(x=>x?.key==='bitcoin');
  const marketsSafe=received(m)&&current(m.generated_at,now,FRESH_MS)
-  &&hasSafety(m.decision)&&m.decision?.action==='WAIT'
+  &&m.decision?.capital_permission==='0R'&&m.decision?.action==='WAIT'
   &&present(m.market_status)&&gold&&gold.capital_permission==='0R'
   &&typeof gold.price==='number'&&Number.isFinite(gold.price)&&gold.price>0
   &&typeof btc?.price==='number'&&Number.isFinite(btc.price)&&btc.price>0

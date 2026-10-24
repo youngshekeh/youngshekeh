@@ -73,6 +73,8 @@ test('market feed and public status outages are real admission failures',()=>{
  }
  const p=good();p.markets.body.decision.capital_permission='1R';
  assert.ok(assess(p).blockers.includes('PUBLIC_MARKET_FRESHNESS_OR_GOVERNANCE_NOT_VERIFIED'));
+ const unsafe=good();unsafe.markets.body.decision.action='BUY';
+ assert.equal(assess(unsafe).public_research_pass,false);
 });
 test('optional upstream outages stay unverified, never magically certified or private-ready',()=>{
  const p=good();p.reference={status:503,body:null};
