@@ -1,0 +1,31 @@
+name: V296 Private QA Bounded Deadline Envelope
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/v296-qa-deadline-envelope.mjs'
+      - 'src/v285-qa-upstream-admission.mjs'
+      - 'api/autonomous-qa-matrix.js'
+      - 'vercel.json'
+      - 'supabase/recovery/v296_private_qa_deadline*.sql'
+      - 'tests/v296-qa-deadline-envelope.test.mjs'
+      - '.github/workflows/v296-qa-deadline-envelope.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-qa-deadline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/v296-qa-deadline-envelope.mjs
+      - run: node --test tests/v296-qa-deadline-envelope.test.mjs tests/v285-qa-upstream-admission.test.mjs tests/v295-qa-transport-truth.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
