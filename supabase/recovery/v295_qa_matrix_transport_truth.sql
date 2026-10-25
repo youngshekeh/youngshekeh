@@ -1,5 +1,5 @@
--- V295 audited in-place repair. Preserve existing SECURITY DEFINER, locked function grants,
--- search_path, schedules, historic QA rows and permissions. No synthetic QA success.
+-- V295.1 exact-source reconstructed fix; original function in rollback file.
+-- No market data, cron, permissions, RLS, billing, or trading changes.
 CREATE OR REPLACE FUNCTION public.reconcile_v78_qa_probes()
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -46,7 +46,7 @@ begin
       b := '{}'::jsonb;
     end;
 
-    -- V295: a non-200/timeout or partial response is NOT a full QA matrix.
+    -- V295.1: Record complete QA matrices only, never 503/timeout synthetic 0/1 results.
     v_matrix_valid := coalesce(r.status_code,0)=200
       and coalesce(r.timed_out,false)=false
       and jsonb_typeof(b)='object'
@@ -58,230 +58,9 @@ begin
         then jsonb_array_length(b->'tests')>=100 else false end
       and jsonb_typeof(b->'invariants')='object'
       and b#>>'{invariants,capital_permission}'='0R'
-      and coalesce(b#>>'{summary,passed}','') ~ '^[0-9]{1,4}
-      else coalesce(b->>'state','FAIL')
-    end;
-    v_passed := coalesce(nullif(b#>>'{summary,passed}','')::integer,0);
-    v_failed := coalesce(nullif(b#>>'{summary,failed}','')::integer,1);
-    v_total := coalesce(nullif(b#>>'{summary,total}','')::integer,v_passed+v_failed);
-
-    v_hash := encode(
-      extensions.digest(
-        convert_to(
-          concat_ws('|',
-            coalesce(b->>'version','v78-unknown'),
-            coalesce(b->>'checked_at',now()::text),
-            v_state,
-            v_passed::text,
-            v_failed::text,
-            coalesce((b->'tests')::text,'[]'),
-            coalesce((b->'invariants')::text,'{}')
-          ),
-          'UTF8'
-        ),
-        'sha256'
-      ),
-      'hex'
-    );
-
-    insert into public.autonomous_qa_runs(
-      checked_at,version,state,passed,failed,total,max_latency_ms,tests,invariants,evidence_hash
-    ) values (
-      coalesce(nullif(b->>'checked_at','')::timestamptz,now()),
-      coalesce(b->>'version','v78-unknown'),
-      v_state,v_passed,v_failed,v_total,
-      round(nullif(b#>>'{summary,max_latency_ms}','')::numeric)::integer,
-      coalesce(b->'tests','[]'::jsonb),
-      coalesce(b->'invariants','{}'::jsonb),
-      v_hash
-    );
-    v_inserted := v_inserted + 1;
-
-    update public.autonomous_external_probes
-    set resolved_at=now(),
-        http_status=r.status_code,
-        ok=(v_failed=0 and v_state='PASS'),
-        details=jsonb_build_object(
-          'state',v_state,'passed',v_passed,'failed',v_failed,'total',v_total,
-          'version',b->>'version','evidence_hash',v_hash,
-          'timed_out',coalesce(r.timed_out,false),'error_msg',r.error_msg
-        )
-    where id=p.id;
-
-    insert into public.autonomous_ops_events(
-      event_key,severity,category,state,title,summary,details,observed_at,cleared_at,updated_at
-    ) values (
-      'ops:v78_regression_matrix',
-      case when v_failed=0 and v_state='PASS' then 'watch' when v_failed<=2 then 'important' else 'critical' end,
-      'qa',
-      case when v_failed=0 and v_state='PASS' then 'cleared' else 'open' end,
-      'V78 autonomous regression matrix',
-      format('%s/%s production invariants passed; state %s.',v_passed,v_total,v_state),
-      jsonb_build_object('passed',v_passed,'failed',v_failed,'total',v_total,'evidence_hash',v_hash),
-      now(),
-      case when v_failed=0 and v_state='PASS' then now() else null end,
-      now()
-    )
-    on conflict(event_key) do update set
-      severity=excluded.severity,category=excluded.category,state=excluded.state,title=excluded.title,
-      summary=excluded.summary,details=excluded.details,observed_at=excluded.observed_at,
-      cleared_at=excluded.cleared_at,updated_at=excluded.updated_at;
-  end loop;
-
-  return jsonb_build_object('ok',true,'inserted_runs',v_inserted,
-    'transport_failures',v_transport_failures,
-    'qa_certified_by_reconciliation',false,'checked_at',now());
-end;
-$function$
-
-      and coalesce(b#>>'{summary,failed}','') ~ '^[0-9]{1,4}
-      else coalesce(b->>'state','FAIL')
-    end;
-    v_passed := coalesce(nullif(b#>>'{summary,passed}','')::integer,0);
-    v_failed := coalesce(nullif(b#>>'{summary,failed}','')::integer,1);
-    v_total := coalesce(nullif(b#>>'{summary,total}','')::integer,v_passed+v_failed);
-
-    v_hash := encode(
-      extensions.digest(
-        convert_to(
-          concat_ws('|',
-            coalesce(b->>'version','v78-unknown'),
-            coalesce(b->>'checked_at',now()::text),
-            v_state,
-            v_passed::text,
-            v_failed::text,
-            coalesce((b->'tests')::text,'[]'),
-            coalesce((b->'invariants')::text,'{}')
-          ),
-          'UTF8'
-        ),
-        'sha256'
-      ),
-      'hex'
-    );
-
-    insert into public.autonomous_qa_runs(
-      checked_at,version,state,passed,failed,total,max_latency_ms,tests,invariants,evidence_hash
-    ) values (
-      coalesce(nullif(b->>'checked_at','')::timestamptz,now()),
-      coalesce(b->>'version','v78-unknown'),
-      v_state,v_passed,v_failed,v_total,
-      round(nullif(b#>>'{summary,max_latency_ms}','')::numeric)::integer,
-      coalesce(b->'tests','[]'::jsonb),
-      coalesce(b->'invariants','{}'::jsonb),
-      v_hash
-    );
-    v_inserted := v_inserted + 1;
-
-    update public.autonomous_external_probes
-    set resolved_at=now(),
-        http_status=r.status_code,
-        ok=(v_failed=0 and v_state='PASS'),
-        details=jsonb_build_object(
-          'state',v_state,'passed',v_passed,'failed',v_failed,'total',v_total,
-          'version',b->>'version','evidence_hash',v_hash,
-          'timed_out',coalesce(r.timed_out,false),'error_msg',r.error_msg
-        )
-    where id=p.id;
-
-    insert into public.autonomous_ops_events(
-      event_key,severity,category,state,title,summary,details,observed_at,cleared_at,updated_at
-    ) values (
-      'ops:v78_regression_matrix',
-      case when v_failed=0 and v_state='PASS' then 'watch' when v_failed<=2 then 'important' else 'critical' end,
-      'qa',
-      case when v_failed=0 and v_state='PASS' then 'cleared' else 'open' end,
-      'V78 autonomous regression matrix',
-      format('%s/%s production invariants passed; state %s.',v_passed,v_total,v_state),
-      jsonb_build_object('passed',v_passed,'failed',v_failed,'total',v_total,'evidence_hash',v_hash),
-      now(),
-      case when v_failed=0 and v_state='PASS' then now() else null end,
-      now()
-    )
-    on conflict(event_key) do update set
-      severity=excluded.severity,category=excluded.category,state=excluded.state,title=excluded.title,
-      summary=excluded.summary,details=excluded.details,observed_at=excluded.observed_at,
-      cleared_at=excluded.cleared_at,updated_at=excluded.updated_at;
-  end loop;
-
-  return jsonb_build_object('ok',true,'inserted_runs',v_inserted,'checked_at',now());
-end;
-$function$
-
-      and coalesce(b#>>'{summary,total}','') ~ '^[0-9]{1,4}
-      else coalesce(b->>'state','FAIL')
-    end;
-    v_passed := coalesce(nullif(b#>>'{summary,passed}','')::integer,0);
-    v_failed := coalesce(nullif(b#>>'{summary,failed}','')::integer,1);
-    v_total := coalesce(nullif(b#>>'{summary,total}','')::integer,v_passed+v_failed);
-
-    v_hash := encode(
-      extensions.digest(
-        convert_to(
-          concat_ws('|',
-            coalesce(b->>'version','v78-unknown'),
-            coalesce(b->>'checked_at',now()::text),
-            v_state,
-            v_passed::text,
-            v_failed::text,
-            coalesce((b->'tests')::text,'[]'),
-            coalesce((b->'invariants')::text,'{}')
-          ),
-          'UTF8'
-        ),
-        'sha256'
-      ),
-      'hex'
-    );
-
-    insert into public.autonomous_qa_runs(
-      checked_at,version,state,passed,failed,total,max_latency_ms,tests,invariants,evidence_hash
-    ) values (
-      coalesce(nullif(b->>'checked_at','')::timestamptz,now()),
-      coalesce(b->>'version','v78-unknown'),
-      v_state,v_passed,v_failed,v_total,
-      round(nullif(b#>>'{summary,max_latency_ms}','')::numeric)::integer,
-      coalesce(b->'tests','[]'::jsonb),
-      coalesce(b->'invariants','{}'::jsonb),
-      v_hash
-    );
-    v_inserted := v_inserted + 1;
-
-    update public.autonomous_external_probes
-    set resolved_at=now(),
-        http_status=r.status_code,
-        ok=(v_failed=0 and v_state='PASS'),
-        details=jsonb_build_object(
-          'state',v_state,'passed',v_passed,'failed',v_failed,'total',v_total,
-          'version',b->>'version','evidence_hash',v_hash,
-          'timed_out',coalesce(r.timed_out,false),'error_msg',r.error_msg
-        )
-    where id=p.id;
-
-    insert into public.autonomous_ops_events(
-      event_key,severity,category,state,title,summary,details,observed_at,cleared_at,updated_at
-    ) values (
-      'ops:v78_regression_matrix',
-      case when v_failed=0 and v_state='PASS' then 'watch' when v_failed<=2 then 'important' else 'critical' end,
-      'qa',
-      case when v_failed=0 and v_state='PASS' then 'cleared' else 'open' end,
-      'V78 autonomous regression matrix',
-      format('%s/%s production invariants passed; state %s.',v_passed,v_total,v_state),
-      jsonb_build_object('passed',v_passed,'failed',v_failed,'total',v_total,'evidence_hash',v_hash),
-      now(),
-      case when v_failed=0 and v_state='PASS' then now() else null end,
-      now()
-    )
-    on conflict(event_key) do update set
-      severity=excluded.severity,category=excluded.category,state=excluded.state,title=excluded.title,
-      summary=excluded.summary,details=excluded.details,observed_at=excluded.observed_at,
-      cleared_at=excluded.cleared_at,updated_at=excluded.updated_at;
-  end loop;
-
-  return jsonb_build_object('ok',true,'inserted_runs',v_inserted,'checked_at',now());
-end;
-$function$
-;
+      and coalesce(b#>>'{summary,passed}','') ~ '^[0-9]{1,4}$'
+      and coalesce(b#>>'{summary,failed}','') ~ '^[0-9]{1,4}$'
+      and coalesce(b#>>'{summary,total}','') ~ '^[0-9]{1,4}$';
     if v_matrix_valid then
       v_passed := (b#>>'{summary,passed}')::integer;
       v_failed := (b#>>'{summary,failed}')::integer;
@@ -299,14 +78,17 @@ $function$
         and (b->>'state'<>'PASS' or (v_failed=0 and b->>'ok'='true'));
     end if;
     if not v_matrix_valid then
-      v_transport_failures := v_transport_failures+1;
+      v_transport_failures := v_transport_failures + 1;
       update public.autonomous_external_probes
       set resolved_at=now(),http_status=r.status_code,ok=false,
-          details=jsonb_build_object('state','QA_TRANSPORT_UNVERIFIED',
-            'complete_matrix_received',false,'request_id',p.request_id,
+          details=jsonb_build_object(
+            'state','QA_TRANSPORT_UNVERIFIED',
+            'complete_matrix_received',false,
+            'request_id',p.request_id,
             'http_status',r.status_code,
             'timed_out',coalesce(r.timed_out,false),
-            'qa_matrix_certified',false,'capital_permission','0R')
+            'qa_matrix_certified',false,'capital_permission','0R'
+          )
       where id=p.id;
       insert into public.autonomous_ops_events(
         event_key,severity,category,state,title,summary,details,
@@ -315,11 +97,11 @@ $function$
         'ops:v78_regression_matrix','critical','qa','open',
         'Private QA matrix unavailable',
         'Private QA transport did not deliver a complete verified matrix; commercial release HOLD.',
-        jsonb_build_object('complete_matrix_received',false,
-          'transport_state','QA_TRANSPORT_UNVERIFIED',
+        jsonb_build_object(
+          'complete_matrix_received',false,'transport_state','QA_TRANSPORT_UNVERIFIED',
           'http_status',r.status_code,'timed_out',coalesce(r.timed_out,false),
-          'request_id',p.request_id,'capital_permission','0R'),
-        now(),null,now()
+          'request_id',p.request_id,'capital_permission','0R'
+        ),now(),null,now()
       )
       on conflict(event_key) do update set
         severity=excluded.severity,category=excluded.category,
@@ -400,7 +182,8 @@ $function$
       cleared_at=excluded.cleared_at,updated_at=excluded.updated_at;
   end loop;
 
-  return jsonb_build_object('ok',true,'inserted_runs',v_inserted,'checked_at',now());
+  return jsonb_build_object('ok',true,'inserted_runs',v_inserted,
+    'transport_failures',v_transport_failures,
+    'qa_certified_by_reconciliation',false,'checked_at',now());
 end;
-$function$
-;
+$function$;
