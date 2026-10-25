@@ -3,6 +3,8 @@
       import { createSandboxReceiptSubmitter, sandboxReceiptMessage } from './owner-sandbox-receipt.mjs';
       import { prepareBridgeCreate, bridgeInstallSnippet, bridgeControlMessage } from './owner-bridge-control.mjs';
       import { prepareLiveMarketBridgeCreate, liveMarketBridgeInstallSnippet, liveMarketBridgeMessage } from './owner-live-market-control.mjs';
+      import { assessMemberSession } from './member-session-proof.mjs';
+      import { createAuthLifecycle, requestAuthJson, isAuthToken, authFailureMessage } from './auth-session-lifecycle.mjs';
 
       const SUPABASE = 'https://mpcelmjiycjpdyyflisn.supabase.co';
       const FUNCTIONS = `${SUPABASE}/functions/v1`;
@@ -32,6 +34,28 @@
       let liveRelayBootstrap = null;
       let alertInboxBusy = false;
       let alertInboxData = null;
+      const ownerAuth = createAuthLifecycle();
+      let mfaBusy = false;
+
+      function resetOwnerSession() {
+        ownerAuth.clear();
+        accessToken = null;
+        factorId = null;
+        ownerVerified = false;
+        mfaBusy = false;
+        lockOwnerPaperQuote();
+        for (const id of ['reviewInbox', 'alertInbox', 'reviewIntelligence', 'mfa', 'code', 'verify'])
+          $(id).classList.add('hidden');
+        for (const id of ['reviewQueue', 'reviewIntelHorizons', 'alertInboxList'])
+          $(id).replaceChildren();
+        $('code').value = '';
+        $('password').value = '';
+        $('signin').disabled = false;
+        $('verify').disabled = false;
+        $('signin').removeAttribute('aria-busy');
+        $('verify').removeAttribute('aria-busy');
+        $('result').textContent = 'Owner session cleared on this page.';
+      }
 
       function lockOwnerPaperQuote() {
         ownerMfaReady = false;
@@ -470,7 +494,9 @@
       }
 
       async function functionPost(path, body, timeout = 15000) {
-        const response = await fetch(`${FUNCTIONS}/${path}`, {
+        const attempt = ownerAuth.current();
+        if (!attempt || !isAuthToken(accessToken)) throw new Error('invalid_session');
+        const {response, data} = await requestAuthJson(`${FUNCTIONS}/${path}`, {
           method: 'POST',
           headers: {
             apikey: KEY,
@@ -478,32 +504,26 @@
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(body),
-          cache: 'no-store',
-          signal: AbortSignal.timeout(timeout),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok)
-          throw Object.assign(new Error(data?.error || path), {
+        }, {attempt, timeoutMs: timeout});
+        if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data) || data.ok === false)
+          throw Object.assign(new Error(data?.error || 'owner_response_unverified'), {
             status: response.status,
             data,
           });
         return data;
       }
 
-      async function checkOwner() {
-        const response = await fetch(`${FUNCTIONS}/member-session`, {
+      async function checkOwner(attempt) {
+        const {response, data} = await requestAuthJson(`${FUNCTIONS}/member-session`, {
           headers: {
             apikey: KEY,
             Authorization: `Bearer ${accessToken}`,
             Accept: 'application/json',
           },
-          cache: 'no-store',
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok)
-          throw new Error(data?.error || 'owner_session_failed');
-        if (data?.is_owner !== true)
-          throw new Error('Authenticated account is not authorized as owner');
+        }, {attempt, timeoutMs: 8000});
+        const verdict = assessMemberSession(data);
+        if (!response.ok || !verdict.authenticated || verdict.is_owner !== true)
+          throw new Error('owner_session_unverified');
         ownerVerified = true;
       }
 
@@ -788,15 +808,17 @@
         const status = await functionPost('owner-mfa-actions', {
           action: 'status',
         });
+        if (status.ok !== true || status.owner !== true)
+          throw new Error('owner_mfa_status_unverified');
         $('mfa').classList.remove('hidden');
-        if (!status.mfa_enrolled) {
+        if (status.mfa_enrolled !== true) {
           $('mfaState').textContent = 'ENROLLMENT REQUIRED';
           $('mfaState').className = 'value wait';
           $('mfaDetail').textContent =
             'No verified owner MFA factor is enrolled. Use the existing protected Owner Portal to enroll an authenticator.';
           return;
         }
-        if (status.aal2 === true) {
+        if (status.aal2 === true && status.aal === 'aal2') {
           $('mfaState').textContent = 'AAL2 READY';
           $('mfaState').className = 'value good';
           $('mfaDetail').textContent =
@@ -816,78 +838,91 @@
       }
 
       async function signIn() {
-        lockOwnerPaperQuote();
-        ownerVerified = false;
-        accessToken = null;
-        factorId = null;
-        $('reviewInbox').classList.add('hidden');
-        $('alertInbox').classList.add('hidden');
-        $('alertInboxList').replaceChildren();
-        $('reviewIntelligence').classList.add('hidden');
-        $('reviewQueue').replaceChildren();
-        $('reviewIntelHorizons').replaceChildren();
-        $('mfa').classList.add('hidden');
-        $('code').classList.add('hidden');
-        $('verify').classList.add('hidden');
+        if ($('signin').disabled) return;
         const email = $('email').value.trim();
         const password = $('password').value;
+        resetOwnerSession();
         if (!email || !password) {
           $('result').textContent = 'Email and password are required.';
           return;
         }
+        const attempt = ownerAuth.begin();
+        $('signin').disabled = true;
+        $('signin').setAttribute('aria-busy', 'true');
         $('result').textContent = 'Authenticating...';
         try {
-          const response = await fetch(
+          const {response, data} = await requestAuthJson(
             `${SUPABASE}/auth/v1/token?grant_type=password`,
             {
               method: 'POST',
               headers: { apikey: KEY, 'Content-Type': 'application/json' },
               body: JSON.stringify({ email, password }),
-            }
+            }, {attempt, timeoutMs: 10000}
           );
-          const data = await response.json().catch(() => ({}));
           if (!response.ok)
-            throw new Error(
-              data?.msg ||
-                data?.message ||
-                data?.error_description ||
-                'Authentication failed'
-            );
+            throw Object.assign(new Error('auth_rejected'), {status: response.status});
+          if (!isAuthToken(data?.access_token)) throw new Error('auth_token_unverified');
           accessToken = data.access_token;
-          await checkOwner();
+          await checkOwner(attempt);
           $('result').textContent = 'OWNER VERIFIED · checking MFA.';
           await loadMfa();
         } catch (error) {
+          if (!attempt.isCurrent()) return;
+          resetOwnerSession();
           $('result').textContent =
-            `OWNER ACCESS CHECK · ${error?.message || 'Authentication failed'}`;
+            `OWNER ACCESS CHECK · ${authFailureMessage(error)}`;
+        } finally {
+          if (attempt.isCurrent()) {
+            $('signin').disabled = false;
+            $('signin').removeAttribute('aria-busy');
+            $('password').value = '';
+          }
         }
       }
 
       async function verifyMfa() {
+        const attempt = ownerAuth.current();
+        if (mfaBusy || !ownerVerified || !attempt) return;
         try {
           const code = $('code').value.trim();
-          if (!code) {
-            $('mfaDetail').textContent = 'Enter the authenticator code.';
+          if (!/^\d{6,10}$/.test(code)) {
+            $('mfaDetail').textContent = 'Enter a valid authenticator code.';
             return;
           }
+          mfaBusy = true;
+          $('verify').disabled = true;
+          $('verify').setAttribute('aria-busy', 'true');
           const result = await functionPost('owner-mfa-actions', {
             action: 'verify',
             factor_id: factorId || undefined,
             code,
           });
-          if (result?.session?.access_token)
-            accessToken = result.session.access_token;
-          if (result?.access_token) accessToken = result.access_token;
+          const upgradedToken = result?.session?.access_token || result?.access_token;
+          if (result?.ok !== true || result?.verified !== true || !isAuthToken(upgradedToken))
+            throw new Error('mfa_verification_unverified');
+          accessToken = upgradedToken;
+          await checkOwner(attempt);
           $('code').classList.add('hidden');
           $('verify').classList.add('hidden');
           await loadMfa();
         } catch (error) {
+          if (!attempt.isCurrent()) return;
+          lockOwnerPaperQuote();
           $('mfaDetail').textContent =
-            error?.message || 'MFA verification failed.';
+            authFailureMessage(error);
+        } finally {
+          if (attempt.isCurrent()) {
+            mfaBusy = false;
+            $('verify').disabled = false;
+            $('verify').removeAttribute('aria-busy');
+            $('code').value = '';
+          }
         }
       }
 
       $('signin').onclick = signIn;
+      $('signout').onclick = resetOwnerSession;
+      window.addEventListener('pagehide', resetOwnerSession);
       $('verify').onclick = verifyMfa;
       $('reviewRefresh').onclick = () => loadReviewInbox();
       $('alertInboxRefresh').onclick = () => void loadOwnerAlertInbox();

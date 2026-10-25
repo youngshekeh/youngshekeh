@@ -42,14 +42,14 @@ test('owner identity is separate from required MFA/AAL2',()=>{
 });
 test('member browser persists token only AFTER verified session and cleans up failure',()=>{
  const text=readFileSync(new URL('../src/member.ts',import.meta.url),'utf8');
- const verify=text.indexOf('const verdict = await verifySession(data.access_token);');
+ const verify=text.indexOf('const verdict = await verifySession(data.access_token, attempt);');
  const save=text.indexOf('saveSession(data);');
  assert.ok(verify>0&&save>verify);
  assert.match(text,/if \(!verdict\.authenticated\) throw new Error/);
  assert.match(text,/if \(!response\.ok\) throw new Error\('member_session_unverified'\)/);
  assert.match(text,/SIGN[ED I]+IN · LIMITED ACCESS|SIGNED IN · LIMITED ACCESS/);
- assert.match(text,/catch \(error\) \{\s+clearSession\(\);/);
- assert.match(text,/signal:AbortSignal\.timeout\(8000\)/);
+ assert.match(text,/if \(!attempt\.isCurrent\(\)\) return/);
+ assert.match(text,/attempt, timeoutMs: 8000/);
  assert.doesNotMatch(text,/innerHTML|Authorization: `Bearer $\{data\.refresh_token\}/);
  assert.match(readFileSync(new URL('../src/checkout.ts',import.meta.url),'utf8'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
 });

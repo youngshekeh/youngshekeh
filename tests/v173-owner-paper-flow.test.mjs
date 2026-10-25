@@ -5,27 +5,32 @@ import {createPaperQuoteSubmitter,paperQuoteMessage} from '../src/owner-paper-qu
 import {paperQuoteView} from '../src/paper-quote-view.mjs';
 import {bridgeControlMessage} from '../src/owner-bridge-control.mjs';
 import {liveMarketBridgeMessage} from '../src/owner-live-market-control.mjs';
+import {createAuthLifecycle,requestAuthJson,isAuthToken,authFailureMessage} from '../src/auth-session-lifecycle.mjs';
+import {assessMemberSession} from '../src/member-session-proof.mjs';
 
 const source=(await readFile(new URL('../src/owner.ts',import.meta.url),'utf8')).replace(/^\s*import .*;\s*$/gm,'');
 function element(id,hidden=false) {
   const classes=new Set(hidden?['hidden']:[]);
   return {id,value:'',textContent:'',disabled:id==='paperQuoteSubmit',children:[],style:{},
     classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x)},
+    setAttribute(){},removeAttribute(){},
     appendChild(child){this.children.push(child);},replaceChildren(){this.children=[];},
     addEventListener(type,listener){this[type]=listener;},querySelectorAll(){return [];}};
 }
 function setup() {
   const nodes=new Map();const hidden=new Set(['paperQuoteIntake','reviewInbox','reviewIntelligence','mfa','code','verify']);
   const get=id=>{if(!nodes.has(id))nodes.set(id,element(id,hidden.has(id)));return nodes.get(id);};
-  let owner=true,mfa=true,enrolled=true,token='session-1',quoteError=null;
+  let owner=true,mfa=true,enrolled=true,token='synthetic_only_not_a_real_access_token_session-1',quoteError=null;
   const requests=[];
   const fetch=async(url,options={})=>{
     requests.push({url,options});let data,status=200;
     if(url.includes('/auth/v1/token'))data={access_token:token};
-    else if(url.endsWith('/member-session'))data={is_owner:owner};
+    else if(url.endsWith('/member-session'))data={ok:true,version:'member-session-v12-strict-paid-term',
+      user:{id:'00000000-0000-0000-0000-000000000012'},is_owner:owner,access_state:owner?'owner':'limited'};
     else if(url.endsWith('/owner-mfa-actions')) {
       const action=JSON.parse(options.body).action;
-      data=action==='verify'?{access_token:token}:{mfa_enrolled:enrolled,aal2:mfa,factors:[{id:'factor-1'}]};
+      data=action==='verify'?{ok:true,verified:true,access_token:token}:{ok:true,owner:true,
+        mfa_enrolled:enrolled,aal:mfa===true?'aal2':'aal1',aal2:mfa,factors:[{id:'factor-1'}]};
     }
     else if(url.endsWith('/owner-gold-review-actions'))data={queue:[],counts:{},review_intelligence:{}};
     else if(url.endsWith('/paper-broker-quote-intake')&&options.method==='POST'){
@@ -38,14 +43,17 @@ function setup() {
   };
   const clocks=[];
   const document={getElementById:get,createElement:tag=>element(tag),hidden:false};
-  const window={setInterval:callback=>{clocks.push(callback);}};
+  const window={setInterval:callback=>{clocks.push(callback);},addEventListener(){}};
   const createSandboxReceiptSubmitter=()=>({submit:async()=>({ok:false,error:'unused_fixture'})});
   new Function(
     'createPaperQuoteSubmitter','paperQuoteMessage','paperQuoteView','createSandboxReceiptSubmitter',
-    'bridgeControlMessage','liveMarketBridgeMessage','document','window','fetch',source
+    'bridgeControlMessage','liveMarketBridgeMessage','assessMemberSession','createAuthLifecycle',
+    'requestAuthJson','isAuthToken','authFailureMessage','document','window','fetch',source
   )(
     createPaperQuoteSubmitter,paperQuoteMessage,paperQuoteView,createSandboxReceiptSubmitter,
-    bridgeControlMessage,liveMarketBridgeMessage,document,window,fetch
+    bridgeControlMessage,liveMarketBridgeMessage,assessMemberSession,createAuthLifecycle,
+    (url,opts,settings)=>requestAuthJson(url,opts,{...settings,fetchImpl:fetch}),
+    isAuthToken,authFailureMessage,document,window,fetch
   );
   const signin=async()=>{get('email').value='fixture@example.invalid';get('password').value='fixture-password';await get('signin').onclick();};
   const submit=async()=>get('paperQuoteForm').submit({preventDefault(){}});
@@ -71,12 +79,12 @@ test('server-confirmed owner and MFA opens without submitting a quote',async()=>
 test('MFA verification must survive a fresh status check',async()=>{
   const ctx=setup();ctx.set({mfa:false});await ctx.signin();ctx.get('code').value='000000';await ctx.get('verify').onclick();
   assert.equal(ctx.get('paperQuoteIntake').classList.contains('hidden'),true);
-  ctx.set({mfa:true});await ctx.get('verify').onclick();assert.equal(ctx.get('paperQuoteIntake').classList.contains('hidden'),false);
+  ctx.set({mfa:true});ctx.get('code').value='000000';await ctx.get('verify').onclick();assert.equal(ctx.get('paperQuoteIntake').classList.contains('hidden'),false);
 });
 test('owner submit uses in-memory bearer and only demo source fields',async()=>{
   const ctx=setup();await ctx.signin();ctx.get('paperQuoteJson').value=ctx.draft();await ctx.submit();
   const writes=ctx.requests.filter(r=>r.url.endsWith('/paper-broker-quote-intake')&&r.options.method==='POST');assert.equal(writes.length,1);
-  assert.equal(writes[0].options.headers.Authorization,'Bearer session-1');assert.equal(JSON.parse(writes[0].options.body).mode,'PAPER_DEMO');
+  assert.equal(writes[0].options.headers.Authorization,'Bearer synthetic_only_not_a_real_access_token_session-1');assert.equal(JSON.parse(writes[0].options.body).mode,'PAPER_DEMO');
   assert.equal(ctx.get('paperQuoteReceipt').textContent.includes('Receipt #42'),true);assert.equal(ctx.get('paperQuoteSubmit').disabled,false);
 });
 test('freshness timer marks an expired receipt without transmitting',async()=>{

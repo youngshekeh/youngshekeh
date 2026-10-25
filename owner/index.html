@@ -16,12 +16,14 @@
         and MFA status.
       </p>
       <section class="card" style="max-width: 560px">
+        <label for="email">Owner email</label>
         <input
           id="email"
           type="email"
           autocomplete="email"
           placeholder="Owner email"
         />
+        <label for="password">Password</label>
         <input
           id="password"
           type="password"
@@ -29,7 +31,8 @@
           placeholder="Password"
         />
         <button id="signin" style="margin-top: 12px">Sign in</button>
-        <div id="result" class="muted" style="margin-top: 12px">
+        <button id="signout" class="secondary" type="button" style="margin-top: 12px">Clear owner session</button>
+        <div id="result" class="muted" role="status" aria-live="polite" style="margin-top: 12px">
           Waiting for owner sign-in.
         </div>
       </section>
@@ -40,6 +43,7 @@
         <input
           id="code"
           class="hidden"
+          aria-label="Authenticator code"
           inputmode="numeric"
           autocomplete="one-time-code"
           placeholder="6-digit authenticator code"

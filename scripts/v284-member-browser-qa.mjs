@@ -76,12 +76,14 @@ try{
  assert.equal(await page.locator('#session').isHidden(),true);
  assert.equal(tokenRequests,1);assert.equal(memberRequests,1);
  state='limited';
+ await page.locator('#password').fill('v284-only-fake-password');
  await page.locator('#signin').click();
  await page.waitForFunction(()=>document.getElementById('result')?.textContent?.includes('SIGNED IN · LIMITED ACCESS'));
  assert.equal(await page.locator('#access').innerText(),'LIMITED / FREE');
  assert.match(await page.locator('#sessionDetail').innerText(),/No paid research entitlement/);
  assert.ok((await page.evaluate(()=>sessionStorage.getItem('tfa_session')))?.includes(jwt));
  state='paid';
+ await page.locator('#password').fill('v284-only-fake-password');
  await page.locator('#signin').click();
  await page.waitForFunction(()=>document.getElementById('result')?.textContent?.includes('verified paid/owner access'));
  assert.equal(await page.locator('#access').innerText(),'MEMBER · PAID');
