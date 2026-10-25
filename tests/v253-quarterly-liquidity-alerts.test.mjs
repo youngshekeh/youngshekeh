@@ -125,19 +125,23 @@ test('derived zones use previous quarter extreme and exactly 2% inner band',()=>
  assert.equal(zone.previous_midpoint,(zone.previous_high+zone.previous_low)/2);
  assert.equal(zone.probability,null);
 });
-test('quarterly API preserves independent provider failures and nine-source count',async()=>{
+test('quarterly API isolates upstream failures, never requests or displays unlicensed BTC derived ranges',async()=>{
+ const requests=[];
  const p=await observeQuarterlyRanges({read:async url=>{
+  requests.push(url);
   if(url.includes('GC%3DF'))throw Error('gold source unavailable');
-  if(url.includes('coinbase'))return coinbase();
   const match=Object.keys(config).find(asset=>asset!=='bitcoin'&&
     url.includes(encodeURIComponent(config[asset].symbol)));
   if(!match)throw Error('unknown asset fixture '+url);
   return yahoo(match);
  },now:()=>now});
- assert.equal(p.source_count,8);
+ assert.equal(requests.length,8);
+ assert.equal(requests.some(u=>u.includes('coinbase')),false);
+ assert.equal(p.source_count,7);
  assert.equal(p.expected_assets,9);
  assert.equal(p.assets.gold,null);
- assert.ok(p.assets.bitcoin);
+ assert.equal(p.assets.bitcoin,null);
+ assert.equal(p.source_rights.bitcoin.public_quarterly_range_allowed,false);
  assert.equal(p.not_for_trade_execution,true);
  assert.equal(p.governance.capital_permission,'0R');
 });
