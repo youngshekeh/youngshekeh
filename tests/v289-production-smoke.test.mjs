@@ -63,6 +63,8 @@ test('production Edge function recovers actual proofs without reinstating fail-o
  assert.match(source,/if\(!shield.admitted\)return Response.json/);
  assert.match(source,/assessSmokeProbes\(results\)/);
  assert.match(source,/sha256Hex\(supplied\)/);
+ assert.match(source,/Deno\.env\.get\('SUPABASE_SERVICE_ROLE_KEY'\)/);
+ assert.doesNotMatch(source,/SUPABASE_SECRET_KEYS/);
  assert.match(source,/agent_type:'production_smoke_sweep'/);
  assert.match(source,/metadata:.*framework_version:'production_smoke_v289_fail_closed'/);
  assert.match(source,/governance:SMOKE_HOLD/);
