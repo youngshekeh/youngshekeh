@@ -17,6 +17,7 @@ const evidence=()=>({ok:true,usable:false,version:'v299-signed-db-evidence-v1',
  state:'SIGNED_DATABASE_EVIDENCE_OBSERVED',workload_identity_verified:true,
  database_snapshot_observed:true,snapshot_at:new Date(NOW-90000).toISOString(),
  database_state:'ONLINE',machine_mode:'RECERTIFICATION',system_score:77,
+ refresh_cadence_seconds:900,snapshot_freshness_sla_seconds:1080,
  smoke_state:'STALE',edge_runtime_state:'AVAILABLE_OR_UNVERIFIED',
  mission_restored:false,engine_registry_certified:false,
  capital_permission:'0R',action_permitted:'WAIT',
@@ -96,7 +97,7 @@ test('V299 Edge reader authorizes before bounded one-table query, and cannot ret
  assert.match(e,/id=eq\.1&select=updated_at,mode,system_score/);
  assert.match(e,/&limit=1/);
  assert.match(e,/Authorization:'Bearer '\+secret/);
- assert.match(e,/age>600000/);
+ assert.match(e,/age>MACHINE_SNAPSHOT_MAX_AGE_MS/);
  assert.match(e,/final_permission!=='0R'/);
  assert.doesNotMatch(e,/POST|PATCH|DELETE|upsert|\.insert\(|rpc\/|Coinbase|Yahoo|api\.gold-api\.com/);
  assert.match(api,/getVercelOidcToken/);assert.match(api,/until=Date\.now\(\)\+90000/);
