@@ -1,6 +1,7 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 import { certifyKernelReceipt } from '../src/kernel-receipt-gate.mjs';
 import { classifyV231KernelIncident } from '../src/v231-kernel-admission.mjs';
+import { checkHeartbeatIncident } from '../src/v307-heartbeat-incident-admission.mjs';
 
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
 
@@ -10,9 +11,10 @@ function safeDetail(value){
   return value===undefined||value===null?undefined:String(value).slice(0,180);
 }
 function failClosed(res,status,state,error,detail,stages={}){
-  console.error('V180_HEARTBEAT_FAIL_CLOSED',{
-    state,error,detail:safeDetail(detail),stages,at:new Date().toISOString()
-  });
+  const logPayload={state,error,detail:safeDetail(detail),stages,at:new Date().toISOString()};
+  if(state==='KERNEL_DEFERRED_DURING_DATABASE_INCIDENT')
+    console.warn('V307_HEARTBEAT_LOAD_SHED',logPayload);
+  else console.error('V180_HEARTBEAT_FAIL_CLOSED',logPayload);
   res.setHeader('Cache-Control','no-store');
   if(status===503)res.setHeader('Retry-After','300');
   res.setHeader('X-TFA-Engine','V180-SEALED-KERNEL');
@@ -78,6 +80,22 @@ export default async function handler(req,res){
 
   const schedule=String(req.headers['x-vercel-cron-schedule']||'4-59/5 * * * *');
   console.log('V180_HEARTBEAT_ACCEPTED',{schedule,mode:'SEALED_KERNEL_FIRST',at:new Date().toISOString()});
+
+  // V307: only a fresh, exact read-only incident verdict may defer this cycle.
+  // This avoids a costly private kernel call during confirmed shared DB failure.
+  // A missing, stale or negative verdict never claims success and falls through
+  // to the unchanged sealed OIDC kernel path. The 5-minute schedule is intact.
+  const incident=await checkHeartbeatIncident();
+  if(incident.defer_private_kernel){
+    return failClosed(res,503,'KERNEL_DEFERRED_DURING_DATABASE_INCIDENT',
+      'verified_database_incident_load_shed',incident.reason,{
+       public_incident:{verified:true,source:'PUBLIC_READ_ONLY_TRIAGE'},
+       kernel:{attempted:false,ok:false},
+       database_scheduler:{changed:false,reason:'preserve_unrelated_cron_jobs'},
+       recovery:{skipped:true,reason:'await_provider_connectivity'},
+       seal:{skipped:true},resume:{skipped:true}
+    });
+  }
 
   let oidc='';
   try{oidc=await getVercelOidcToken();}catch(error){
