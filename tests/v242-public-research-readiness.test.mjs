@@ -9,10 +9,10 @@ const packet=()=>({ok:true,reference_only:true,not_for_trade_execution:true,
  bitcoin:{symbol:'BTCUSD',currency:'USD',type:'SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED',source:'Coinbase',
  broker_verified:false,execution_quote:false,price:81000,observed_at:new Date(now-5000).toISOString(),source_updated_at:null}}});
 const read=(data,ok=true)=>({response:{ok},data});
-test('website delivery and two independent current reference sources are distinct',()=>{
+test('website delivery and one authorized public reference source are distinct',()=>{
  const s=assessPublicResearchAvailability({pageServed:true,reference:read(packet())},now);
- assert.equal(s.page_state,'PAGE DELIVERED');assert.equal(s.reference_state,'TWO CURRENT SOURCES');
- assert.equal(s.verified_references,2);assert.equal(s.gold_reference_current,true);assert.equal(s.bitcoin_reference_current,true);
+ assert.equal(s.page_state,'PAGE DELIVERED');assert.equal(s.reference_state,'ONE CURRENT SOURCE');
+ assert.equal(s.verified_references,1);assert.equal(s.gold_reference_current,true);assert.equal(s.bitcoin_reference_current,false);
 });
 test('missing provider reports partial public service',()=>{
  const p=packet();p.assets.bitcoin=null;
@@ -41,5 +41,5 @@ test('research availability cannot certify private operations, trading or checko
 });
 test('missing page delivery stays unverified even if reference service responds',()=>{
  const s=assessPublicResearchAvailability({reference:read(packet())},now);
- assert.equal(s.page_state,'NOT VERIFIED');assert.equal(s.verified_references,2);
+ assert.equal(s.page_state,'NOT VERIFIED');assert.equal(s.verified_references,1);
 });
