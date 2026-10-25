@@ -70,7 +70,9 @@ export function auditRecentCronRuns({runs=[],observed_at,expected_limit=240}={},
   if(!Number.isSafeInteger(x?.runid)||x.runid<=0||seen.has(x.runid)
     ||!Number.isSafeInteger(x?.jobid)||x.jobid<=0
     ||!VALID_STATUSES.has(x?.status)||!Number.isFinite(start)
-    ||start>now+60000||now-start>3*60*60*1000){valid=false;break;}
+    ||start>now+60000||now-start>3*60*60*1000
+    ||(x.status==='succeeded'&&(!Number.isFinite(asTime(x.end_time))
+      ||asTime(x.end_time)<start||asTime(x.end_time)>now+60000))){valid=false;break;}
   seen.add(x.runid);
  }
  if(!valid)blockers.push('INVALID_OR_DUPLICATE_CRON_RECEIPTS');
