@@ -1,0 +1,30 @@
+name: V309 Bounded Scheduler Recovery Evidence
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/v309-scheduler-reliability-audit.mjs'
+      - 'scripts/v309-review-cron-evidence.mjs'
+      - 'tests/v309-scheduler-reliability-audit.test.mjs'
+      - 'docs/V309_SCHEDULER_EVIDENCE_RECOVERY.md'
+      - '.github/workflows/v309-bounded-scheduler-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-readonly-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check src/v309-scheduler-reliability-audit.mjs
+      - run: node --check scripts/v309-review-cron-evidence.mjs
+      - run: node --test tests/v309-scheduler-reliability-audit.test.mjs tests/v308-incident-diagnostic-admission.test.mjs tests/v307-heartbeat-incident-admission.test.mjs tests/v306-core-recovery-admission.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
