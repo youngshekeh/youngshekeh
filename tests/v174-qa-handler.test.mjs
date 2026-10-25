@@ -90,19 +90,19 @@ test('dashboard reports failed HTTP or network access without launching another 
 
 const refreshSource = stripTypeScriptTypes(frontend.slice(frontend.indexOf('let missionRefreshInFlight'),
   frontend.indexOf('void refreshMissionExperience();')));
-test('overlapping dashboard refreshes launch one mission and one QA request', async () => {
+test('overlapping public dashboard refreshes launch one mission and ZERO expensive private QA requests', async () => {
   let finish, missions = 0, checks = 0;
   const loadMissionBrief = async () => {missions++; await new Promise(resolve => {finish = resolve;});};
   const refresh = new Function('loadMissionBrief', 'loadQaMatrix',
     `${refreshSource}\nreturn refreshMissionExperience;`)(loadMissionBrief, async () => {checks++;});
   const first = refresh(); await refresh(); assert.equal(missions, 1); finish(); await first;
-  assert.equal(checks, 1);
+  assert.equal(checks, 0);
 });
-test('a failed dashboard refresh releases its guard for a later request', async () => {
+test('failed public dashboard refresh releases guard without starting private QA', async () => {
   let missions = 0, checks = 0;
   const refresh = new Function('loadMissionBrief', 'loadQaMatrix',
     `${refreshSource}\nreturn refreshMissionExperience;`)(async () => {
       if (++missions === 1) throw new Error('fixture failure');
     }, async () => {checks++;});
-  await assert.rejects(refresh()); await refresh(); assert.equal(missions, 2); assert.equal(checks, 1);
+  await assert.rejects(refresh()); await refresh(); assert.equal(missions, 2); assert.equal(checks, 0);
 });
