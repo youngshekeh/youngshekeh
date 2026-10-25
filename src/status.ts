@@ -9,6 +9,7 @@ import {buildSupabaseSupportPacket} from './v259-support-escalation.mjs';
 import {readPublicAcceptance} from './public-acceptance-connection.mjs';
 import {describeQaObservation} from './v287-qa-observation.mjs';
 import {attributePrivateQaBlockers} from './v297-private-qa-causality.mjs';
+import {classifyPublicDatabaseIncident} from './v305-db-incident-visibility.mjs';
 
 const timeoutMs = 7_000;
 const missing = () => ({ response: { ok: false, headers: { get: () => null } }, data: { ok: false, state: 'UNAVAILABLE' } });
@@ -60,6 +61,10 @@ async function load() {
       readBilling:()=>readEdge('public-billing-acceptance'),
     });
     const {auth, billing} = privateProbe;
+    const dbIncident = classifyPublicDatabaseIncident(readiness);
+    show('database-incident',dbIncident.state,false);
+    const dbNote=document.getElementById('database-incident-proof');
+    if(dbNote)dbNote.textContent=dbIncident.detail+' Trading remains WAIT / 0R.';
     // Do not amplify a known database incident with 107 independent private
     // QA probes. Defer the expensive OIDC relay until cheap launch inputs pass.
     // A deferred matrix is unverified, never a green QA or identity verdict.
@@ -128,6 +133,9 @@ async function load() {
     for (const id of ['auth', 'ready', 'brain', 'identity', 'billing', 'kernel', 'gold', 'launch-gate']) {
       show(id, id === 'launch-gate' ? 'LAUNCH HOLD' : 'UNAVAILABLE', false);
     }
+    show('database-incident','DATABASE HEALTH NOT VERIFIED · LAUNCH HOLD',false);
+    const incidentProof=document.getElementById('database-incident-proof');
+    if(incidentProof)incidentProof.textContent='Readiness could not be independently checked. Public references are not private database certification. WAIT / 0R.';
     const detail = document.getElementById('detail');
     if (detail) detail.textContent = 'Status check unavailable. Launch remains on hold. Capital permission WAIT / 0R.';
   } finally {
