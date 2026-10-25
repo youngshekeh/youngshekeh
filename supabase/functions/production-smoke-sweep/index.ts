@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import {assessSmokeShield,assessSmokeProbes,SMOKE_HOLD} from "./smoke-policy.mjs";
 
 const CORS={
   'Access-Control-Allow-Origin':'*',
@@ -52,7 +53,7 @@ async function probe(path:string){
     const r=await fetch(`${EDGE}/${path}`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(3000)});
     const b=await r.json().catch(()=>null);
     return {path,kind:'public_core',http_status:r.status,ok:r.ok&&semantic(path,b),ms:Date.now()-started};
-  }catch(e){return {path,kind:'public_core',http_status:0,ok:false,ms:Date.now()-started,error:String(e).slice(0,180)}}
+  }catch(e){return {path,kind:'public_core',http_status:0,ok:false,ms:Date.now()-started,error:'PROBE_UNAVAILABLE'}}
 }
 async function authBoundary(path:string,method='GET'){
   const started=Date.now();
@@ -61,12 +62,12 @@ async function authBoundary(path:string,method='GET'){
     if(method==='POST')init.body='{}';
     const r=await fetch(`${EDGE}/${path}`,init);
     return {path,kind:'auth_boundary',http_status:r.status,ok:r.status===401,ms:Date.now()-started};
-  }catch(e){return {path,kind:'auth_boundary',http_status:0,ok:false,ms:Date.now()-started,error:String(e).slice(0,180)}}
+  }catch(e){return {path,kind:'auth_boundary',http_status:0,ok:false,ms:Date.now()-started,error:'PROBE_UNAVAILABLE'}}
 }
 async function storeProbe(name:string,fn:()=>Promise<any>){
   const started=Date.now();
   try{const detail=await fn();return {path:name,kind:'governed_store',http_status:200,ok:detail?.ok===true,ms:Date.now()-started,...detail}}
-  catch(e){return {path:name,kind:'governed_store',http_status:0,ok:false,ms:Date.now()-started,error:String(e).slice(0,180)}}
+  catch(e){return {path:name,kind:'governed_store',http_status:0,ok:false,ms:Date.now()-started,error:'STORE_UNAVAILABLE'}}
 }
 async function snapshotProbe(base:string,k:string,table:string,statusCol:string,stateCol:string,actionCol:string,name:string){
   return storeProbe(name,async()=>{
@@ -93,8 +94,7 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=='POST')return Response.json({ok:false,error:'method_not_allowed'},{status:405,headers:CORS});
   const supplied=req.headers.get('x-tfa-cron-secret')||'';
   if(!supplied)return Response.json({ok:false,error:'unauthorized'},{status:401,headers:CORS});
-  const inc=await incident();
-  if(inc?.incident_active)return Response.json({ok:false,status:'blocked_database_incident',incident_code:inc.incident_code,rate_safe:true,store_probe_count:0,mutations_permitted:false},{status:503,headers:{...CORS,'Cache-Control':'no-store','Retry-After':'300'}});
+  // Authorize the cron caller before attempting incident checks or any probe.
   const base=Deno.env.get('SUPABASE_URL');
   if(!base)return Response.json({ok:false,error:'server_not_configured'},{status:503,headers:CORS});
   const k=serverKey();
@@ -102,14 +102,24 @@ Deno.serve(async(req:Request)=>{
   try{
     const tok=await rows(base,k,'runtime_tokens',{select:'token_hash',name:'eq.ingestion_cron',active:'eq.true',limit:'1'});
     if(!tok?.[0]?.token_hash||(await sha256Hex(supplied))!==tok[0].token_hash)return Response.json({ok:false,error:'unauthorized'},{status:401,headers:CORS});
+    // A missing, stale, or incident-active shield is a HOLD. Never fail open.
+    const shield=assessSmokeShield(await incident());
+    if(!shield.admitted)return Response.json({ok:false,state:'SMOKE_SAFETY_HOLD',reason:shield.reason,
+      rate_safe:true,store_probe_count:0,mutations_permitted:false,governance:SMOKE_HOLD},
+      {status:503,headers:{...CORS,'Cache-Control':'no-store','Retry-After':'300'}});
 
     const recent=await rows(base,k,'agent_runs',{select:'id,status,completed_at,output_summary,metadata',agent_type:'eq.production_smoke_sweep',order:'started_at.desc',limit:'5'}).catch(()=>[]);
     const prior=(recent||[]).find((x:any)=>x?.completed_at&&Number.isFinite(new Date(x.completed_at).getTime()));
     if(prior&&Date.now()-new Date(prior.completed_at).getTime()<MIN_INTERVAL_MS){
-      return Response.json({ok:true,status:'skipped_recent',rate_safe:true,min_interval_seconds:MIN_INTERVAL_MS/1000,previous_run_id:prior.id,previous_completed_at:prior.completed_at,previous_summary:prior.output_summary??null},{headers:{...CORS,'Cache-Control':'no-store'}});
+      const verified=prior.status==='succeeded'
+        && prior.metadata?.healthy===9&&prior.metadata?.total===9&&prior.metadata?.failed===0;
+      return Response.json({ok:verified,status:verified?'skipped_recent_verified':'skipped_recent_unverified',
+        rate_safe:true,min_interval_seconds:MIN_INTERVAL_MS/1000,previous_run_id:prior.id,
+        previous_completed_at:prior.completed_at,governance:SMOKE_HOLD},
+        {status:verified?200:503,headers:{...CORS,'Cache-Control':'no-store'}});
     }
 
-    const rr=await insert(base,k,'agent_runs',[{agent_type:'production_smoke_sweep',status:'running',started_at:new Date().toISOString(),input_summary:'Rate-safe production smoke: three cached public cores, three protected auth boundaries and three governed-store checks.',metadata:{framework_version:'production_smoke_v57_1_fail_fast',rate_safe:true,min_interval_seconds:MIN_INTERVAL_MS/1000}}]);
+    const rr=await insert(base,k,'agent_runs',[{agent_type:'production_smoke_sweep',status:'running',started_at:new Date().toISOString(),input_summary:'Rate-safe production smoke: three cached public cores, three protected auth boundaries and three governed-store checks.',metadata:{framework_version:'production_smoke_v289_fail_closed',rate_safe:true,min_interval_seconds:MIN_INTERVAL_MS/1000}}]);
     runId=rr?.[0]?.id||null;
 
     const publicResults=await Promise.all([
@@ -129,16 +139,20 @@ Deno.serve(async(req:Request)=>{
     ]);
 
     const results=[...publicResults,...authResults,...stores];
+    const verdict=assessSmokeProbes(results);
     const failed=results.filter((x:any)=>!x.ok);
-    const times=results.map((x:any)=>Number(x.ms||0)).sort((a:number,b:number)=>a-b);
-    const p95=times[Math.min(times.length-1,Math.max(0,Math.ceil(times.length*.95)-1))]||0;
-    const status=failed.length?'failed':'succeeded';
-    const summary=`Production smoke v57 safe: ${results.length-failed.length}/${results.length} healthy; ${failed.length} failed; 6 Edge probes; 3 direct governed-store checks; p95 ${p95}ms.`;
-    if(runId)await patch(base,k,'agent_runs',{id:`eq.${runId}`},{status,completed_at:new Date().toISOString(),output_summary:summary,error:failed.length?failed.map((x:any)=>`${x.path}:${x.http_status}:${x.kind}`).join(', '):null,metadata:{framework_version:'production_smoke_v57_1_fail_fast',rate_safe:true,total:results.length,healthy:results.length-failed.length,failed:failed.length,edge_probe_count:publicResults.length+authResults.length,store_probe_count:stores.length,p95_ms:p95,results}});
-    return Response.json({ok:failed.length===0,status,rate_safe:true,total:results.length,healthy:results.length-failed.length,failed:failed.length,edge_probe_count:publicResults.length+authResults.length,store_probe_count:stores.length,p95_ms:p95,results},{status:failed.length?503:200,headers:{...CORS,'Cache-Control':'no-store'}});
+    const p95=verdict.p95_ms;
+    const status=verdict.ok?'succeeded':'failed';
+    const summary=`Production smoke V289: ${verdict.passed}/${verdict.total} verified; ${verdict.failed} failed; 6 bounded Edge checks; 3 governed-store checks; p95 ${p95}ms.`;
+    if(runId)await patch(base,k,'agent_runs',{id:`eq.${runId}`},{status,completed_at:new Date().toISOString(),output_summary:summary,error:failed.length?failed.map((x:any)=>`${x.path}:${x.http_status}:${x.kind}`).join(', '):null,metadata:{framework_version:'production_smoke_v289_fail_closed',rate_safe:true,total:verdict.total,healthy:verdict.passed,failed:verdict.failed,edge_probe_count:publicResults.length+authResults.length,store_probe_count:stores.length,p95_ms:p95,results}});
+    return Response.json({ok:verdict.ok,status,rate_safe:true,total:verdict.total,healthy:verdict.passed,
+      failed:verdict.failed,edge_probe_count:publicResults.length+authResults.length,
+      store_probe_count:stores.length,p95_ms:p95,results,governance:SMOKE_HOLD},
+      {status:verdict.ok?200:503,headers:{...CORS,'Cache-Control':'no-store'}});
   }catch(e){
-    const msg=e instanceof Error?e.message:String(e);
+    const msg=e instanceof Error?e.message:String(e); // Stored only in owner-governed audit record.
     if(runId){try{await patch(base,k,'agent_runs',{id:`eq.${runId}`},{status:'failed',completed_at:new Date().toISOString(),error:msg.slice(0,2000)})}catch{}}
-    return Response.json({ok:false,error:'production_smoke_failed',detail:msg.slice(0,300)},{status:500,headers:CORS});
+    return Response.json({ok:false,error:'production_smoke_failed',governance:SMOKE_HOLD},
+      {status:503,headers:{...CORS,'Cache-Control':'no-store','Retry-After':'300'}});
   }
 });
