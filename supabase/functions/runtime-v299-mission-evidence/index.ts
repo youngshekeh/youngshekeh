@@ -3,6 +3,8 @@
 const ROOT='https://mpcelmjiycjpdyyflisn.supabase.co';
 const VERIFY=ROOT+'/functions/v1/runtime-v115-oidc-probe';
 const TABLE=ROOT+'/rest/v1/autonomous_machine_state?id=eq.1&select=updated_at,mode,system_score,edge_runtime_state,database_state,smoke_state,final_action,final_permission&limit=1';
+// Cron job 44 runs at :07/:22/:37/:52; 15min cadence + 3min scheduling margin.
+const MACHINE_SNAPSHOT_MAX_AGE_MS=18*60*1000;
 const HEADERS={'Cache-Control':'no-store','X-TFA-Engine':'V299-SIGNED-DB-EVIDENCE'};
 const HOLD={capital_permission:'0R',action_permitted:'WAIT',live_order_submission_enabled:false,
   automatic_execution:false,commercial_launch_certified:false,mission_restored:false,
@@ -38,13 +40,14 @@ Deno.serve(async(req:Request)=>{
   redirect:'error',signal:AbortSignal.timeout(3500)});
  const data=Array.isArray(record.body)&&record.body.length===1?record.body[0]:null;
  const stamp=Date.parse(String(data?.updated_at||'')),now=Date.now(),age=now-stamp;
- if(record.status!==200||!data||!Number.isFinite(age)||age<0||age>600000
+ if(record.status!==200||!data||!Number.isFinite(age)||age<0||age>MACHINE_SNAPSHOT_MAX_AGE_MS
   ||data.database_state!=='ONLINE'||data.final_action!=='WAIT'
   ||data.final_permission!=='0R')
   return respond(503,'DB_SNAPSHOT_UNVERIFIED',{workload_identity_verified:true});
  return respond(200,'SIGNED_DATABASE_EVIDENCE_OBSERVED',{
   workload_identity_verified:true,database_snapshot_observed:true,
   snapshot_at:new Date(stamp).toISOString(),snapshot_age_seconds:Math.round(age/1000),
+  refresh_cadence_seconds:900,snapshot_freshness_sla_seconds:1080,
   machine_mode:String(data.mode||'UNKNOWN').slice(0,40),
   database_state:'ONLINE',
   edge_runtime_state:String(data.edge_runtime_state||'UNKNOWN').slice(0,60),
