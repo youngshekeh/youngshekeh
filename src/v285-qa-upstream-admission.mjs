@@ -4,7 +4,9 @@ import {TRIAGE_URL,assessProviderEdgeAdmission} from './v283-provider-edge-admis
 // A successful HTTP response is NOT kernel/QA/payment certification.
 // Never obtain workload identity or start private QA when incident evidence is
 // stale, contradictory or signals an active database incident.
-const DEADLINE_MS=3500;
+import {QA_PREFLIGHT_TIMEOUT_MS,verifyQaDeadlineEnvelope} from './v296-qa-deadline-envelope.mjs';
+if(!verifyQaDeadlineEnvelope().valid)throw new Error('qa_deadline_envelope_invalid');
+const DEADLINE_MS=QA_PREFLIGHT_TIMEOUT_MS;
 const notAdmitted=(reason)=>Object.freeze({admitted:false,reason,
   private_qa_certified:false,commercial_launch_certified:false,
   capital_permission:'0R'});
