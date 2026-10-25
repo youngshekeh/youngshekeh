@@ -50,3 +50,13 @@ export function assessSmokeProbes(probes){
     p95_ms:Math.round(times[Math.ceil(times.length*.95)-1]||0),
     reason:passed===SMOKE_REQUIRED.length?'ALL_PROBES_VERIFIED':'PROBE_FAILURES'});
 }
+
+// API keys are opaque credentials, not identity JWTs. Never place
+// sb_secret_* in Authorization: Bearer. Gateway service routing uses apikey.
+export function privilegedRestHeaders(key){
+  if(typeof key!=='string'||key.length<20)throw new Error('server_credential_invalid');
+  if(/^sb_secret_[A-Za-z0-9_-]+$/.test(key))return Object.freeze({apikey:key});
+  if(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key))
+    return Object.freeze({apikey:key,Authorization:'Bearer '+key});
+  throw new Error('server_credential_invalid');
+}
