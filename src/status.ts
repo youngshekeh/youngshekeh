@@ -8,6 +8,7 @@ import {inspectResearchSources} from './status-market-lane.mjs';
 import {buildSupabaseSupportPacket} from './v259-support-escalation.mjs';
 import {readPublicAcceptance} from './public-acceptance-connection.mjs';
 import {describeQaObservation} from './v287-qa-observation.mjs';
+import {attributePrivateQaBlockers} from './v297-private-qa-causality.mjs';
 
 const timeoutMs = 7_000;
 const missing = () => ({ response: { ok: false, headers: { get: () => null } }, data: { ok: false, state: 'UNAVAILABLE' } });
@@ -71,6 +72,7 @@ async function load() {
     show('ready', readiness.data?.state || 'UNAVAILABLE', gate.checks.final_acceptance);
     const summary = qa.data?.summary;
     const qaTruth = describeQaObservation({admitted:qaAdmission.admitted,result:qa});
+    const qaBlockers = attributePrivateQaBlockers({admitted:qaAdmission.admitted,result:qa});
     show('brain', gate.checks.private_qa
       ? 'PASS ' + summary.passed + '/' + summary.total
       : (qaAdmission.admitted ? qaTruth.label : 'DEFERRED · PREREQUISITES UNHEALTHY · NOT CERTIFIED'), gate.checks.private_qa);
@@ -115,6 +117,7 @@ async function load() {
       ' · Private auth/billing probes: ' + privateProbe.requests_sent + ' of 2' +
       ' · Private QA: ' + (qaAdmission.admitted ? 'REQUESTED AFTER PRECHECK PASS' : 'DEFERRED WITHOUT MAKING A PRIVATE QA REQUEST') +
       ' · QA evidence class: ' + qaTruth.kind +
+       ' · QA causal attribution: ' + qaBlockers.summary +
       ' · Public Gold: ' + (gate.checks.public_gold_data ? 'FRESH BROKER TICK' : 'FRESH BROKER TICK NOT VERIFIED') +
       ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
       ' · Trading permission: WAIT / 0R. No live orders authorized.';
