@@ -1,5 +1,8 @@
 // V238: one bounded canonical read; no scheduler, model, seal or trading writes.
 export const STATE_TTL_MS=10*60*1000;
+// V288: bounded, per-isolate canonical RPC de-amplification, not a health certification.
+// Source timestamps and WAIT/0R governance are rechecked on EVERY request.
+export const STATE_RPC_CACHE_MS=30_000;
 const HOLD=Object.freeze({action_permitted:'WAIT',capital_permission:'0R',
   can_self_promote:false,external_effects:false,funds_moved:false,trades_sent:false,
   live_order_submission_enabled:false,human_release_required:true});
@@ -53,7 +56,7 @@ export function createReadOnlyState({base,serviceKey,fetchImpl=fetch,now=Date.no
       let body;
       if(cached&&now()<until)body=cached;
       else{
-        if(!pending)pending=read().then(b=>{cached=b;until=now()+10000;return b;})
+        if(!pending)pending=read().then(b=>{cached=b;until=now()+STATE_RPC_CACHE_MS;return b;})
           .finally(()=>{pending=null;});
         body=await pending;
       }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createReadOnlyState,classifyState,STATE_TTL_MS} from '../supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs';
+import {createReadOnlyState,classifyState,STATE_TTL_MS,STATE_RPC_CACHE_MS} from '../supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs';
 import {createPrivateStateHandler} from '../src/private-state-bridge.mjs';
 const NOW=Date.parse('2026-10-22T09:00:00Z');
 const canonical=()=>({ok:true,generated_at:new Date(NOW).toISOString(),mode:'EVIDENCE_RECOVERY',
@@ -49,7 +49,7 @@ test('cache shares concurrent reads but authenticates each caller and expires ti
 });
 test('database failure has no stale success fallback and does not poison later recovery',async()=>{
  let clock=NOW,broken=false;const f=setup({clock:()=>clock,read:async()=>{if(broken)throw Error('postgres://secret');return json({...canonical(),generated_at:new Date(clock).toISOString()});}});
- assert.equal((await f.handler(request())).status,200);clock+=11000;broken=true;
+ assert.equal((await f.handler(request())).status,200);clock+=STATE_RPC_CACHE_MS+1000;broken=true;
  const fail=await f.handler(request());assert.equal(fail.status,503);assert.doesNotMatch(await fail.text(),/postgres|secret/);
  const calls=f.calls.length;
  broken=false;assert.equal((await f.handler(request())).status,503);
