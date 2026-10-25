@@ -1,0 +1,20 @@
+services:
+  father-nebius-shadow:
+    build:
+      context: ../..
+      dockerfile: infrastructure/nebius/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 256m
+    cpus: 0.5
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      PORT: "8080"
+      TFA_OBSERVE_URL: "https://thefatheranalytics.com/api/public-recovery-triage"
+      TFA_POLL_INTERVAL_MS: "600000"
