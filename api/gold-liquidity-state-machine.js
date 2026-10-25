@@ -1,4 +1,5 @@
 import { getVercelOidcToken } from '@vercel/oidc';
+import {classifyGoldStateBridge} from '../src/v300-v79-semantic-http.mjs';
 
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v79-liquidity';
 
@@ -28,6 +29,7 @@ export default async function handler(req,res){
         Accept:'application/json',
         'User-Agent':'THE-FATHER-ANALYTICS-PUBLIC-SHELL/115.1'
       },
+      redirect:'error',
       cache:'no-store',
       signal:AbortSignal.timeout(12000)
     });
@@ -35,7 +37,10 @@ export default async function handler(req,res){
     res.setHeader('Cache-Control','no-store');
     res.setHeader('X-TFA-Runtime','PRIVATE_BRAIN');
     res.setHeader('X-TFA-Auth','VERCEL_OIDC');
-    return res.status(upstream.ok?200:upstream.status).json(body??{ok:false,error:'private_runtime_unavailable'});
+    const result=classifyGoldStateBridge({httpStatus:upstream.status,body});
+    res.setHeader('X-TFA-Gold-State-Policy',result.policy);
+    if(!result.certifiedObservation)res.setHeader('Retry-After','60');
+    return res.status(result.httpStatus).json(result.payload);
   }catch{
     res.setHeader('Cache-Control','no-store');
     return res.status(503).json({ok:false,error:'private_runtime_unavailable'});
