@@ -13,7 +13,7 @@ const HOLD=Object.freeze({
 const verdict=(status,reason,oidcVerified=false,loadShedConfirmed=false)=>
  Object.freeze({...HOLD,ok:status==='SIGNED_LOAD_SHED_OBSERVED',version:'v298-signed-recovery-canary-v1',
    state:status,reason,private_workload_identity_verified:oidcVerified,
-   load_shed_observed:loadShedConfirmed,additional_private_requests:oidcVerified?2:0});
+   load_shed_observed:loadShedConfirmed});
 async function signedRead(fetcher,url,token,deadlineMs=4500){
  try{
   const r=await fetcher(url,{
