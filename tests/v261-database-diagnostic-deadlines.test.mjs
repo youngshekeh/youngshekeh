@@ -38,6 +38,7 @@ test('outer deadlines leave room for SQL, Edge auth, and a truthful bounded resu
   // V296: independently bounded private QA, still strictly subject to incident admission.
   'api/autonomous-qa-matrix.js':{maxDuration:50},
   'api/mission-recovery-canary.js':{maxDuration:20},
+  'api/mission-db-evidence.js':{maxDuration:20},
   'api/connection-pressure-shadow.js':{maxDuration:40},
   'api/peak-minute-spreader-status.js':{maxDuration:40}
  });

@@ -1,0 +1,31 @@
+name: V299 Signed Private Database Mission Evidence
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/mission-db-evidence.js'
+      - 'src/v299-db-evidence-gate.mjs'
+      - 'supabase/functions/runtime-v299-mission-evidence/index.ts'
+      - 'vercel.json'
+      - 'tests/v261-database-diagnostic-deadlines.test.mjs'
+      - 'tests/v299-db-mission-evidence.test.mjs'
+      - '.github/workflows/v299-db-mission-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-one-query-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/v299-db-evidence-gate.mjs && node --check api/mission-db-evidence.js
+      - run: node --test tests/v299-db-mission-evidence.test.mjs tests/v298-signed-mission-canary.test.mjs tests/v297-qa-causality.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
