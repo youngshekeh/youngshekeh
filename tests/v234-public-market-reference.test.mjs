@@ -46,13 +46,16 @@ test('independent endpoint forbids writes and never forwards request credentials
   assert.equal(post.body.governance.live_order_submission_enabled,false);
   // Mock source time is in past relative to wall clock; price may be gated but requests must be fixed.
   const get=mockRes();await handler({method:'GET',headers:{authorization:'secret',cookie:'private'}},get);
-  assert.equal(captured.length,2);
+  assert.equal(captured.length,1);
   for(const p of captured){
-   assert.ok(p.url==='https://api.gold-api.com/price/XAU'||p.url==='https://api.coinbase.com/v2/prices/BTC-USD/spot');
+   assert.equal(p.url,'https://api.gold-api.com/price/XAU');
    assert.equal(p.opts.headers.Authorization,undefined);assert.equal(p.opts.headers.cookie,undefined);
    assert.equal(p.opts.method,'GET');
   }
   assert.equal(get.body.governance.capital_permission,'0R');
+  assert.equal(get.body.assets.bitcoin,null);
+  assert.equal(get.body.source_rights.bitcoin.public_quote_allowed,false);
+  assert.equal(get.headers['X-TFA-BTC-Display'],'LICENSE_HOLD');
  }finally{globalThis.fetch=backup}
 });
 test('homepage has a non-animated editorial market panel and no fabricated placeholders',()=>{

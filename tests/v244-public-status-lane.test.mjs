@@ -9,11 +9,11 @@ function current(){
  const bitcoin=curateBitcoinReference({data:{base:'BTC',currency:'USD',amount:'82000'}},now);
  return {response:{ok:true},data:curatePublicReferences({gold,bitcoin},now)};
 }
-test('public lane verifies two sources independently of private runtime requests',async()=>{
+test('public lane verifies licensed Gold reference while BTC display remains held',async()=>{
  let report;
  const result=await probePublicStatus({readReference:async()=>current(),now:()=>now,report:v=>{report=v}});
- assert.equal(result.reference_state,'TWO CURRENT SOURCES');
- assert.equal(result.verified_references,2);
+ assert.equal(result.reference_state,'ONE CURRENT SOURCE');
+ assert.equal(result.verified_references,1);
  assert.deepEqual(report,result);
  assert.equal(result.commercial_checkout_certified,false);
  assert.equal(result.private_kernel_certified,false);

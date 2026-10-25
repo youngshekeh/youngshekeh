@@ -9,11 +9,11 @@ function sample(){return{ok:true,reference_only:true,not_for_trade_execution:tru
  price:4089.3,source_updated_at:at,broker_verified:false,execution_quote:false},
  bitcoin:{symbol:'BTCUSD',currency:'USD',type:'SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED',source:'Coinbase',
  price:82182.7,observed_at:at,source_updated_at:null,broker_verified:false,execution_quote:false}}}}
-test('two attributed public spot references cannot activate broker trading',()=>{
+test('public BTC display held for licensing while Gold cannot activate broker trading',()=>{
  const refs=verifiedPublicReferences(sample(),NOW);
- assert.equal(refs.count,2);assert.equal(refs.gold.value,4089.3);
+ assert.equal(refs.count,1);assert.equal(refs.gold.value,4089.3);
  assert.equal(refs.gold.label,'INDICATIVE SPOT');
- assert.equal(refs.bitcoin.time_type,'receipt');
+ assert.equal(refs.bitcoin,null);
 });
 test('stale, future, zero, fabricated source timestamps and permission promotion rejected',()=>{
  for(const change of [
@@ -48,7 +48,7 @@ test('private kernel and market reference lanes separate, no fabricated breadth'
  assert.match(readFileSync(new URL('../src/checkout.ts',import.meta.url),'utf8'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
 });
 
-test('actual board refresh updates its count through 0, 2, 1 and 0 sources without replacing core breadth',()=>{
+test('public board refresh keeps BTC unlicensed: counts 0, 1, 1, 0 without replacing core breadth',()=>{
  const source=readFileSync(new URL('../src/v235-public-board.mjs',import.meta.url),'utf8').replace(/^import .*;\r?\n/gm,'');
  const node=()=>({textContent:'',dataset:{},children:[],classList:{contains:()=>false,add(){}},
    append(...items){this.children.push(...items);},replaceChildren(){this.children=[];},
@@ -63,8 +63,9 @@ test('actual board refresh updates its count through 0, 2, 1 and 0 sources witho
  const emit=packet=>listeners['tfa:public-references']({detail:packet});
  assert.match(nodes.marketBreadth.textContent,/^0\/2/);
  const packet=sample();packet.assets.gold.source_updated_at=new Date().toISOString();packet.assets.bitcoin.observed_at=new Date().toISOString();
- emit(packet);assert.match(nodes.marketBreadth.textContent,/^2\/2/);assert.equal(nodes.independentLaneState.textContent,'2/2 PUBLIC SOURCES');
+ emit(packet);assert.match(nodes.marketBreadth.textContent,/^1\/2/);assert.equal(nodes.independentLaneState.textContent,'1/2 PUBLIC SOURCES');
  packet.assets.bitcoin.price=0;emit(packet);assert.match(nodes.marketBreadth.textContent,/^1\/2/);
+ packet.assets.gold.price=0;emit(packet);assert.match(nodes.marketBreadth.textContent,/^0\/2/);
  emit(null);assert.match(nodes.marketBreadth.textContent,/^0\/2/);
  nodes.marketBreadth.textContent='Breadth 4 · 3 up / 1 down / 0 flat';
  emit(packet);assert.equal(nodes.marketBreadth.textContent,'Breadth 4 · 3 up / 1 down / 0 flat');

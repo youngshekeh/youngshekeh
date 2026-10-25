@@ -29,29 +29,25 @@ for(const [asset,c] of Object.entries(QUARTER_ASSETS)){
  };
 }
 const quarterly=quarterlyPacket(zoneFixtures,Date.now());
-// Chrome startup can exceed the 30-second Coinbase receipt TTL on a busy
-// runner. Date the first mock receipt when served, not before browser launch.
-let stampA=null,stampB=null,btcStage=0,requests={quarterly:0,spot:0,macro:0};
+// Public Coinbase display is LICENSE_HOLD. Browser notifications are
+// tested using a synthetic WTI reference, not a distributed BTC quote.
+let marketStage=0,requests={quarterly:0,spot:0,macro:0};
 function spotPacket(){
- if(stampA===null)stampA=new Date(Date.now()-1000).toISOString();
- const next=btcStage===1;
  return {ok:true,reference_only:true,not_for_trade_execution:true,
   governance:safety,assets:{
    gold:{symbol:'XAUUSD',name:'Gold spot',price:4050,currency:'USD',
     type:'INDICATIVE_SPOT',source:'Gold API',source_updated_at:new Date(Date.now()-1000).toISOString(),
     broker_verified:false,execution_quote:false},
-   bitcoin:{symbol:'BTCUSD',name:'Bitcoin spot',price:next?99700:81000,currency:'USD',
-    type:'SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED',source:'Coinbase',source_updated_at:null,
-    observed_at:next?stampB:stampA,broker_verified:false,execution_quote:false}
+   bitcoin:null
  }};
 }
 function macroPacket(){
  const assets={};
  for(const [name,symbol,exchange,kind] of [['wti','CL=F','NYM','FUTURE'],['dxy','DXY','NYB','INDEX']]){
   assets[name]={symbol,provider_symbol:name==='wti'?'CL=F':'DX-Y.NYB',name,
-   price:101,currency:'USD',instrument_type:kind,source:'Yahoo Finance',
+   price:name==='wti'&&marketStage===1?109.8:101,currency:'USD',instrument_type:kind,source:'Yahoo Finance',
    type:'DELAYED_INDICATIVE_MARKET_REFERENCE',exchange,
-   source_updated_at:new Date(now-20000).toISOString(),
+   source_updated_at:new Date(Date.now()-20000).toISOString(),
    contract_label:name==='wti'?'Crude Oil Dec 26':null,
    possible_exchange_delay_minutes:30,
    broker_verified:false,execution_quote:false,licensed_commercial_feed_verified:false};
@@ -101,7 +97,7 @@ try{
  assert.equal(response?.status(),200);
  await page.locator('[data-quarter-cards] .ob-quarter-card').first().waitFor();
  await page.waitForFunction(()=>document.querySelector('[data-quarter-cards]')?.querySelectorAll('.ob-quarter-card').length===9);
- await page.waitForFunction(()=>document.querySelector('[data-quarter-feed-spot]')?.textContent?.includes('2/2'));
+ await page.waitForFunction(()=>document.querySelector('[data-quarter-feed-spot]')?.textContent?.includes('1/2'));
  await page.waitForFunction(()=>document.querySelector('[data-quarter-feed-macro]')?.textContent?.includes('2/2'));
  await page.waitForFunction(()=>document.querySelector('[data-quarter-status]')?.textContent?.includes('9 / 9'));
  assert.equal(await page.locator('[data-quarter-events] li').count(),0,'no alert at first paint');
@@ -115,18 +111,17 @@ try{
  assert.equal(await page.locator('[data-quarter-events] li').count(),0,'arming must not replay existing levels');
  await page.locator('[data-quarter-permission]').click();
  assert.equal(await page.evaluate(()=>window.__v256PermissionCalls),1);
- stampB=new Date(Date.now()-1000).toISOString();
- btcStage=1;
+  marketStage=1;
  await page.locator('[data-quarter-refresh]').click();
  await page.waitForFunction(()=>document.querySelector('[data-quarter-events]')?.querySelectorAll('li').length===1);
  const eventText=await page.locator('[data-quarter-events] li').first().innerText();
- assert.match(eventText,/Bitcoin spot/i);
+ assert.match(eventText,/WTI futures/i);
  assert.match(eventText,/AT PREVIOUS Q HIGH ZONE/);
- assert.match(eventText,/Coinbase/i);
+ assert.match(eventText,/Yahoo Finance/i);
  const logs=await page.evaluate(()=>window.__v256NotificationLog);
  assert.equal(logs.length,1,'one requested notification delivered to constructor');
  assert.match(logs[0].title,/QUARTERLY WATCH/);
- assert.match(logs[0].body,/Bitcoin spot/);
+ assert.match(logs[0].body,/WTI futures/);
  await page.locator('[data-quarter-refresh]').click();
  await page.waitForTimeout(350);
  assert.equal(await page.locator('[data-quarter-events] li').count(),1,'same vendor timestamp must not duplicate alert');

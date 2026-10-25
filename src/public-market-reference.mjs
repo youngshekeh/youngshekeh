@@ -16,7 +16,7 @@ if(ROOT){
   gold.textContent=refs.gold?format(refs.gold.value):'Unavailable';
   btc.textContent=refs.bitcoin?format(refs.bitcoin.value):'Unavailable';
   goldInfo.textContent=refs.gold?'Indicative USD / troy oz · Gold API · '+new Date(refs.gold.at).toLocaleTimeString():'No current attributed spot observation';
-  btcInfo.textContent=refs.bitcoin?'Coinbase spot · received '+new Date(refs.bitcoin.at).toLocaleTimeString()+' · source time not supplied':'No current Coinbase response';
+  btcInfo.textContent='BTC / USD · LIVE DISPLAY WITHHELD · licensed source required';
   const count=refs.count;
   status.textContent=count===2?'2 SOURCES RESPONDING':count===1?'PARTIAL SOURCES':'NO FRESH REFERENCE';
   status.dataset.state=count===2?'online':count===1?'partial':'unavailable';
@@ -41,7 +41,7 @@ if(ROOT){
    packet=data;
    window.__tfaPublicReferencePacket=data;
    lastOk=Date.now();
-   updated.textContent='Checked '+new Date(lastOk).toLocaleTimeString()+' · Independent public feeds';
+   updated.textContent='Checked '+new Date(lastOk).toLocaleTimeString()+' · Indicative research only · BTC license hold';
    paint(packet);
   }catch{
    unavailable('Provider unavailable · retrying automatically. No stale price shown.');

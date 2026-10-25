@@ -68,9 +68,9 @@ test('current nine-market historical response can be accepted independently',()=
  assert.equal(report.expected,9);
  assert.equal(report.credentialed_broker_quote,false);
 });
-test('Bitcoin receipt expires after 30 seconds but 15-second cadence reduces silent gap',()=>{
+test('unlicensed BTC receipt withheld at all ages; Gold reference expiry preserved',()=>{
  const valid=validateMarketFeed('spot',spot(20_000,15_000),now);
- assert.equal(valid.count,2);
+ assert.equal(valid.count,1);
  const old=validateMarketFeed('spot',spot(20_000,31_000),now);
  assert.equal(old.count,1);
  assert.equal(marketStreamSummary('spot',spot(125_000,31_000),now).count,0);
@@ -90,7 +90,7 @@ test('source isolation: quarterly failure cannot nullify valid spot and macro da
  };
  const [a,b,c]=await Promise.all(['quarterly','spot','macro']
   .map(kind=>readMarketFeed(kind,{read,now:()=>now})));
- assert.equal(a,null);assert.equal(b.count,2);assert.equal(c.count,2);
+ assert.equal(a,null);assert.equal(b.count,1);assert.equal(c.count,2);
  assert.equal(received.length,3);
 });
 test('source isolation: BTC outage cannot erase a current quarterly range or WTI/DXY',async()=>{

@@ -1,0 +1,37 @@
+name: V293 Public Market Licensing And Session Truth
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/public-market-reference.js'
+      - 'src/v293-public-btc-license.mjs'
+      - 'src/v293-market-session-truth.mjs'
+      - 'src/v235-reference-integrity.mjs'
+      - 'src/public-market-reference.mjs'
+      - 'tests/v234-public-market-reference.test.mjs'
+      - 'tests/v293-market-session-license.test.mjs'
+      - '.github/workflows/v293-market-session-license.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  license-and-market-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Source syntax
+        run: |
+          node --check src/v293-public-btc-license.mjs
+          node --check src/v293-market-session-truth.mjs
+      - name: License and session regression
+        run: node --test tests/v293-market-session-license.test.mjs tests/v234-public-market-reference.test.mjs tests/v292-btc-source-integrity.test.mjs
+      - name: Enforce fail-closed commerce and trading
+        run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
