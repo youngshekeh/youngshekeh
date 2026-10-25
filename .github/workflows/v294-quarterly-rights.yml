@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --check api/public-quarterly-zones.js && node --check src/v294-public-quarterly-rights.mjs
-      - run: node --test tests/v294-quarterly-license-hold.test.mjs tests/v293-market-session-license.test.mjs tests/v253-quarterly-zone-research.test.mjs
+      - run: node --test tests/v294-quarterly-license-hold.test.mjs tests/v293-market-session-license.test.mjs tests/v253-quarterly-liquidity-alerts.test.mjs
       - run: |
           grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
           grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
