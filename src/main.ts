@@ -940,6 +940,12 @@ async function loadMissionBrief() {
 }
 
 let missionRefreshInFlight = false;
+// Keep the full diagnostic matrix available on local development only;
+// production visitors get the source-labelled mission QA summary instead.
+function allowDeepQaForThisHost() {
+  return typeof location !== 'undefined' &&
+    (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+}
 async function refreshMissionExperience() {
   if (missionRefreshInFlight) return;
   missionRefreshInFlight = true;
@@ -948,7 +954,7 @@ async function refreshMissionExperience() {
     // matrix. The full matrix remains available in local diagnostics and via
     // the precheck-gated /status workflow; the homepage uses the mission pulse.
     await loadMissionBrief();
-    if (import.meta.env.DEV) await loadQaMatrix();
+    if (allowDeepQaForThisHost()) await loadQaMatrix();
   } finally {
     missionRefreshInFlight = false;
   }
