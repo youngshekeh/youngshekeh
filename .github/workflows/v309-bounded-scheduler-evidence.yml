@@ -28,4 +28,3 @@ jobs:
       - run: |
           grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
           grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
-          grep -Fq "'schedule': '11,26,41,56 * * * *'" /dev/null || true
