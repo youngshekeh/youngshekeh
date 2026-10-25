@@ -1,0 +1,30 @@
+name: V308 Read-Only Diagnostic Incident Admission
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/connection-pressure-shadow.js'
+      - 'api/peak-minute-spreader-status.js'
+      - 'tests/v308-incident-diagnostic-admission.test.mjs'
+      - 'docs/V308_INCIDENT_DIAGNOSTIC_LOAD_SHED.md'
+      - '.github/workflows/v308-incident-diagnostic-admission.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-private-diagnostic-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check api/connection-pressure-shadow.js
+      - run: node --check api/peak-minute-spreader-status.js
+      - run: node --test tests/v308-incident-diagnostic-admission.test.mjs tests/v307-heartbeat-incident-admission.test.mjs tests/v306-core-recovery-admission.test.mjs tests/v231-kernel-admission.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
