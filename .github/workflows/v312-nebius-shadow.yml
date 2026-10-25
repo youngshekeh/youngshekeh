@@ -1,0 +1,41 @@
+name: V312 Nebius Shadow Compute Verification
+
+on:
+  push:
+    branches:
+      - infra/v312-nebius-compute-shadow
+  pull_request:
+    branches:
+      - the-father-analytics-deploy
+    paths:
+      - 'infrastructure/nebius/**'
+      - 'tests/v312-nebius-shadow.test.mjs'
+      - '.github/workflows/v312-nebius-shadow.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Verify pure security and observation rules
+        run: node --test tests/v312-nebius-shadow.test.mjs
+      - name: Validate isolated compose configuration
+        run: docker compose -f infrastructure/nebius/compose.yaml config -q
+      - name: Build isolated CPU worker
+        run: docker build --file infrastructure/nebius/Dockerfile --tag the-father-nebius-shadow:v312 .
+      - name: Docker image startup and health verification
+        run: |
+          docker run -d --name tfa-v312 --read-only --cap-drop=ALL --security-opt=no-new-privileges --memory=256m -p 127.0.0.1:18080:8080 the-father-nebius-shadow:v312
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 2 http://127.0.0.1:18080/healthz; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:18080/healthz
+          docker stop tfa-v312
