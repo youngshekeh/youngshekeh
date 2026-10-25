@@ -1,0 +1,28 @@
+name: V303 Source-Pinned Bounded Core Recovery
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'scripts/v303-build-core-migration.mjs'
+      - 'supabase/recovery/v303_readonly_cron_benchmark.sql'
+      - 'tests/v303-bounded-core-generator.test.mjs'
+      - '.github/workflows/v303-bounded-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core-recovery-source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check scripts/v303-build-core-migration.mjs
+      - run: node --test tests/v303-bounded-core-generator.test.mjs tests/v3021-cron-audit-coverage.test.mjs tests/v300-v79-semantic-http.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
