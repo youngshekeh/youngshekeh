@@ -1,5 +1,6 @@
 import {preflightV285QaAdmission} from './v285-qa-upstream-admission.mjs';
 const DEST='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v299-mission-evidence';
+const MACHINE_SNAPSHOT_MAX_AGE_MS=18*60*1000;
 const LOCK=Object.freeze({mission_restored:false,engine_registry_certified:false,
  market_data_redistribution_approved:false,commercial_launch_certified:false,
  customer_login_certified:false,live_order_submission_enabled:false,
@@ -18,7 +19,8 @@ export function validateDbEvidence({status,body,now=Date.now()}={}){
   body?.engine_registry_certified!==false||
   body?.live_order_submission_enabled!==false||
   body?.commercial_launch_certified!==false||
-  !Number.isFinite(age)||age<0||age>600000)
+  body?.refresh_cadence_seconds!==900||body?.snapshot_freshness_sla_seconds!==1080||
+  !Number.isFinite(age)||age<0||age>MACHINE_SNAPSHOT_MAX_AGE_MS)
    return reject('SIGNED_DB_EVIDENCE_UNVERIFIED');
  return Object.freeze({...LOCK,ok:true,usable:false,
   version:'v299-signed-db-evidence-gateway-v1',
@@ -26,6 +28,7 @@ export function validateDbEvidence({status,body,now=Date.now()}={}){
   workload_identity_verified:true,database_snapshot_observed:true,
   snapshot_at:new Date(t).toISOString(),
   snapshot_age_seconds:Math.round(age/1000),
+  refresh_cadence_seconds:900,snapshot_freshness_sla_seconds:1080,
   database_state:'ONLINE',
   edge_runtime_state:String(body.edge_runtime_state||'UNKNOWN').slice(0,60),
   smoke_state:String(body.smoke_state||'UNKNOWN').slice(0,40),
