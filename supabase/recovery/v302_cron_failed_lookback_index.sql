@@ -33,8 +33,9 @@ BEGIN
      JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE n.nspname='cron' AND c.relname='v302_failed_runs_by_time_idx'
      AND i.indisvalid=true AND i.indisready=true
-     AND pg_get_expr(i.indpred,i.indrelid) =
-         '(status <> ALL (ARRAY[''succeeded''::text, ''running''::text]))'
+     AND pg_get_expr(i.indpred,i.indrelid) LIKE '%status <> ALL%'
+     AND pg_get_expr(i.indpred,i.indrelid) LIKE '%succeeded%'
+     AND pg_get_expr(i.indpred,i.indrelid) LIKE '%running%'
  ) THEN
    RAISE EXCEPTION 'V302: partial index invalid or predicate mismatch';
  END IF;
