@@ -1,8 +1,8 @@
-import {curateGoldReference,curateBitcoinReference,curatePublicReferences,WAIT_GOVERNANCE} from '../src/public-market-reference-data.mjs';
+import {curateGoldReference,curatePublicReferences,WAIT_GOVERNANCE} from '../src/public-market-reference-data.mjs';
+import {BTC_PUBLIC_DATA_HOLD,publiclyDisplayableBitcoin} from '../src/v293-public-btc-license.mjs';
 // Independent market-reference lane; no database, Supabase read, funds, OAuth or broker operations.
 const PROVIDERS=Object.freeze({
-  gold:'https://api.gold-api.com/price/XAU',
-  bitcoin:'https://api.coinbase.com/v2/prices/BTC-USD/spot'
+  gold:'https://api.gold-api.com/price/XAU'
 });
 const DEADLINE=2600;
 const CACHE_MS=4000;
@@ -17,16 +17,18 @@ async function readOne(url){
 }
 export async function readReferences(now=Date.now){
   const started=now();
-  const [g,b]=await Promise.allSettled([readOne(PROVIDERS.gold),readOne(PROVIDERS.bitcoin)]);
+  const [g]=await Promise.allSettled([readOne(PROVIDERS.gold)]);
   const stamp=now();
-  return curatePublicReferences({
+  const reference=curatePublicReferences({
     gold:g.status==='fulfilled'?curateGoldReference(g.value,stamp):null,
-    bitcoin:b.status==='fulfilled'?curateBitcoinReference(b.value,stamp):null
+    bitcoin:publiclyDisplayableBitcoin(null)
   },stamp);
+  return Object.freeze({...reference,source_rights:{bitcoin:BTC_PUBLIC_DATA_HOLD}});
 }
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-TFA-Market-Lane','INDEPENDENT_PUBLIC_REFERENCES');
+  res.setHeader('X-TFA-BTC-Display','LICENSE_HOLD');
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return res.status(405).json({ok:false,error:'method_not_allowed',governance:WAIT_GOVERNANCE});
