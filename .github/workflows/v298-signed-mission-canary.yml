@@ -1,0 +1,30 @@
+name: V298 Signed Mission Recovery Canary
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/v298-mission-recovery-canary.mjs'
+      - 'api/mission-recovery-canary.js'
+      - 'vercel.json'
+      - 'tests/v261-database-diagnostic-deadlines.test.mjs'
+      - 'tests/v298-signed-mission-canary.test.mjs'
+      - '.github/workflows/v298-signed-mission-canary.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-private-identity-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/v298-mission-recovery-canary.mjs && node --check api/mission-recovery-canary.js
+      - run: node --test tests/v298-signed-mission-canary.test.mjs tests/v297-qa-causality.test.mjs tests/v261-database-diagnostic-deadlines.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
