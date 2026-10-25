@@ -1,0 +1,31 @@
+name: V294 Public Quarterly BTC Derived Data Rights
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'api/public-quarterly-zones.js'
+      - 'src/v294-public-quarterly-rights.mjs'
+      - 'src/quarterly-observatory.mjs'
+      - 'market-observatory/index.html'
+      - 'src/market-observatory.mjs'
+      - 'tests/v294-quarterly-license-hold.test.mjs'
+      - '.github/workflows/v294-quarterly-rights.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-derived-works-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check api/public-quarterly-zones.js && node --check src/v294-public-quarterly-rights.mjs
+      - run: node --test tests/v294-quarterly-license-hold.test.mjs tests/v293-market-session-license.test.mjs tests/v253-quarterly-liquidity-alerts.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts

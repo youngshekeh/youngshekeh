@@ -1,7 +1,8 @@
-import {QUARTER_ASSETS,quarterBounds,parseYahooQuarterBars,parseCoinbaseQuarterBars,
+import {QUARTER_ASSETS,quarterBounds,parseYahooQuarterBars,
  calculateQuarterlyZones,quarterlyPacket,verifyQuarterlyPacket} from '../src/quarterly-liquidity-core.mjs';
+import {enforcePublicQuarterlyRights,PUBLIC_BTC_QUARTERLY_RIGHTS} from '../src/v294-public-quarterly-rights.mjs';
 // Read-only public research. Source rights and exchange-grade data are NOT certified.
-// Eight fixed Yahoo instruments + Coinbase BTC-USD daily candles. No database.
+// Eight fixed Yahoo instruments. Coinbase BTC-USD candles are withheld pending written display rights. No database.
 const yahoo=Object.freeze({
  gold:'GC%3DF',brent:'BZ%3DF',wti:'CL%3DF',eurusd:'EURUSD%3DX',
  dxy:'DX-Y.NYB',spx:'%5EGSPC',nasdaq:'%5EIXIC',treasury:'%5ETNX'
@@ -21,24 +22,22 @@ export async function observeQuarterlyRanges({read=getJson,now=Date.now}={}){
  const sources=Object.entries(yahoo).map(([asset,symbol])=>({
   asset,url:'https://query1.finance.yahoo.com/v8/finance/chart/'+symbol+'?range=6mo&interval=1d'
  }));
- sources.push({asset:'bitcoin',
-  url:'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=86400&start='+
-   encodeURIComponent(start)+'&end='+encodeURIComponent(end)});
  // Fully separate failures: no orderbook data or synthetic fill-in.
  const outcomes=await Promise.allSettled(sources.map(s=>read(s.url)));
  const snapshot={};
  for(let i=0;i<sources.length;i++){
   if(outcomes[i].status!=='fulfilled')continue;
   const {asset}=sources[i];
-  const bars=asset==='bitcoin'?parseCoinbaseQuarterBars(outcomes[i].value)
-     :parseYahooQuarterBars(outcomes[i].value,asset);
+  const bars=parseYahooQuarterBars(outcomes[i].value,asset);
   if(bars)snapshot[asset]=calculateQuarterlyZones(bars,asset,at);
  }
- return quarterlyPacket(snapshot,at);
+ return Object.freeze({...quarterlyPacket(enforcePublicQuarterlyRights(snapshot),at),
+  source_rights:{bitcoin:PUBLIC_BTC_QUARTERLY_RIGHTS}});
 }
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
- res.setHeader('X-TFA-Zone-Policy','V253-QUARTERLY-PROXY-READ-ONLY');
+ res.setHeader('X-TFA-Zone-Policy','V294-QUARTERLY-LICENSE-HOLD');
+ res.setHeader('X-TFA-BTC-Quarterly','LICENSE_HOLD');
  if(req.method!=='GET'){
   res.setHeader('Allow','GET');
   return res.status(405).json({ok:false,error:'method_not_allowed',
