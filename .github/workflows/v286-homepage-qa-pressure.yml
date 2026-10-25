@@ -1,0 +1,31 @@
+name: V286 Public Homepage QA Load Shedding
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/main.ts'
+      - 'src/v286-public-qa-label.mjs'
+      - 'tests/v286-public-home-qa-pressure.test.mjs'
+      - '.github/workflows/v286-homepage-qa-pressure.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-qa-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: QA label syntax
+        run: node --check src/v286-public-qa-label.mjs
+      - name: Public home must not automatically trigger costly private QA
+        run: node --test tests/v286-public-home-qa-pressure.test.mjs
+      - name: Paid and broker firewalls remain unchanged
+        run: |
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
