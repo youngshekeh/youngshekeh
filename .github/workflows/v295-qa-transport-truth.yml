@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --check src/v295-qa-transport-truth.mjs
-      - run: node --test tests/v295-qa-transport-truth.test.mjs tests/v287-qa-observation.test.mjs
+      - run: node --test tests/v295-qa-transport-truth.test.mjs tests/v2951-sql-function-shape.test.mjs tests/v287-qa-observation.test.mjs
       - run: |
           grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
           grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
