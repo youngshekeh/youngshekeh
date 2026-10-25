@@ -1,0 +1,32 @@
+name: V288 Private State RPC Pressure
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs'
+      - 'tests/v238-canonical-read.test.mjs'
+      - 'tests/v288-private-rpc-cache.test.mjs'
+      - '.github/workflows/v288-private-rpc-pressure.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  private-rpc-pressure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Verify syntax
+        run: node --check supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs
+      - name: Existing and new fail-closed tests
+        run: node --test tests/v237-private-state.test.mjs tests/v238-canonical-read.test.mjs tests/v288-private-rpc-cache.test.mjs
+      - name: Preserve hardened public barriers
+        run: |
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq "capital_permission:'0R'" supabase/functions/runtime-v70-autonomous-state/read-only-state.mjs
