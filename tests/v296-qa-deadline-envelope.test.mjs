@@ -93,7 +93,7 @@ test('V296 Vercel function deadline contains upstream without relaxing traffic p
  const preflightAt=endpoint.indexOf('await preflightV285QaAdmission()');
  const oidcAt=endpoint.indexOf('await getVercelOidcToken()');
  assert.ok(preflightAt>=0&&oidcAt>preflightAt);
- assert.match(endpoint,/QA_PRIVATE_UPSTREAM_TIMEOUT_MS/);
+ assert.match(endpoint,/signal:AbortSignal.timeout\\(30000\\)/);
  assert.match(endpoint,/QA_NEGATIVE_COOLDOWN_MS=60_000/);
  assert.match(endpoint,/if\(qaBusy\)return denied/);
  assert.match(endpoint,/if\(!admission\.admitted\)/);
