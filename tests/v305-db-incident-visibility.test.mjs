@@ -54,7 +54,7 @@ test('V305 status banner derives from existing readiness, never adds a private p
  assert.match(html,/aria-live="polite"/);
  assert.match(html,/supabase\.com\/dashboard\/support\/new/);
  assert.equal((status.match(/readEdge\('public-final-readiness'\)/g)||[]).length,1);
- assert.equal((status.match(/readSite\('\/api\/public-recovery-triage'\)/g)||[]).length,1);
+ assert.equal((status.match(/readSite\('\/api\/public-recovery-triage',15000\)/g)||[]).length,1);
  assert.match(status,/probeStatusDependencies\(/);
  assert.match(status,/evaluateLaunchReadiness\(\{ auth, readiness, billing, qa, gold \}\)/);
  assert.match(read('src/checkout.ts'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
