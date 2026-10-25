@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {assessSmokeShield,assessSmokeProbes,SMOKE_HOLD,privilegedRestHeaders} from "./smoke-policy.mjs";
+import {smokeCoreTimeout} from './smoke-latency-policy.mjs';
 
 const CORS={
   'Access-Control-Allow-Origin':'*',
@@ -57,7 +58,7 @@ function semantic(path:string,b:any){
 async function probe(path:string){
   const started=Date.now();
   try{
-    const r=await fetch(`${EDGE}/${path}`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(3000)});
+    const r=await fetch(`${EDGE}/${path}`,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(smokeCoreTimeout(path))});
     const b=await r.json().catch(()=>null);
     return {path,kind:'public_core',http_status:r.status,ok:r.ok&&semantic(path,b),ms:Date.now()-started};
   }catch(e){return {path,kind:'public_core',http_status:0,ok:false,ms:Date.now()-started,error:'PROBE_UNAVAILABLE'}}
