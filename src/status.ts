@@ -73,7 +73,7 @@ async function load() {
     const qaTruth = describeQaObservation({admitted:qaAdmission.admitted,result:qa});
     show('brain', gate.checks.private_qa
       ? 'PASS ' + summary.passed + '/' + summary.total
-      : qaTruth.label, gate.checks.private_qa);
+      : (qaAdmission.admitted ? qaTruth.label : 'DEFERRED · PREREQUISITES UNHEALTHY · NOT CERTIFIED'), gate.checks.private_qa);
     show('identity', gate.checks.workload_identity
       ? 'VERCEL OIDC · VERIFIED' : (qaAdmission.admitted ? 'UNVERIFIED' : 'DEFERRED · NOT CERTIFIED'), gate.checks.workload_identity);
     show('billing', billing.data?.state || 'UNAVAILABLE', gate.checks.billing);
