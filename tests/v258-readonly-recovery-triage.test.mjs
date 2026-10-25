@@ -85,30 +85,34 @@ test('only the fixed current incident source receives an extended bounded observ
  assert.equal(recoveryProbeDeadline('/functions/v1/public-final-readiness'),9000);
  assert.equal(recoveryProbeDeadline('/functions/v1/public-final-readiness?cache=1'),4700);
 });
-test('probe uses three fixed endpoints, independently, with no supplied user URL',async()=>{
+test('clear incident status retains both fixed independent transport probes',async()=>{
  const calls=[];
+ const clear={...incident(),data:{...incident().data,
+   database_incident:{active:false},hard_blockers:[]}};
  const v=await collectRecoveryTriage({now:()=>now,probe:async(path,opts)=>{
   calls.push([path,opts||{}]);
   if(path==='/rest/v1/')throw Error('network failed');
-  return path.includes('public-final')?incident():r;
+  return path.includes('public-final')?clear:r;
  }});
  assert.deepEqual(calls.map(x=>x[0]),[
-  '/auth/v1/health','/rest/v1/','/functions/v1/public-final-readiness'
+  '/functions/v1/public-final-readiness','/auth/v1/health','/rest/v1/'
  ]);
  assert.equal(v.checks.auth_http.transport_reachable,true);
  assert.equal(v.checks.postgrest_http.transport_reachable,false);
- assert.equal(v.checks.database_incident_reported,true);
+ assert.equal(v.checks.database_incident_reported,false);
  assert.equal(v.governance.live_order_submission_enabled,false);
 });
-test('one vendor timeout does not erase other independent evidence',async()=>{
+test('one vendor timeout does not erase other evidence when no incident is reported',async()=>{
+ const clear={...incident(),data:{...incident().data,
+   database_incident:{active:false},hard_blockers:[]}};
  const v=await collectRecoveryTriage({now:()=>now,probe:async(path)=>{
   if(path.includes('/auth/'))throw Error('TIMEOUT');
-  return path.includes('public-final')?incident():r;
+  return path.includes('public-final')?clear:r;
  }});
  assert.equal(v.checks.auth_http.transport_reachable,false);
  assert.equal(v.checks.postgrest_http.transport_reachable,true);
  assert.equal(v.checks.readiness_source_current,true);
- assert.equal(v.state,'DATABASE INCIDENT REPORTED');
+ assert.equal(v.state,'PRIVATE CERTIFICATION NOT ESTABLISHED');
 });
 test('recovery diagnostic is click-only, fixed-host and can never mutate DB or credentials',()=>{
  const route=readFileSync(new URL('../api/public-recovery-triage.js',import.meta.url),'utf8');

@@ -18,11 +18,11 @@ async function readEdge(path) {
   return readPublicAcceptance(path);
 }
 
-async function readSite(path) {
+async function readSite(path, deadline=timeoutMs) {
   const response = await fetch(path, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
-    signal: AbortSignal.timeout(timeoutMs),
+    signal: AbortSignal.timeout(deadline),
   });
   const data = await response.json().catch(() => ({ ok: false, state: 'INVALID_RESPONSE' }));
   return { response, data };
@@ -230,7 +230,7 @@ async function inspectRecoveryTriage(){
  show('recovery-triage','CHECKING · HTTP TRANSPORT ONLY',false);
  const info=document.getElementById('recovery-triage-detail');
  try{
-  const result=await readSite('/api/public-recovery-triage');
+  const result=await readSite('/api/public-recovery-triage',15000);
   const d=result.data||{};
   const verified=result.response?.ok===true&&d.ok===true
    &&freshEvidence(d.generated_at)

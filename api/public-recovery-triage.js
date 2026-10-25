@@ -27,10 +27,23 @@ export async function collectRecoveryTriage({probe=getStatus,now=Date.now}={}){
  const safely=async(path,opts)=>{try{return await probe(path,opts)}catch{return{
   transport:'ERROR',status:0,data:null
  }}};
- const [auth,rest,readiness]=await Promise.all([
+ // V306: consult the existing canonical incident source FIRST.
+ // While a verified database incident is active, querying degraded Auth/REST
+ // adds provider load but cannot satisfy launch admission. Explicitly defer,
+ // never claim these independent HTTP transports were checked.
+ const readiness=await safely('/functions/v1/public-final-readiness',{readiness:true});
+ const checkAt=now();
+ const incidentView=assessRecoveryTriage({readiness},checkAt);
+ if(incidentView.checks.readiness_source_current===true &&
+    incidentView.checks.database_incident_reported===true){
+  const deferred={transport:'DEFERRED_DB_INCIDENT',status:0,data:null};
+  return assessRecoveryTriage({auth:deferred,rest:deferred,readiness},checkAt);
+ }
+ // If readiness is stale, absent, or explicitly clear, retain independent
+ // fixed-host probes and full negative evidence. No private QA or retries.
+ const [auth,rest]=await Promise.all([
   safely('/auth/v1/health'),
-  safely('/rest/v1/',{accept:'application/openapi+json'}),
-  safely('/functions/v1/public-final-readiness',{readiness:true})
+  safely('/rest/v1/',{accept:'application/openapi+json'})
  ]);
  return assessRecoveryTriage({auth,rest,readiness},now());
 }

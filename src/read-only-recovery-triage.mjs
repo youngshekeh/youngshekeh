@@ -9,6 +9,9 @@ const WAIT=Object.freeze({action_permitted:'WAIT',capital_permission:'0R',
 const age=(date,now)=>{const t=Date.parse(String(date||''));
  return Number.isFinite(t)&&t<=now+5000&&now-t<=5*60*1000};
 export function classifyTransport(check){
+ if(check?.transport==='DEFERRED_DB_INCIDENT')return Object.freeze({
+  state:'DEFERRED_BY_DATABASE_INCIDENT',http_status:0,
+  transport_reachable:false,service_ready:false});
  const status=check?.status;
  if(check?.transport==='TIMEOUT')return Object.freeze({state:'TIMEOUT',http_status:0,
   transport_reachable:false,service_ready:false});
