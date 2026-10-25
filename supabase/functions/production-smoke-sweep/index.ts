@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {assessSmokeShield,assessSmokeProbes,SMOKE_HOLD} from "./smoke-policy.mjs";
+import {assessSmokeShield,assessSmokeProbes,SMOKE_HOLD,privilegedRestHeaders} from "./smoke-policy.mjs";
 
 const CORS={
   'Access-Control-Allow-Origin':'*',
@@ -11,11 +11,18 @@ const MIN_INTERVAL_MS=10*60_000;
 async function incident(){try{const r=await fetch('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-v69-database-incident-shield',{headers:{Accept:'application/json'},signal:AbortSignal.timeout(1500)});return r.ok?await r.json():null}catch{return null}}
 
 function serverKey(){
-  // PostgREST requires a Bearer JWT on this internal service path.
-  // Never pass a non-JWT sb_secret_ API key in Authorization.
-  const k=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
-  if(k.split('.').length!==3)throw new Error('server_jwt_unavailable');
-  return k;
+  // Managed Supabase projects may provide only a modern sb_secret_ key.
+  // That opaque credential is used as apikey ONLY, not as a Bearer JWT.
+  const packed=Deno.env.get('SUPABASE_SECRET_KEYS')||'';
+  if(packed){
+    try{
+      const modern=JSON.parse(packed)?.default;
+      if(typeof modern==='string'&&modern.startsWith('sb_secret_'))return modern;
+    }catch{}
+  }
+  const legacy=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+  if(legacy.split('.').length===3)return legacy;
+  throw new Error('server_credential_unavailable');
 }
 async function sha256Hex(s:string){
   const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
@@ -27,17 +34,17 @@ function restUrl(base:string,table:string,params:Record<string,string>={}){
   return x;
 }
 async function rows(base:string,k:string,table:string,params:Record<string,string>={}){
-  const r=await fetch(restUrl(base,table,params),{headers:{apikey:k,Authorization:`Bearer ${k}`,Accept:'application/json'},signal:AbortSignal.timeout(2500)});
+  const r=await fetch(restUrl(base,table,params),{headers:{...privilegedRestHeaders(k),Accept:'application/json'},signal:AbortSignal.timeout(2500)});
   if(!r.ok)throw new Error(`${table}_${r.status}`);
   return r.json();
 }
 async function insert(base:string,k:string,table:string,body:any){
-  const r=await fetch(restUrl(base,table),{method:'POST',headers:{apikey:k,Authorization:`Bearer ${k}`,'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(body),signal:AbortSignal.timeout(2500)});
+  const r=await fetch(restUrl(base,table),{method:'POST',headers:{...privilegedRestHeaders(k),'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(body),signal:AbortSignal.timeout(2500)});
   if(!r.ok)throw new Error(`${table}_insert_${r.status}`);
   return r.json();
 }
 async function patch(base:string,k:string,table:string,params:Record<string,string>,body:any){
-  const r=await fetch(restUrl(base,table,params),{method:'PATCH',headers:{apikey:k,Authorization:`Bearer ${k}`,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(body),signal:AbortSignal.timeout(2500)});
+  const r=await fetch(restUrl(base,table,params),{method:'PATCH',headers:{...privilegedRestHeaders(k),'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(body),signal:AbortSignal.timeout(2500)});
   if(!r.ok)throw new Error(`${table}_patch_${r.status}`);
 }
 function semantic(path:string,b:any){

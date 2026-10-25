@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {SMOKE_HOLD,SMOKE_REQUIRED,SMOKE_SHIELD_MAX_AGE_MS,assessSmokeShield,assessSmokeProbes} from
+import {SMOKE_HOLD,SMOKE_REQUIRED,SMOKE_SHIELD_MAX_AGE_MS,assessSmokeShield,assessSmokeProbes,privilegedRestHeaders} from
  '../supabase/functions/production-smoke-sweep/smoke-policy.mjs';
 const NOW=Date.parse('2026-10-25T06:00:00Z');
 const healthyShield=()=>({
@@ -63,8 +63,9 @@ test('production Edge function recovers actual proofs without reinstating fail-o
  assert.match(source,/if\(!shield.admitted\)return Response.json/);
  assert.match(source,/assessSmokeProbes\(results\)/);
  assert.match(source,/sha256Hex\(supplied\)/);
- assert.match(source,/Deno\.env\.get\('SUPABASE_SERVICE_ROLE_KEY'\)/);
- assert.doesNotMatch(source,/SUPABASE_SECRET_KEYS/);
+ assert.match(source,/Deno\.env\.get\('SUPABASE_SECRET_KEYS'\)/);
+ assert.match(source,/privilegedRestHeaders\(k\)/);
+ assert.doesNotMatch(source,/headers:\{apikey:k,Authorization:/);
  assert.match(source,/agent_type:'production_smoke_sweep'/);
  assert.match(source,/metadata:.*framework_version:'production_smoke_v289_fail_closed'/);
  assert.match(source,/governance:SMOKE_HOLD/);
@@ -74,4 +75,18 @@ test('production Edge function recovers actual proofs without reinstating fail-o
  assert.match(cli,/SMOKE_REQUIRED/);
  const checkout=readFileSync(new URL('../supabase/functions/create-checkout/index.ts',import.meta.url),'utf8');
  assert.match(checkout,/V272_CHARGES_ENABLED=false/);
+});
+
+test('V289.1: server-side sb_secret_ key is never put into Bearer Authorization',()=>{
+  const secret='sb_secret_'+ 'a'.repeat(32);
+  const modern=privilegedRestHeaders(secret);
+  assert.deepEqual(modern,{apikey:secret});
+  assert.equal('Authorization' in modern,false);
+  const legacy='aaa.bbb.ccc'.repeat(3).replaceAll('caa','caa');
+  const jwt='headerfragment.payloadfragment.signaturefragment';
+  assert.deepEqual(privilegedRestHeaders(jwt),
+    {apikey:jwt,Authorization:'Bearer '+jwt});
+  for(const invalid of ['',null,'sb_publishable_'+ 'a'.repeat(30),'not-a-credential','sb_secret_!wrong']){
+    assert.throws(()=>privilegedRestHeaders(invalid),/server_credential_invalid/);
+  }
 });
