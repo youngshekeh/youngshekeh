@@ -62,22 +62,26 @@ test('V266 source status labels verified weekend closure without reporting quote
   data:{...packet,governance:{...packet.governance,capital_permission:'1R'}}},sat).state,'SOURCE UNAVAILABLE');
  assert.equal(assessMarketStatusFeed('macro',{response:{ok:false,status:503},data:{ok:false}},sat).state,'SOURCE UNAVAILABLE');
 });
-test('all three read-only sources show distinct verified coverage',()=>{
- for(const [kind,packet,count] of [['spot',spot(),2],['macro',macro(),2],['quarterly',historical(),9]]){
+test('all read-only sources report actual coverage without counting unlicensed Bitcoin',()=>{
+ for(const [kind,packet,count,expected] of [
+   ['spot',spot(),1,2],['macro',macro(),2,2],['quarterly',historical(),9,9]
+ ]){
   const r=assessMarketStatusFeed(kind,wrap(packet),now);
   assert.equal(r.count,count);
-  assert.equal(r.expected,count);
+  assert.equal(r.expected,expected);
   assert.equal(r.available,true);
-  assert.equal(r.full,true);
-  assert.match(r.state,/VERIFIED RESEARCH/);
+  assert.equal(r.full,count===expected);
+  assert.match(r.state,count===expected?/VERIFIED RESEARCH/:/PARTIAL RESEARCH/);
   assert.equal(r.risk,'WAIT / 0R · NOT BROKER LIVE');
   assert.equal(r.licensed_for_commercial_resale,false);
  }
 });
-test('Gold and Bitcoin source timestamps remain individually verified',()=>{
+test('Gold source timestamp is verified while unlicensed BTC receipt is withheld',()=>{
  const a=assessMarketStatusFeed('spot',wrap(spot()),now);
  assert.match(a.detail,/Gold source timestamp valid/);
- assert.match(a.detail,/receipt valid, not a provider market timestamp/);
+ assert.doesNotMatch(a.detail,/receipt valid, not a provider market timestamp/);
+ assert.equal(a.count,1);
+ assert.equal(a.full,false);
  assert.equal(a.observed_at,at(now-12000));
 });
 test('a partial macro outage never implies 2/2 or certified commercial feed',()=>{
