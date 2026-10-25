@@ -1,0 +1,28 @@
+name: V295 QA Transport Truth and Production Evidence
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'supabase/recovery/v295_qa_matrix_transport_truth.sql'
+      - 'src/v295-qa-transport-truth.mjs'
+      - 'tests/v295-qa-transport-truth.test.mjs'
+      - '.github/workflows/v295-qa-transport-truth.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa-transport-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: node --check src/v295-qa-transport-truth.mjs
+      - run: node --test tests/v295-qa-transport-truth.test.mjs tests/v287-qa-observation.test.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
