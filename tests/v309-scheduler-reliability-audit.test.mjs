@@ -78,7 +78,7 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('V309 observed 58 active cron schedules have nominal peak six starts/minute, not 58',()=>{
  assert.equal(observed.length,58);
  const v=auditNominalCronStarts(observed);
- assert.equal(v.ok,true);
+ assert.equal(v.ok,true,JSON.stringify(v));
  assert.equal(v.active_jobs,58);
  assert.equal(v.nominal_peak_starts,6);
  assert.equal(v.actual_concurrent_jobs_certified,false);
@@ -143,7 +143,7 @@ test('V309 rejects stale, incomplete, duplicate, unordered or uncovered snapshot
 test('V309 preserves protected core schedule and payment restrictions',()=>{
  assert.match(read('src/checkout.ts'),/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
  assert.match(read('supabase/functions/create-checkout/index.ts'),/V272_CHARGES_ENABLED=false/);
- assert.match(read('src/v306-core-recovery-admission.mjs'),/EXPECTED_SCHEDULE='11,26,41,56 * * * *'/);
+ assert.ok(read('src/v306-core-recovery-admission.mjs').includes("EXPECTED_SCHEDULE='11,26,41,56 * * * *'"));
  assert.match(read('src/v307-heartbeat-incident-admission.mjs'),/certified_private_kernel:false/);
  assert.doesNotMatch(read('src/v309-scheduler-reliability-audit.mjs'),
   /cron.alter_job|cron.unschedule|pg_terminate_backend|execute_trade|create-checkout/);
