@@ -12,16 +12,17 @@
       <div class="label">THE FATHER ANALYTICS · MEMBER</div>
       <h1>Member access.</h1>
       <p class="muted">
-        Your password is sent directly from this browser to the existing
-        Supabase Auth project.
+        Sign in with the email and password linked to your account.
       </p>
       <section class="card" style="max-width: 560px">
+        <label for="email">Email</label>
         <input
           id="email"
           type="email"
           autocomplete="email"
           placeholder="Email"
         />
+        <label for="password">Password</label>
         <input
           id="password"
           type="password"
@@ -34,7 +35,7 @@
             Clear session
           </button>
         </div>
-        <div id="result" class="muted" style="margin-top: 12px">
+        <div id="result" class="muted" role="status" aria-live="polite" style="margin-top: 12px">
           Waiting for sign-in.
         </div>
       </section>

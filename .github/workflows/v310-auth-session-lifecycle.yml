@@ -1,0 +1,39 @@
+name: V310 Auth Cancellation and Strict Owner MFA
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/auth-session-lifecycle.mjs'
+      - 'src/member.ts'
+      - 'src/owner.ts'
+      - 'member/index.html'
+      - 'owner/index.html'
+      - 'tests/fixtures/auth-page-harness.mjs'
+      - 'tests/v310-auth-session-lifecycle.test.mjs'
+      - 'scripts/v310-auth-browser-qa.mjs'
+      - '.github/workflows/v310-auth-session-lifecycle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth-lifecycle-and-chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node --check src/auth-session-lifecycle.mjs
+      - run: node --check scripts/v310-auth-browser-qa.mjs
+      - run: node --test tests/v310-auth-session-lifecycle.test.mjs tests/v173-owner-paper-flow.test.mjs tests/v284-member-session-proof.test.mjs
+      - run: npm install --no-save --no-package-lock playwright@1.56.1
+      - run: npm run build
+      - run: |
+          (npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/v310-preview.log 2>&1 &)
+      - run: node scripts/v310-auth-browser-qa.mjs
+      - run: |
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
