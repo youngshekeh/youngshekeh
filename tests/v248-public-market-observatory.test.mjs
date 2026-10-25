@@ -12,12 +12,12 @@ const packet={
   bitcoin:{symbol:'BTCUSD',currency:'USD',type:'SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED',source:'Coinbase',price:82001,source_updated_at:null,observed_at:'2026-10-22T19:49:55.000Z',broker_verified:false,execution_quote:false}
  }
 };
-test('valid independent references are research only with distinct timestamp meaning',()=>{
+test('public reference Gold remains research only and unlicensed Bitcoin is withheld',()=>{
  const r=currentResearchObservations(packet,now);
- assert.equal(r.count,2);assert.equal(r.order_submission,false);
+ assert.equal(r.count,1);assert.equal(r.order_submission,false);
  assert.equal(r.capital_permission,'0R');
  assert.equal(r.provider_source_time_gold,packet.assets.gold.source_updated_at);
- assert.equal(r.provider_source_time_bitcoin,null);
+ assert.equal(r.provider_source_time_bitcoin,null);assert.equal(r.bitcoin,null);
 });
 test('expired gold source or bitcoin HTTP receipt is immediately withheld',()=>{
  const old=currentResearchObservations(packet,now+121000);
