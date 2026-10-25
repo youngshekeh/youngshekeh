@@ -13,7 +13,7 @@ export default async function handler(req,res){
  if(cached&&now<until)return res.status(cached.ok?200:503).json(cached);
  if(!inFlight)inFlight=inspectPrivateMissionRecovery({
   getToken:getVercelOidcToken
- }).then(x=>{cached=x;until=Date.now()+90000;return x})
+ }).then(x=>{const observedAt=new Date().toISOString();until=Date.now()+90000;cached={...x,observed_at:observedAt,observation_ttl_seconds:90};return cached})
    .finally(()=>{inFlight=null});
  const proof=await inFlight;
  return res.status(proof.ok?200:503).json(proof);
