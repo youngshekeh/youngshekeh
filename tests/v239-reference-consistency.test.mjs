@@ -32,9 +32,11 @@ function fixture(packet){
  tick:ms=>{for(const t of [...timers.values()])if(t.ms===ms)t.fn();}};
 }
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
-test('both actual displays accept bounded clock skew and reject beyond five seconds',async()=>{
+test('both actual displays keep BTC unlicensed while Gold accepts bounded clock skew',async()=>{
  const f=fixture(sample(NOW+2000));await settle();
- assert.match(f.nodes['pmr-status'].textContent,/2 SOURCES/);assert.equal(f.nodes.independentLaneState.textContent,'2/2 PUBLIC SOURCES');
+ assert.match(f.nodes['pmr-status'].textContent,/PARTIAL SOURCES/);assert.equal(f.nodes.independentLaneState.textContent,'1/2 PUBLIC SOURCES');
+ assert.equal(f.nodes['pmr-btc'].textContent,'Unavailable');
+ assert.match(f.nodes['pmr-btc-info'].textContent,/licensed source required/);
  assert.equal(verifiedPublicReferences(sample(NOW+5001),NOW).count,0);
 });
 test('prices expire together while hidden and while the next network request is stalled, without extra polling',async()=>{
