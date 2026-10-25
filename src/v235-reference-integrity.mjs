@@ -1,4 +1,5 @@
 // V235: audited, independently sourced spot observations for research UI only.
+import {publiclyDisplayableBitcoin} from './v293-public-btc-license.mjs';
 const positive=v=>typeof v==='number'&&Number.isFinite(v)&&v>0;
 const recent=(at,now,maxAge)=>{
  const t=Date.parse(String(at||''));
@@ -14,10 +15,6 @@ export function verifiedPublicReferences(packet,now=Date.now()){
   &&g?.source==='Gold API'&&g?.broker_verified===false&&g?.execution_quote===false
   &&positive(g?.price)&&recent(g?.source_updated_at,now,120000)
   ?Object.freeze({value:g.price,source:'Gold API',label:'INDICATIVE SPOT',at:g.source_updated_at,time_type:'source'}):null;
- const bitcoin=b?.symbol==='BTCUSD'&&b?.currency==='USD'
-  &&b?.type==='SPOT_RECEIPT_NOT_SOURCE_TIMESTAMPED'&&b?.source==='Coinbase'
-  &&b?.source_updated_at==null&&b?.broker_verified===false&&b?.execution_quote===false
-  &&positive(b?.price)&&recent(b?.observed_at,now,30000)
-  ?Object.freeze({value:b.price,source:'Coinbase',label:'SPOT REFERENCE',at:b.observed_at,time_type:'receipt'}):null;
+ const bitcoin=publiclyDisplayableBitcoin(b); // Never enable end-user display from receipt-only Coinbase data.
  return Object.freeze({gold,bitcoin,count:Number(Boolean(gold))+Number(Boolean(bitcoin))});
 }
