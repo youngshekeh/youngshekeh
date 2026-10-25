@@ -11,10 +11,10 @@ const MIN_INTERVAL_MS=10*60_000;
 async function incident(){try{const r=await fetch('https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/public-v69-database-incident-shield',{headers:{Accept:'application/json'},signal:AbortSignal.timeout(1500)});return r.ok?await r.json():null}catch{return null}}
 
 function serverKey(){
-  const b=Deno.env.get('SUPABASE_SECRET_KEYS');
-  if(b){try{const p=JSON.parse(b);if(p?.default)return p.default}catch{}}
-  const k=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if(!k)throw new Error('server key unavailable');
+  // PostgREST requires a Bearer JWT on this internal service path.
+  // Never pass a non-JWT sb_secret_ API key in Authorization.
+  const k=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+  if(k.split('.').length!==3)throw new Error('server_jwt_unavailable');
   return k;
 }
 async function sha256Hex(s:string){
