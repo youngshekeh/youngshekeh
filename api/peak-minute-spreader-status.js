@@ -1,4 +1,5 @@
 import { getVercelOidcToken } from '@vercel/oidc';
+import { checkHeartbeatIncident } from '../src/v307-heartbeat-incident-admission.mjs';
 
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v1461-peak-spreader-status';
 
@@ -25,6 +26,19 @@ export default async function handler(req,res){
   if(req.method!=='GET'){
     res.setHeader('Allow','GET');
     return failClosed(res,405,'method_not_allowed');
+  }
+
+  // V308: a *current, independently consistent* incident can defer this
+  // expensive private diagnostic. Missing/stale/contradictory evidence
+  // automatically falls through to the original OIDC authenticated path.
+  const incident=await checkHeartbeatIncident();
+  if(incident.defer_private_kernel){
+    res.setHeader('Retry-After','300');
+    res.setHeader('X-TFA-Diagnostic','READONLY-INCIDENT-LOAD-SHED');
+    console.warn('V308_PRIVATE_DIAGNOSTIC_DEFERRED',{bridge:'V146.1',
+      private_request_attempted:false,at:new Date().toISOString()});
+    return failClosed(res,503,'verified_database_incident_diagnostic_deferred',
+      'private_diagnostic_request_skipped');
   }
 
   let oidcToken='';
