@@ -51,7 +51,7 @@ if(root){
   headline.append(label,subtitle);item.append(headline);
   if(!zone){
    const p=document.createElement('p');p.className='ob-quarter-empty';
-   p.textContent='Quarterly range unavailable · incomplete or unverified daily bars.';
+   p.textContent=asset==='bitcoin'?'Bitcoin quarterly ranges withheld · licensed commercial data source required.':'Quarterly range unavailable · incomplete or unverified daily bars.';
    item.append(p);return item;
   }
   const macro=(asset==='wti'||asset==='dxy')?verifyMacroPacket(macroPacket,now)[asset]:null;
