@@ -61,8 +61,9 @@ test('V292 fixed-origin read-only fetch, no user-supplied target, no release per
  assert.equal(seen.opts.redirect,'error');
  assert.ok(seen.opts.signal instanceof AbortSignal);
  assert.equal(BTC_RESEARCH_GOVERNANCE.live_order_submission_enabled,false);
- const prices=readFileSync(new URL('../supabase/functions/capture-live-markets-snapshot/index.ts',import.meta.url),'utf8');
- assert.match(prices,/public-market-freshness-gate/);
+ const adapter=readFileSync(new URL('../src/v292-btc-24h-source.mjs',import.meta.url),'utf8');
+ assert.match(adapter,/combined_weekday_snapshot_not_overwritten:true/);
+ assert.doesNotMatch(adapter,/live_markets_snapshots|INSERT INTO|net\\.http_post/);
  const checkout=readFileSync(new URL('../src/checkout.ts',import.meta.url),'utf8');
  assert.match(checkout,/CHECKOUT_SERVER_GUARD_DEPLOYED=false/);
 });
