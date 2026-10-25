@@ -40,6 +40,21 @@ test('V306.1 absent, partial or stale global logs do not certify recovery',()=>{
   assert.equal(d.eligible_for_manual_v304_review,false);
  }
 });
+test('V311 reject zero-event, duplicate-id and internally impossible provider log evidence',()=>{
+ const invalid=[
+  {...schedulerEvidence,sampled_events:0},
+  {...schedulerEvidence,startup_timeout_job_ids:[33,33]},
+  {...schedulerEvidence,sampled_events:1,startup_timeout_job_ids:[33,39]},
+  {...schedulerEvidence,sampled_events:1.5},
+ ];
+ for(const s of invalid){
+  const d=check({...ready,schedulerEvidence:s});
+  assert.ok(d.blockers.includes('GLOBAL_SCHEDULER_LOG_COVERAGE_NOT_VERIFIED'));
+  assert.equal(d.eligible_for_manual_v304_review,false);
+  assert.equal(d.authorized_to_apply_migration,false);
+ }
+});
+
 test('V306.1 reject stale, drifted, duplicate or incomplete core history',()=>{
  for(const item of [
   {...ready,catalog:{...catalog,source_md5:'drift'}},

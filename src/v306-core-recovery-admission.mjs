@@ -55,7 +55,12 @@ export function assessCoreRecoveryAdmission({
     && timestamp(s.checked_at)-timestamp(s.window_start)>=10*60000
     && Array.isArray(s?.startup_timeout_job_ids)
     && s.startup_timeout_job_ids.every(id=>Number.isSafeInteger(id)&&id>0)
-    && Number.isSafeInteger(s?.sampled_events)&&s.sampled_events>=0;
+    // V311: a "complete" but empty log response cannot prove coverage.
+    // Unique job IDs cannot outnumber events or contain duplicate IDs.
+    // This is only a structural sanity check; external logs still need review.
+    && Number.isSafeInteger(s?.sampled_events)&&s.sampled_events>0
+    && s.startup_timeout_job_ids.length<=s.sampled_events
+    && new Set(s.startup_timeout_job_ids).size===s.startup_timeout_job_ids.length;
   if(!logWindowValid)blockers.push('GLOBAL_SCHEDULER_LOG_COVERAGE_NOT_VERIFIED');
   if(logWindowValid&&s.startup_timeout_job_ids.length>0)
     blockers.push('GLOBAL_SCHEDULER_STARTUP_FAILURES');
