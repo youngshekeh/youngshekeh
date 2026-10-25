@@ -1,4 +1,5 @@
 import './styles.css';
+import { homeQaLabel } from './v286-public-qa-label.mjs';
 import './autonomous.css';
 import './mission.css';
 import './institutional-home.css';
@@ -890,7 +891,7 @@ async function loadMissionBrief() {
     missionText('briefHeadline', changed?.headline ?? 'Governed intelligence brief unavailable.');
     missionText('briefMatter', changed?.confluence_tension ?? 'Evidence remains gated until verified.');
     missionText('briefQuality', changed?.data_quality ?? 'WITHHELD');
-    missionText('briefQA', changed?.qa_score ?? 'VERIFYING');
+    missionText('briefQA', homeQaLabel(changed?.qa_score));
     missionText('briefPhase', changed?.phase ?? 'WITHHELD');
     missionText('briefTimestamp', generated && !Number.isNaN(generated.getTime()) ? generated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'WITHHELD');
 
@@ -910,7 +911,7 @@ async function loadMissionBrief() {
 
     missionText('calibrationAccuracy', calibration?.public_accuracy ?? 'WITHHELD');
     missionText('calibrationReason', calibration?.reason ?? 'Empirical sample threshold not met.');
-    missionText('calibrationQA', calibration?.qa_score ?? 'VERIFYING');
+    missionText('calibrationQA', homeQaLabel(calibration?.qa_score));
   } catch {
     missionText('briefHeadline', 'Public market references continue independently.');
     missionText('briefMatter', 'The private research brief is unavailable. Public spot references remain separate from model conclusions, execution and forecast scores.');
@@ -939,12 +940,21 @@ async function loadMissionBrief() {
 }
 
 let missionRefreshInFlight = false;
+// Keep the full diagnostic matrix available on local development only;
+// production visitors get the source-labelled mission QA summary instead.
+function allowDeepQaForThisHost() {
+  return typeof location !== 'undefined' &&
+    (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+}
 async function refreshMissionExperience() {
   if (missionRefreshInFlight) return;
   missionRefreshInFlight = true;
   try {
+    // V286: a public 60-second refresh must never spawn a 107-probe private QA
+    // matrix. The full matrix remains available in local diagnostics and via
+    // the precheck-gated /status workflow; the homepage uses the mission pulse.
     await loadMissionBrief();
-    await loadQaMatrix();
+    if (allowDeepQaForThisHost()) await loadQaMatrix();
   } finally {
     missionRefreshInFlight = false;
   }
