@@ -18,15 +18,15 @@ if(goldText&&btcText){
   set('ob-gold',refs.gold?format(refs.gold.value):'Unavailable');
   set('ob-btc',refs.bitcoin?format(refs.bitcoin.value):'Unavailable');
   status('ob-gold-state',refs.gold?'CURRENT · INDICATIVE':'UNAVAILABLE',refs.gold?'online':'unavailable');
-  status('ob-btc-state',refs.bitcoin?'RECEIPT CURRENT':'UNAVAILABLE',refs.bitcoin?'online':'unavailable');
+  status('ob-btc-state',refs.bitcoin?'RECEIPT CURRENT':'LICENSE HOLD',refs.bitcoin?'online':'unavailable');
   set('ob-gold-time',refs.gold?time(refs.gold.at):'Not verified');
   set('ob-btc-time',refs.bitcoin?time(refs.bitcoin.at):'Not verified');
   set('ob-gold-proof',refs.gold
    ?'Gold API source timestamp verified within 120 seconds. This remains an indicative reference, not a bid/ask.'
    :'Current provider-timestamped Gold spot is unavailable. No last known price shown.');
   set('ob-btc-proof',refs.bitcoin
-   ?'Coinbase spot HTTP receipt is recent. Provider price timestamp was not supplied. Not a broker quote.'
-   :'No current Coinbase HTTP receipt. Provider price time is not available.');
+   ?'Licensed Bitcoin reference accepted with documented provenance.'
+   :'Bitcoin live and derived reference display withheld · licensed source required.');
   // No stale price survives expiry; tab-local prior observations are labelled history.
   set('ob-chart-summary',refs.count===0
    ?'Sources unavailable right now. Existing traces, if any, are historical tab observations only.'
