@@ -1,5 +1,6 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 import { preflightV285QaAdmission } from '../src/v285-qa-upstream-admission.mjs';
+import {QA_PRIVATE_UPSTREAM_TIMEOUT_MS} from '../src/v296-qa-deadline-envelope.mjs';
 
 const TARGET='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v115-autonomous-qa';
 // V225: one expensive private QA evaluation per Vercel worker instance.
@@ -56,7 +57,7 @@ export default async function handler(req,res){
         'User-Agent':'THE-FATHER-ANALYTICS-PUBLIC-SHELL/115.1'
       },
       cache:'no-store',
-      signal:AbortSignal.timeout(30000)
+      signal:AbortSignal.timeout(QA_PRIVATE_UPSTREAM_TIMEOUT_MS)
     });
     const body=await upstream.json().catch(()=>null);
     if(!upstream.ok||body?.ok!==true)qaRetryAt=Date.now()+QA_NEGATIVE_COOLDOWN_MS;
