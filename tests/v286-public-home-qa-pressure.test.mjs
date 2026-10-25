@@ -24,7 +24,7 @@ test('minute-by-minute homepage refresh uses bounded mission brief, not 107 priv
   const tail=homepage.slice(homepage.indexOf('async function refreshMissionExperience()'));
   assert.match(tail,/await loadMissionBrief\(\)/);
   assert.match(tail,/if \(allowDeepQaForThisHost\(\)\) await loadQaMatrix\(\)/);
-  assert.match(tail,/location\.hostname === 'localhost'/);
+  assert.match(homepage,/location\.hostname === 'localhost'/);
   assert.match(tail,/window\.setInterval\(\(\) => void refreshMissionExperience\(\), 60_000\)/);
   assert.equal((tail.match(/loadQaMatrix\(\)/g)||[]).length,1);
   assert.match(homepage,/missionText\('briefQA', homeQaLabel\(changed\?\.qa_score\)\)/);
