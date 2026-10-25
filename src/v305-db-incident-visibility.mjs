@@ -4,7 +4,8 @@ import {freshEvidence} from './launch-readiness.mjs';
 export function classifyPublicDatabaseIncident(readiness,now=Date.now()){
  const body=readiness?.data||{},response=readiness?.response;
  const current=response?.ok===true && body.ok===true &&
-  freshEvidence(body.generated_at,now);
+  freshEvidence(body.generated_at,now) &&
+  (body.database_incident?.active===true || body.database_incident?.active===false);
  const reported=current && body.database_incident?.active===true;
  const explicitlyClear=current && body.database_incident?.active===false;
  const state=reported?'DATABASE INCIDENT REPORTED · LAUNCH HOLD':
