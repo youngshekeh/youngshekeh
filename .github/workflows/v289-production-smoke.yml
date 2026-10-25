@@ -1,0 +1,31 @@
+name: V289 Recover Authentic Production Smoke
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'supabase/functions/production-smoke-sweep/**'
+      - 'tests/v289-production-smoke.test.mjs'
+      - '.github/workflows/v289-production-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke-policy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Source syntax and verified smoke admission
+        run: |
+          node --check supabase/functions/production-smoke-sweep/smoke-policy.mjs
+          node --test tests/v289-production-smoke.test.mjs tests/v268-public-release-smoke.test.mjs
+      - name: Preserve commercial and capital locks
+        run: |
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts
+          grep -Fq "capital_permission:'0R'" supabase/functions/production-smoke-sweep/smoke-policy.mjs
