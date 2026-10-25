@@ -1,0 +1,31 @@
+name: V287 QA Evidence Truth
+on:
+  pull_request:
+    branches: [the-father-analytics-deploy]
+    paths:
+      - 'src/status.ts'
+      - 'src/v287-qa-observation.mjs'
+      - 'tests/v287-qa-observation.test.mjs'
+      - '.github/workflows/v287-qa-observation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qa-truth-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Syntax test
+        run: node --check src/v287-qa-observation.mjs
+      - name: Private QA semantics and prior regression
+        run: node --test tests/v287-qa-observation.test.mjs tests/v286-public-home-qa-pressure.test.mjs tests/v285-qa-upstream-admission.test.mjs
+      - name: Fail-closed payment and trading barriers
+        run: |
+          grep -Fq 'V272_CHARGES_ENABLED=false' supabase/functions/create-checkout/index.ts
+          grep -Fq 'CHECKOUT_SERVER_GUARD_DEPLOYED=false' src/checkout.ts

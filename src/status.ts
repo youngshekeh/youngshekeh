@@ -7,6 +7,7 @@ import {probeStatusDependencies} from './status-dependency-admission.mjs';
 import {inspectResearchSources} from './status-market-lane.mjs';
 import {buildSupabaseSupportPacket} from './v259-support-escalation.mjs';
 import {readPublicAcceptance} from './public-acceptance-connection.mjs';
+import {describeQaObservation} from './v287-qa-observation.mjs';
 
 const timeoutMs = 7_000;
 const missing = () => ({ response: { ok: false, headers: { get: () => null } }, data: { ok: false, state: 'UNAVAILABLE' } });
@@ -69,9 +70,10 @@ async function load() {
     show('auth', auth.data?.state || 'UNAVAILABLE', gate.checks.auth);
     show('ready', readiness.data?.state || 'UNAVAILABLE', gate.checks.final_acceptance);
     const summary = qa.data?.summary;
+    const qaTruth = describeQaObservation({admitted:qaAdmission.admitted,result:qa});
     show('brain', gate.checks.private_qa
       ? 'PASS ' + summary.passed + '/' + summary.total
-      : (qaAdmission.admitted ? (qa.data?.state || 'UNVERIFIED') : 'DEFERRED · PREREQUISITES UNHEALTHY'), gate.checks.private_qa);
+      : (qaAdmission.admitted ? qaTruth.label : 'DEFERRED · PREREQUISITES UNHEALTHY · NOT CERTIFIED'), gate.checks.private_qa);
     show('identity', gate.checks.workload_identity
       ? 'VERCEL OIDC · VERIFIED' : (qaAdmission.admitted ? 'UNVERIFIED' : 'DEFERRED · NOT CERTIFIED'), gate.checks.workload_identity);
     show('billing', billing.data?.state || 'UNAVAILABLE', gate.checks.billing);
@@ -112,6 +114,7 @@ async function load() {
       ' · Incident-aware probe admission: ' + privateProbe.admission.reason +
       ' · Private auth/billing probes: ' + privateProbe.requests_sent + ' of 2' +
       ' · Private QA: ' + (qaAdmission.admitted ? 'REQUESTED AFTER PRECHECK PASS' : 'DEFERRED WITHOUT MAKING A PRIVATE QA REQUEST') +
+      ' · QA evidence class: ' + qaTruth.kind +
       ' · Public Gold: ' + (gate.checks.public_gold_data ? 'FRESH BROKER TICK' : 'FRESH BROKER TICK NOT VERIFIED') +
       ' · V180 kernel: ' + (gate.checks.continuous_kernel ? 'RECENT SUCCESS' : 'NO VERIFIED RECEIPT') +
       ' · Trading permission: WAIT / 0R. No live orders authorized.';
