@@ -36,8 +36,9 @@ for(const route of ['gold-live','live-markets','visual-lab']){
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(calls,1);
   assert.equal(nodes['pmr-gold'].textContent,'$4,060.00');
-  assert.equal(nodes['pmr-btc'].textContent,'$81,000.00');
-  assert.equal(nodes['pmr-status'].textContent,'2 SOURCES RESPONDING');
+  assert.equal(nodes['pmr-btc'].textContent,'Unavailable');
+  assert.match(nodes['pmr-btc-info'].textContent,/licensed source required/);
+  assert.equal(nodes['pmr-status'].textContent,'PARTIAL SOURCES');
   document.hidden=true;clock=NOW+120001;
   for(const t of intervals.values())t.fn();
   assert.equal(calls,1,'hidden pages must not request another provider read');
