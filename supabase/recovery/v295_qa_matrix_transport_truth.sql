@@ -287,10 +287,10 @@ $function$
       v_failed := (b#>>'{summary,failed}')::integer;
       v_total := (b#>>'{summary,total}')::integer;
       select count(*)::integer,
-        count(*) filter(where t->>'pass'='true')::integer,
-        count(*) filter(where t->>'pass'='false')::integer
+        count(*) filter(where test_entry->>'pass'='true')::integer,
+        count(*) filter(where test_entry->>'pass'='false')::integer
       into v_actual_total,v_actual_passed,v_actual_failed
-      from jsonb_array_elements(b->'tests') t;
+      from jsonb_array_elements(b->'tests') AS tests(test_entry);
       v_matrix_valid := v_total between 100 and 1000
         and v_total=v_passed+v_failed
         and v_actual_total=v_total
