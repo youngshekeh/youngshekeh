@@ -63,8 +63,7 @@ const observed=String.raw`13|*/5 * * * 1-5
 6|7,27,47 * * * *
 81|8-59/10 * * * *
 32|8,23,38,53 * * * *
-95|9-59/10 * * * *`.trim().split('
-').map(line=>{
+95|9-59/10 * * * *`.trim().split('\n').map(line=>{
  const [id,schedule]=line.split('|');
  return {jobid:Number(id),schedule,active:true};
 });
