@@ -71,7 +71,7 @@ test('V294 actual source and UI never claim a licensed BTC derived-range quote',
  const ui=readFileSync(new URL('../src/quarterly-observatory.mjs',import.meta.url),'utf8');
  const view=readFileSync(new URL('../market-observatory/index.html',import.meta.url),'utf8');
  const visual=readFileSync(new URL('../src/market-observatory.mjs',import.meta.url),'utf8');
- assert.doesNotMatch(api,/api\\.exchange\\.coinbase\\.com|parseCoinbaseQuarterBars|sources\\.push\\(\\{asset:'bitcoin'/);
+ assert.doesNotMatch(api,/api\.exchange\.coinbase\.com|parseCoinbaseQuarterBars|sources\.push\(\{asset:'bitcoin'/);
  assert.match(api,/enforcePublicQuarterlyRights/);
  assert.match(ui,/Bitcoin quarterly ranges withheld/);
  assert.match(view,/Bitcoin spot and derived historical ranges are withheld/);
