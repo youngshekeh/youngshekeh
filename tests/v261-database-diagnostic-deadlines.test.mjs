@@ -35,6 +35,8 @@ test('outer deadlines leave room for SQL, Edge auth, and a truthful bounded resu
  assert.deepEqual(hosting.functions,{
   'api/market-feed.js':{maxDuration:20},
   'api/public-recovery-triage.js':{maxDuration:20},
+  // V296: independently bounded private QA, still strictly subject to incident admission.
+  'api/autonomous-qa-matrix.js':{maxDuration:50},
   'api/connection-pressure-shadow.js':{maxDuration:40},
   'api/peak-minute-spreader-status.js':{maxDuration:40}
  });
