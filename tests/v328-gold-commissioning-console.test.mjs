@@ -45,7 +45,7 @@ test('null backend fails closed with four visible gates and WAIT/0R',()=>{
  assert.equal(x.status,'DATA_NOT_VERIFIED');
  assert.equal(x.proof,'NO_VERIFIABLE_TICK_CONTRACT');
  assert.equal(x.stages.length,4);
- assert.deepEqual(x.stages.map(s=>s.status),
+ assert.deepEqual(Array.from(x.stages,s=>s.status),
    ['waiting','unverified','unverified','unverified']);
  assert.equal(x.machineExecutionAllowed,false);
  assert.equal(x.commercialActivationAllowed,false);
