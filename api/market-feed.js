@@ -1,4 +1,5 @@
 import {createFeedPressureGate} from '../src/public-feed-pressure.mjs';
+import {enforceQuoteTimeTruth} from '../src/v314-market-time-truth.mjs';
 
 const BASE='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/';
 // V264: allow the Gold aggregator its full 8.5s deadline plus bounded network overhead.
@@ -33,7 +34,10 @@ const feeds=createFeedPressureGate({
       const body=await response.json().catch(()=>null);
       if(!response.ok || !body || typeof body!=='object' || Array.isArray(body)
         || body.ok===false)throw new Error('feed_unavailable');
-      return body;
+      // V314: an HTTP 200 with ok=true is not proof of fresh market quotes.
+      // For the governed Gold/DXY/Brent spines, fail closed to WAIT / 0R
+      // when the source timestamp is missing or outside the accepted window.
+      return enforceQuoteTimeTruth(feed,body);
     }finally{clearTimeout(timer);}
   }
 });
@@ -54,7 +58,11 @@ export default async function handler(req,res){
   }
   const observed=await feeds.observe(feed);
   res.setHeader('X-TFA-Feed-Pressure',observed.mode);
-  if(observed.ok)return res.status(200).json(observed.body);
+  if(observed.ok){
+    if(observed.body?.proxy_freshness?.state)
+      res.setHeader('X-TFA-Quote-Time-State',observed.body.proxy_freshness.state);
+    return res.status(200).json(observed.body);
+  }
   // Per-instance local failure suppression, NOT a predicted database recovery time.
   res.setHeader('Retry-After',String(Math.max(1,Math.min(60,Number(observed.retry_after_seconds)||4))));
   return res.status(503).json({ok:false,state:'UNAVAILABLE',error:'public_feed_unavailable',
