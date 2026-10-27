@@ -57,6 +57,7 @@ on:
       - 'scripts/v329-db-transport-triage.mjs'
       - 'docs/release/V329-DATABASE-TRANSPORT-RECOVERY-CHECKPOINT.md'
       - 'docs/operations/evidence/v329-20261027-redacted-sql-transport.json'
+      - 'docs/operations/evidence/v329-20261027-sql-flapping-followup.json'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
