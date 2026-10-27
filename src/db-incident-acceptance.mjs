@@ -4,7 +4,7 @@
 export const DB_INCIDENT_SCHEMA='TFA-DB-RECOVERY-V217';
 const MAX_EVIDENCE_AGE_MS=10*60_000;
 const MAX_SUCCESS_AGE_MS=15*60_000;
-const ERROR_TYPES=Object.freeze(['PGRST002','PGRST003','POOLER_AUTH_TIMEOUT','57014','CRON_STARTUP_TIMEOUT','MANAGEMENT_SQL_TIMEOUT','KERNEL_SEAL','POLICY']);
+const ERROR_TYPES=Object.freeze(['PGRST002','PGRST003','POOLER_AUTH_TIMEOUT','57014','CRON_STARTUP_TIMEOUT','MANAGEMENT_SQL_TIMEOUT','KERNEL_SEAL','POLICY','POSTGREST_WARP_TIMEOUT','08006','08P01']);
 function validTime(s){const t=Date.parse(String(s??''));return Number.isFinite(t)?t:null;}
 function fresh(s,now=Date.now(),ttl=MAX_EVIDENCE_AGE_MS){
  const t=validTime(s);return t!==null&&t<=now+60_000&&now-t<=ttl;
@@ -20,6 +20,14 @@ function classify(raw){
  if(/\b57014\b/.test(s)||/canceling statement due to statement timeout/i.test(s))found.push('57014');
  if(/cron job \d+ job startup timeout/i.test(s))found.push('CRON_STARTUP_TIMEOUT');
  if(/Connection terminated due to connection timeout/i.test(s))found.push('MANAGEMENT_SQL_TIMEOUT');
+ // V329: production PostgREST Warp worker resets must count as actual
+ // transport recovery blockers, including when Postgres control-plane
+ // project status remains ACTIVE_HEALTHY.
+ if(/Warp server error:\s*Thread killed by timeout manager/i.test(s))
+   found.push('POSTGREST_WARP_TIMEOUT');
+ if(/\b08006\b/.test(s)||/could not (?:receive|send) data from client/i.test(s))
+   found.push('08006');
+ if(/\b08P01\b/.test(s))found.push('08P01');
  if(/\bKERNEL_SEAL\b/.test(s))found.push('KERNEL_SEAL');
  if(/\bPOLICY\b/.test(s))found.push('POLICY');
  return found;
