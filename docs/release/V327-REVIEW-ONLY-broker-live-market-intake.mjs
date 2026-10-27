@@ -17,12 +17,17 @@ function safePublicHealth(live){
    'BROKER_LIVE','BROKER_LAGGING','BROKER_STALE'
  ]);
  const state=allowed.has(live?.state)?live.state:'UNVERIFIED';
+ const ageMs=received?Date.now()-Date.parse(quote.observed_at):NaN;
  const fresh=received&&state==='BROKER_LIVE'&&
+   Number.isFinite(ageMs)&&ageMs>=-2000&&ageMs<3000&&
    live?.quality?.fresh===true&&
    typeof quote?.mid==='number'&&Number.isFinite(quote.mid)&&quote.mid>0;
+ // Never advertise BROKER_LIVE when provider quality flags are stale,
+ // clocks drift or the latest observed-at timestamp is old.
+ const publicState=state==='BROKER_LIVE'&&!fresh?'BROKER_STALE':state;
  return{
    ok:true,version:'v327-public-broker-commissioning-review',
-   state,first_tick_received:received,
+   state:publicState,first_tick_received:received,
    quote_fresh:fresh,
    quote_observed_at:received?quote.observed_at:null,
    quote_price:null,
