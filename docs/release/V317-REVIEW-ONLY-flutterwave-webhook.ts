@@ -77,7 +77,73 @@ if(eventType==='subscription.cancelled'){
     throw new Error('atomic_cancellation_commit_unavailable');
   return new Response('ok',{status:200,headers:{...cors,'Cache-Control':'no-store'}});
 }
-const txId=payload?.data?.id??payload?.id;if(!txId)return new Response('ok',{status:200,headers:cors});const vr=await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(String(txId))}/verify`,{headers:{Authorization:`Bearer ${flwKey}`,Accept:'application/json'}});const vp=await vr.json().catch(()=>null);if(!vr.ok||vp?.status!=='success'||vp?.data?.status!=='successful')return new Response('ok',{status:200,headers:cors});const v=vp.data;const txRef=String(v.tx_ref??'');let intent=txRef?await getOne(base,key,'checkout_intents',{select:'id,user_id,plan_id,amount,currency,status,provider_reference',provider:'eq.flutterwave',provider_reference:`eq.${txRef}`,limit:'1'}):null;let matchedSub:any=null;if(!intent){const customerId=v?.customer?.id!=null?String(v.customer.id):null;const email=v?.customer?.email?String(v.customer.email):null;matchedSub=await findSubscription(base,key,customerId,email)}const userId=intent?.user_id??matchedSub?.user_id??null;const planId=intent?.plan_id??matchedSub?.plan_id??null;if(!userId||!planId)return new Response('ok',{status:200,headers:cors});const [plan,mapping]=await Promise.all([getOne(base,key,'plans',{select:'id,price_monthly_usd,is_active',id:`eq.${planId}`,is_active:'eq.true',limit:'1'}),getOne(base,key,'billing_plan_mappings',{select:'plan_id,currency,provider_plan_id,is_active',provider:'eq.flutterwave',plan_id:`eq.${planId}`,is_active:'eq.true',limit:'1'})]);if(!plan||!mapping)return new Response('ok',{status:200,headers:cors});const expectedAmount=Number(intent?.amount??plan.price_monthly_usd);const expectedCurrency=String(intent?.currency??mapping.currency??'USD').toUpperCase();if(Number(v.amount)<expectedAmount||String(v.currency??'').toUpperCase()!==expectedCurrency)return new Response('ok',{status:200,headers:cors});if(intent&&txRef!==String(intent.provider_reference))return new Response('ok',{status:200,headers:cors});// The V317 paid-payment path has no independent ledger INSERT, checkout PATCH
+// V319: A 200 means either a deliberately ignored event or a durable ledger
+// commit. Incomplete evidence cannot be acknowledged as a completed payment.
+if(eventType!=='charge.completed')
+  return new Response('event ignored: not a completed charge',
+    {status:200,headers:{...cors,'Cache-Control':'no-store'}});
+const txId=payload?.data?.id;
+if(!/^[0-9]{1,18}$/.test(String(txId??'')))
+  return new Response('charge transaction ID missing: manual reconciliation required',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+const vr=await fetch(
+  `https://api.flutterwave.com/v3/transactions/${encodeURIComponent(String(txId))}/verify`,{
+    headers:{Authorization:`Bearer ${flwKey}`,Accept:'application/json'},
+    signal:AbortSignal.timeout(7500)
+  });
+if(!vr.ok)throw new Error('provider_transaction_verification_unavailable');
+const vp=await vr.json().catch(()=>null);
+if(vp?.status!=='success'||!vp.data)
+  throw new Error('provider_transaction_verification_invalid');
+if(String(vp.data.id??'')!==String(txId))
+  throw new Error('provider_transaction_id_mismatch');
+if(vp.data.status!=='successful'){
+  // A provider-confirmed failure is not a payment. Ambiguous states are
+  // not acknowledged as resolved and must be checked by reconciliation.
+  if(['failed','cancelled','canceled'].includes(String(vp.data.status).toLowerCase()))
+    return new Response('provider-confirmed charge failure: no entitlement',
+      {status:200,headers:{...cors,'Cache-Control':'no-store'}});
+  return new Response('payment not settled: reconciliation required',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+}
+const v=vp.data;
+const txRef=String(v.tx_ref??'');
+let intent=txRef?await getOne(base,key,'checkout_intents',{
+  select:'id,user_id,plan_id,amount,currency,status,provider_reference',
+  provider:'eq.flutterwave',provider_reference:`eq.${txRef}`,limit:'1'
+}):null;
+let matchedSub:any=null;
+if(!intent){
+  const customerId=v?.customer?.id!=null?String(v.customer.id):null;
+  matchedSub=await findSubscription(base,key,customerId,null);
+}
+const userId=intent?.user_id??matchedSub?.user_id??null;
+const planId=intent?.plan_id??matchedSub?.plan_id??null;
+if(!userId||!planId)
+  return new Response('unmatched successful charge: manual reconciliation required',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+const [plan,mapping]=await Promise.all([
+  getOne(base,key,'plans',{
+    select:'id,price_monthly_usd,is_active',id:`eq.${planId}`,is_active:'eq.true',limit:'1'
+  }),
+  getOne(base,key,'billing_plan_mappings',{
+    select:'plan_id,currency,provider_plan_id,is_active',
+    provider:'eq.flutterwave',plan_id:`eq.${planId}`,is_active:'eq.true',limit:'1'
+  })
+]);
+if(!plan||!mapping)
+  return new Response('successful charge plan mapping unverified',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+const expectedAmount=Number(intent?.amount??plan.price_monthly_usd);
+const expectedCurrency=String(intent?.currency??mapping.currency??'USD').toUpperCase();
+if(!Number.isFinite(Number(v.amount))||Number(v.amount)<expectedAmount
+   ||String(v.currency??'').toUpperCase()!==expectedCurrency)
+  return new Response('successful charge price/currency mismatch: manual reconciliation',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+if(intent&&txRef!==String(intent.provider_reference))
+  return new Response('successful charge reference mismatch: manual reconciliation',
+    {status:503,headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+// The V317 paid-payment path has no independent ledger INSERT, checkout PATCH
 // or membership RPC call. A single transaction commits all three.
 if(!V317_ATOMIC_PAYMENT_RPC_RELEASED)
   return new Response('atomic paid payment release pending', {
