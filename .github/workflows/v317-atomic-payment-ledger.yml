@@ -1,0 +1,157 @@
+name: V330 DB Failure Circuit and Commercial Atomic Safety Acceptance
+
+on:
+  push:
+    branches:
+      - security/v317-atomic-payment-receipts
+      - security/v318-cancellation-consistency
+      - security/v319-webhook-runtime-ack-safety
+      - security/v320-reconciliation-truth-audit
+      - security/v321-billing-liveness-release-gate
+      - security/v322-billing-transport-diagnostics
+      - security/v323-billing-incident-evidence-ledger
+      - security/v324-mfa-owner-incident-review
+      - security/v325-market-quote-integrity
+      - security/v326-mt5-first-tick-commissioning
+      - security/v327-broker-symbol-provenance
+      - security/v328-gold-commissioning-console
+      - security/v329-db-transport-timeout-recovery
+      - security/v330-db-pressure-circuit-breakers
+  pull_request:
+    branches:
+      - the-father-analytics-deploy
+    paths:
+      - 'docs/release/V317-REVIEW-ONLY-ATOMIC-FLUTTERWAVE.sql'
+      - 'docs/release/V317-REVIEW-ONLY-flutterwave-webhook.ts'
+      - 'tests/v317-atomic-payment-acceptance.sql'
+      - 'tests/fixtures/v317-postgres-schema.sql'
+      - 'tests/v317-webhook-source-contract.test.mjs'
+      - '.github/workflows/v317-atomic-payment-ledger.yml'
+      - 'docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql'
+      - 'tests/v318-cancellation-acceptance.sql'
+      - 'tests/v318-cancellation-contract.test.mjs'
+      - 'tests/v319-webhook-runtime.test.mjs'
+      - 'tests/v320-reconciliation-runtime.test.mjs'
+      - 'docs/release/V320-REVIEW-ONLY-reconcile-flutterwave-payments.ts'
+      - 'docs/release/V321-REVIEW-ONLY-BILLING-OPS-READINESS.sql'
+      - 'docs/release/V321-REVIEW-ONLY-public-billing-acceptance.ts'
+      - 'tests/fixtures/v321-billing-ops-schema.sql'
+      - 'tests/v321-billing-ops-acceptance.sql'
+      - 'tests/v321-public-billing-ops-gate.test.mjs'
+      - 'tests/v325-market-quote-integrity.test.mjs'
+      - 'tests/v326-first-broker-tick-proof.test.mjs'
+      - 'tests/test_v326_mt5_read_only_relay.py'
+      - 'scripts/v326_mt5_xauusd_read_only_relay.py'
+      - 'docs/release/V326-REVIEW-ONLY-public-gold-bridge-readiness.ts'
+      - 'docs/release/V327-REVIEW-ONLY-broker-live-market-intake.mjs'
+      - 'docs/release/V327-REVIEW-ONLY-broker-live-market-index.ts'
+      - 'scripts/v327_mt5_xauusd_symbol_bound_relay.py'
+      - 'tests/test_v327_mt5_symbol_bound_relay.py'
+      - 'tests/v327-broker-symbol-bound-intake.test.mjs'
+      - 'tests/v328-gold-commissioning-console.test.mjs'
+      - 'src/gold-commissioning-v328.mjs'
+      - 'src/gold-commissioning-v328.css'
+      - 'src/gold-workspace.mjs'
+      - 'src/db-incident-acceptance.mjs'
+      - 'src/v329-database-transport-evidence.mjs'
+      - 'tests/v329-database-transport-recovery.test.mjs'
+      - 'scripts/v329-db-transport-triage.mjs'
+      - 'docs/release/V329-DATABASE-TRANSPORT-RECOVERY-CHECKPOINT.md'
+      - 'docs/operations/evidence/v329-20261027-redacted-sql-transport.json'
+      - 'docs/operations/evidence/v329-20261027-sql-flapping-followup.json'
+      - 'api/ops-heartbeat.js'
+      - 'src/v330-kernel-pressure-circuit.mjs'
+      - 'tests/v330-kernel-pressure-circuit.test.mjs'
+      - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
+      - 'tests/fixtures/v322-pgnet-transport-schema.sql'
+      - 'tests/v322-pgnet-transport-acceptance.sql'
+      - 'docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql'
+      - 'tests/v323-billing-incident-acceptance.sql'
+      - 'docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql'
+      - 'tests/fixtures/v324-owner-aal2-incident-schema.sql'
+      - 'tests/v324-owner-incident-review-acceptance.sql'
+      - 'docs/release/V325-REVIEW-ONLY-public-live-markets-api.ts'
+      - 'docs/release/V325-REVIEW-ONLY-MARKET-QUOTE-EVIDENCE.sql'
+      - 'tests/v325-market-quote-integrity.test.mjs'
+      - 'tests/fixtures/v325-market-evidence-schema.sql'
+      - 'tests/v325-market-quote-evidence-acceptance.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  payment-atomicity-isolated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: v317_ci_only
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: v317_ci_only_not_a_secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d v317_ci_only"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Verify source is fail-closed and atomic-only for successful payments
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs tests/v329-database-transport-recovery.test.mjs tests/v330-kernel-pressure-circuit.test.mjs
+      - name: Assert real redacted V329 incident yields database HOLD
+        run: |
+          node scripts/v329-db-transport-triage.mjs |
+            tee /tmp/v329-redacted-incident.txt
+          grep -q 'V329_PUBLIC_LAUNCH_DATABASE_HOLD_RECORDED' /tmp/v329-redacted-incident.txt
+      - name: Validate read-only Windows relay logic offline without MT5 or network
+        run: |
+          python3 --version
+          python3 -m unittest discover -s tests -p 'test_v326_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_v327_*.py' -v
+      - name: Install PostgreSQL client when absent
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+      - name: Replay synthetic Postgres schema, review-only RPC and failure cases
+        shell: bash
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGDATABASE: v317_ci_only
+          PGPASSWORD: v317_ci_only_not_a_secret
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v317-postgres-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V317-REVIEW-ONLY-ATOMIC-FLUTTERWAVE.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v317-atomic-payment-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v318-cancellation-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v321-billing-ops-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V321-REVIEW-ONLY-BILLING-OPS-READINESS.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v321-billing-ops-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v322-pgnet-transport-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v322-pgnet-transport-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v323-billing-incident-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v324-owner-aal2-incident-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v324-owner-incident-review-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v325-market-evidence-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V325-REVIEW-ONLY-MARKET-QUOTE-EVIDENCE.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v325-market-quote-evidence-acceptance.sql
