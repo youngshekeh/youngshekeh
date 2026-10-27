@@ -1,4 +1,4 @@
-name: V321 Commercial Billing Operations and Atomic Lifecycle Acceptance
+name: V322 Billing Transport Diagnostics and Atomic Lifecycle Acceptance
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - security/v319-webhook-runtime-ack-safety
       - security/v320-reconciliation-truth-audit
       - security/v321-billing-liveness-release-gate
+      - security/v322-billing-transport-diagnostics
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -29,6 +30,9 @@ on:
       - 'tests/fixtures/v321-billing-ops-schema.sql'
       - 'tests/v321-billing-ops-acceptance.sql'
       - 'tests/v321-public-billing-ops-gate.test.mjs'
+      - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
+      - 'tests/fixtures/v322-pgnet-transport-schema.sql'
+      - 'tests/v322-pgnet-transport-acceptance.sql'
 
 permissions:
   contents: read
@@ -88,3 +92,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v321-billing-ops-schema.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V321-REVIEW-ONLY-BILLING-OPS-READINESS.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v321-billing-ops-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v322-pgnet-transport-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v322-pgnet-transport-acceptance.sql
