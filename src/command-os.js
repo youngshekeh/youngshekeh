@@ -1,4 +1,5 @@
 import './styles.css';
+import {v332BoundedSettled,v332BoundedMap,v332CreateScheduler,V332_STARTUP_CONCURRENCY,V332_SOURCE_CONCURRENCY} from './v332-command-os-load-spreading.mjs';
 
 const LEDGER_KEY='tfa.v168.command.decisions.v1';
 const ORG_KEY='tfa.v169.organization.v1';
@@ -1608,12 +1609,27 @@ function setupLedger(){
 
 async function syncMachine(){
   const btn=byId('refresh-command');if(btn){btn.disabled=true;btn.textContent='SYNCING COMMAND STATE'}
-  const settled=await Promise.all(SOURCE_DEFS.map(async def=>[def.key,await fetchJson(def.url,def.critical?16000:12000)]));
+  const settled=await v332BoundedMap(SOURCE_DEFS,async def=>[def.key,await fetchJson(def.url,def.critical?16000:12000)],V332_SOURCE_CONCURRENCY);
   state.sources=Object.fromEntries(settled);state.lastSync=new Date().toISOString();renderAll();
   if(btn){btn.disabled=false;btn.textContent='REFRESH COMMAND STATE'}
 }
 
 function boot(){
-  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();setupPlanner();setupScheduler();setupDispatch();setupKernel();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderScheduler();renderDispatch();renderKernel();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();renderSchedulerCloudState();renderDispatchCloudState();renderKernelCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);void Promise.allSettled([syncMachine(),syncCloudMemory(),syncOrganization(),syncBusinessBrain(),syncAllocationBrain(),syncOutcomeBrain(),syncInterventions(),syncRunbooksConsole(),syncAgentWorkforceConsole(),syncPlannerConsole(),syncSchedulerConsole(),syncDispatchConsole(),syncKernelConsole()]).then(()=>void runExecutiveCycle());setInterval(()=>void syncMachine().then(()=>void runExecutiveCycle()),60000);setInterval(()=>void syncCloudMemory(),300000);setInterval(()=>void syncOrganization(),300000);setInterval(()=>void syncBusinessBrain(),300000);setInterval(()=>void syncAllocationBrain(),300000);setInterval(()=>void syncOutcomeBrain(),300000);setInterval(()=>void syncInterventions(),300000);setInterval(()=>void syncRunbooksConsole(),300000);setInterval(()=>void syncAgentWorkforceConsole(),300000);setInterval(()=>void syncPlannerConsole(),300000);setInterval(()=>void syncSchedulerConsole(),300000);setInterval(()=>void syncDispatchConsole(),300000);setInterval(()=>void syncKernelConsole(),300000);
+  setupLedger();setupOrganization();setupBusinessBrain();setupAllocationBrain();setupOutcomeBrain();setupExecutiveCycle();setupInterventions();setupRunbooks();setupAgents();setupPlanner();setupScheduler();setupDispatch();setupKernel();renderLedger();renderOrganization();renderAttentionRouter();renderBusinessBrain();renderAllocationBrain();renderOutcomeBrain();renderExecutiveCycle();renderInterventions();renderRunbooks();renderAgents();renderPlanner();renderScheduler();renderDispatch();renderKernel();renderCloudState();renderOrgCloudState();renderBizCloudState();renderAllocCloudState();renderOutcomeCloudState();renderCycleCloudState();renderInterventionCloudState();renderRunbookCloudState();renderAgentCloudState();renderPlannerCloudState();renderSchedulerCloudState();renderDispatchCloudState();renderKernelCloudState();byId('refresh-command')?.addEventListener('click',syncMachine);const periodicCloudTasks=[
+  syncCloudMemory,syncOrganization,syncBusinessBrain,syncAllocationBrain,
+  syncOutcomeBrain,syncInterventions,syncRunbooksConsole,
+  syncAgentWorkforceConsole,syncPlannerConsole,syncSchedulerConsole,
+  syncDispatchConsole,syncKernelConsole
+ ];
+ // Browser startup previously launched 13 jobs simultaneously, with
+ // 12 follow-up cloud syncs at exactly the same 5-minute boundary.
+ // Preserve existing task order and functions, but bound demand to two.
+ void v332BoundedSettled([syncMachine,...periodicCloudTasks],V332_STARTUP_CONCURRENCY)
+  .then(()=>void runExecutiveCycle());
+ v332CreateScheduler({
+  tasks:periodicCloudTasks,
+  machineTask:async()=>{await syncMachine();await runExecutiveCycle();},
+  visible:()=>document.visibilityState!=='hidden'
+ });
 }
 boot();
