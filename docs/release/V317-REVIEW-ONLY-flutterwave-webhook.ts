@@ -11,8 +11,72 @@ async function findSubscription(base:string,key:string,customerId:string|null,_e
 // V317 REVIEW ONLY: enable only after isolated DB restore, transactional SQL
 // replay, signed provider sandbox and explicit commercial release approval.
 const V317_ATOMIC_PAYMENT_RPC_RELEASED=false;
+// V318 cancellation is separately hard-sealed until provider-backed sandbox
+// verification, full subscription reconciliation and a reviewed DB release.
+const V318_ATOMIC_CANCELLATION_RPC_RELEASED=false;
 Deno.serve(async(req:Request)=>{if(req.method==='OPTIONS')return new Response('ok',{headers:cors});if(req.method!=='POST')return new Response('method not allowed',{status:405,headers:cors});const base=Deno.env.get('SUPABASE_URL');const flwKey=Deno.env.get('FLW_SECRET_KEY');const secretHash=Deno.env.get('FLW_SECRET_HASH');if(!base||!flwKey||!secretHash)return new Response('payment webhook not configured',{status:503,headers:cors});try{const raw=await req.text();const rawHash=await sha256Hex(raw);const hmacSig=req.headers.get('flutterwave-signature')||'';const legacyHash=req.headers.get('verif-hash')||'';let verified=false;if(hmacSig){const expected=await hmacBase64(raw,secretHash);verified=safeEq(hmacSig,expected)}else if(legacyHash){verified=safeEq(legacyHash,secretHash)}if(!verified)return new Response('invalid signature',{status:401,headers:cors});const payload=JSON.parse(raw);const eventType=String(payload?.type??payload?.event??'unknown').toLowerCase();const key=serverKey();
-if(eventType==='subscription.cancelled'){const data=payload?.data??{};const customerId=data?.customer?.id!=null?String(data.customer.id):null;const email=data?.customer?.email?String(data.customer.email):null;const sub=await findSubscription(base,key,customerId,email);if(!sub)return new Response('ok',{status:200,headers:cors});const providerPlanId=data?.plan?.id!=null?String(data.plan.id):null;if(providerPlanId){const mapping=await getOne(base,key,'billing_plan_mappings',{select:'plan_id,provider_plan_id',provider:'eq.flutterwave',provider_plan_id:`eq.${providerPlanId}`,limit:'1'});if(mapping?.plan_id&&mapping.plan_id!==sub.plan_id)return new Response('ok',{status:200,headers:cors})}const eventKey=String(payload?.id??`${eventType}:${sub.id}:${rawHash}`);const inserted=await addEvent(base,key,{provider:'flutterwave',provider_event_key:eventKey,event_type:eventType,user_id:sub.user_id,plan_id:sub.plan_id,amount:data?.amount!=null?Number(data.amount):null,currency:data?.currency?String(data.currency):null,status:String(data?.status??'canceled'),raw_payload:{event_type:eventType,verified_signature:true,signature_mode:hmacSig?'hmac_sha256':'verif_hash',provider_plan_id:providerPlanId}});if(Array.isArray(inserted)&&inserted.length===0)return new Response('ok',{status:200,headers:cors});await patch(base,key,'subscriptions',{id:`eq.${sub.id}`},{status:'canceled',updated_at:new Date().toISOString()});return new Response('ok',{status:200,headers:cors})}
+if(eventType==='subscription.cancelled'){
+  // Never infer a member from an email address or a plan alone. The
+  // provider's cancellation example omits the subscription ID; such an
+  // ambiguous event requires private manual/provider reconciliation.
+  if(!V318_ATOMIC_CANCELLATION_RPC_RELEASED)
+    return new Response('cancellation release pending',{status:503,
+      headers:{...cors,'Cache-Control':'no-store','Retry-After':'300'}});
+  const data=payload?.data??{};
+  const subId=data?.subscription_id!=null?String(data.subscription_id):
+    data?.subscription?.id!=null?String(data.subscription.id):'';
+  const customerId=data?.customer?.id!=null?String(data.customer.id):'';
+  const planId=data?.plan?.id!=null?String(data.plan.id):'';
+  // The webhook alone is not authoritative for cancellation state.
+  if(!/^[0-9]{1,18}$/.test(subId)||!/^[0-9]{1,18}$/.test(customerId)
+     ||!/^[0-9]{1,18}$/.test(planId))
+    return new Response('unmatched cancellation: manual provider reconciliation required',
+      {status:503,headers:{...cors,'Cache-Control':'no-store'}});
+  let confirmed=false;
+  // Bounded provider pagination. If the identity is not found, HOLD.
+  // Never use email-only matching, or assume a missing page means active.
+  for(let page=1;page<=3;page++){
+    const u=new URL('https://api.flutterwave.com/v3/subscriptions');
+    u.searchParams.set('status','cancelled');
+    u.searchParams.set('plan',planId);
+    u.searchParams.set('page',String(page));
+    const checked=await fetch(u.href,{
+      headers:{Authorization:`Bearer ${flwKey}`,Accept:'application/json'},
+      signal:AbortSignal.timeout(7500)
+    });
+    const details=await checked.json().catch(()=>null);
+    if(!checked.ok||details?.status!=='success'||!Array.isArray(details?.data))
+      throw new Error('cancellation_provider_verification_unavailable');
+    confirmed=details.data.some(x=>String(x?.id??'')===subId
+      &&String(x?.customer?.id??'')===customerId
+      &&String(x?.plan??'')===planId
+      &&String(x?.status??'').toLowerCase()==='cancelled');
+    if(confirmed)break;
+    const total=Number(details?.meta?.page_info?.total_pages);
+    if(!Number.isInteger(total)||total<1)break;
+    if(page>=total)break;
+  }
+  if(!confirmed)
+    return new Response('cancellation not verified: reconcile with provider',
+      {status:503,headers:{...cors,'Cache-Control':'no-store'}});
+  const eventKey=String(payload?.id??rawHash);
+  const response=await fetch(
+    `${base}/rest/v1/rpc/commit_verified_flutterwave_cancellation_v318`,{
+      method:'POST',
+      headers:{apikey:key,Authorization:`Bearer ${key}`,
+        'Content-Type':'application/json',Accept:'application/json'},
+      body:JSON.stringify({
+        p_subscription_id:subId,p_provider_customer_id:customerId,
+        p_provider_plan_id:planId,p_event_key:eventKey,
+        p_provider_status:'cancelled'
+      }),signal:AbortSignal.timeout(9500)
+    });
+  const result=await response.json().catch(()=>null);
+  if(!response.ok||result?.ok!==true
+     ||!['CANCELED_RENEWAL_OFF','ALREADY_COMMITTED'].includes(result?.state))
+    throw new Error('atomic_cancellation_commit_unavailable');
+  return new Response('ok',{status:200,headers:{...cors,'Cache-Control':'no-store'}});
+}
 const txId=payload?.data?.id??payload?.id;if(!txId)return new Response('ok',{status:200,headers:cors});const vr=await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(String(txId))}/verify`,{headers:{Authorization:`Bearer ${flwKey}`,Accept:'application/json'}});const vp=await vr.json().catch(()=>null);if(!vr.ok||vp?.status!=='success'||vp?.data?.status!=='successful')return new Response('ok',{status:200,headers:cors});const v=vp.data;const txRef=String(v.tx_ref??'');let intent=txRef?await getOne(base,key,'checkout_intents',{select:'id,user_id,plan_id,amount,currency,status,provider_reference',provider:'eq.flutterwave',provider_reference:`eq.${txRef}`,limit:'1'}):null;let matchedSub:any=null;if(!intent){const customerId=v?.customer?.id!=null?String(v.customer.id):null;const email=v?.customer?.email?String(v.customer.email):null;matchedSub=await findSubscription(base,key,customerId,email)}const userId=intent?.user_id??matchedSub?.user_id??null;const planId=intent?.plan_id??matchedSub?.plan_id??null;if(!userId||!planId)return new Response('ok',{status:200,headers:cors});const [plan,mapping]=await Promise.all([getOne(base,key,'plans',{select:'id,price_monthly_usd,is_active',id:`eq.${planId}`,is_active:'eq.true',limit:'1'}),getOne(base,key,'billing_plan_mappings',{select:'plan_id,currency,provider_plan_id,is_active',provider:'eq.flutterwave',plan_id:`eq.${planId}`,is_active:'eq.true',limit:'1'})]);if(!plan||!mapping)return new Response('ok',{status:200,headers:cors});const expectedAmount=Number(intent?.amount??plan.price_monthly_usd);const expectedCurrency=String(intent?.currency??mapping.currency??'USD').toUpperCase();if(Number(v.amount)<expectedAmount||String(v.currency??'').toUpperCase()!==expectedCurrency)return new Response('ok',{status:200,headers:cors});if(intent&&txRef!==String(intent.provider_reference))return new Response('ok',{status:200,headers:cors});// The V317 paid-payment path has no independent ledger INSERT, checkout PATCH
 // or membership RPC call. A single transaction commits all three.
 if(!V317_ATOMIC_PAYMENT_RPC_RELEASED)
