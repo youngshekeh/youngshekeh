@@ -67,6 +67,33 @@ async function build(){
     };
   }
 
+  // V322: pg_net worker and queue pressure are transport evidence only.
+  // The response log contains unrelated products. Never infer merchant
+  // acceptance from system-wide HTTP 2xx, or a billing error from 5xx.
+  const transportRes=await fetch(
+    base+'/rest/v1/rpc/billing_transport_readiness_v322',{
+      method:'GET',
+      headers:{apikey:key,Authorization:'Bearer '+key,Accept:'application/json'},
+      signal:AbortSignal.timeout(3500)
+    });
+  const transport=await transportRes.json().catch(()=>null);
+  if(!transportRes.ok||transport?.ok!==true
+     ||transport?.transport_available!==true){
+    return{
+      ok:true,version:'billing-acceptance-v322-transport-hold',
+      generated_at:new Date().toISOString(),provider:'flutterwave',
+      state:'BLOCKED_TRANSPORT_EVIDENCE',
+      ready_for_checkout:false,live_flow_verified:false,
+      commercial_activation_permitted:false,
+      transport_gate:transportRes.ok&&transport?.state
+        ?String(transport.state):'TRANSPORT_EVIDENCE_UNAVAILABLE',
+      billing_event_attribution_verified:false,
+      governance:{creates_charges:false,mutates_subscriptions:false,
+        mutations_permitted:false},
+      truth_label:'TRANSPORT_AND_BILLING_RELEASE_UNVERIFIED'
+    };
+  }
+
   const [plans,mappings,payments,paidCheckouts,validSubs]=await Promise.all([
     rows(base,key,"plans",{select:"id,name,price_monthly_usd,is_active",is_active:"eq.true"}),
     rows(base,key,"billing_plan_mappings",{select:"plan_id,provider_plan_id,currency,recurring,is_active",provider:"eq.flutterwave",is_active:"eq.true"}),
