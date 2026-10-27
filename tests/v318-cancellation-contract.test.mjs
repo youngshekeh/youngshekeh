@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const sql=readFileSync(new URL('../docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql',import.meta.url),'utf8');
 const webhook=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-flutterwave-webhook.ts',import.meta.url),'utf8');
-const cancel=webhook.split("if(eventType==='subscription.cancelled'){")[1]?.split("const txId=payload?.data?.id??payload?.id;")[0]||'';
+const cancel=webhook.split("if(eventType==='subscription.cancelled'){")[1]?.split("// V319: A 200 means either a deliberately ignored event")[0]||'';
 test('cancellation must remain hard-sealed and must not silently acknowledge ambiguous events',()=>{
   assert.match(webhook,/const V318_ATOMIC_CANCELLATION_RPC_RELEASED=false/);
   assert.match(cancel,/if\(!V318_ATOMIC_CANCELLATION_RPC_RELEASED\)/);
