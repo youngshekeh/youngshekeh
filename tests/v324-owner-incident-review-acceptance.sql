@@ -33,7 +33,7 @@ BEGIN
 END $$;
 
 SET ROLE authenticated;
-SET request.jwt.claim.sub = '10000000-0000-4000-8000-000000000001';
+SET request.jwt.claim.sub = '91000000-0000-4000-8000-000000000001';
 SET request.jwt.claims = '{"aal":"aal1"}';
 DO $$
 DECLARE rejected boolean :=false;
@@ -48,7 +48,7 @@ BEGIN
 END $$;
 
 -- A user may claim AAL2 but still isn't an active owner.
-SET request.jwt.claim.sub = '10000000-0000-4000-8000-000000000003';
+SET request.jwt.claim.sub = '91000000-0000-4000-8000-000000000003';
 SET request.jwt.claims = '{"aal":"aal2"}';
 DO $$
 DECLARE rejected boolean :=false;
@@ -63,7 +63,7 @@ BEGIN
 END $$;
 
 -- The only active owner can record investigation and propose closure.
-SET request.jwt.claim.sub = '10000000-0000-4000-8000-000000000001';
+SET request.jwt.claim.sub = '91000000-0000-4000-8000-000000000001';
 DO $$
 DECLARE r jsonb;
 BEGIN
@@ -110,7 +110,7 @@ BEGIN
 END $$;
 
 -- The second synthetic user is currently disabled in owner_users.
-SET request.jwt.claim.sub = '10000000-0000-4000-8000-000000000002';
+SET request.jwt.claim.sub = '91000000-0000-4000-8000-000000000002';
 DO $$
 DECLARE rejected boolean:=false;
 BEGIN
@@ -125,9 +125,9 @@ RESET ROLE;
 
 -- Synthetic-only onboarding of a separate second owner in disposable CI.
 UPDATE public.owner_users SET active=true
-WHERE user_id='10000000-0000-4000-8000-000000000002';
+WHERE user_id='91000000-0000-4000-8000-000000000002';
 SET ROLE authenticated;
-SET request.jwt.claim.sub = '10000000-0000-4000-8000-000000000002';
+SET request.jwt.claim.sub = '91000000-0000-4000-8000-000000000002';
 SET request.jwt.claims = '{"aal":"aal1"}';
 DO $$
 DECLARE rejected boolean:=false;
