@@ -53,8 +53,14 @@ async function providerProof(intent:any,key:string){
     ||!Number.isFinite(Number(intent?.amount))
     ||Number(intent.amount)<=0)
       return 'INCOMPLETE_LOCAL_EVIDENCE';
+  const createdAt=Date.parse(String(intent?.created_at??''));
+  if(!Number.isFinite(createdAt)||createdAt>Date.now()+60000)
+    return 'INCOMPLETE_LOCAL_EVIDENCE';
   const params={
-    from:'2020-01-01',
+    // The lookup includes historical intents without imposing a 72h lookback;
+    // bound the provider transaction search to this intent's creation day.
+    from:new Date(Math.max(Date.UTC(2020,0,1),createdAt-86400000))
+      .toISOString().slice(0,10),
     to:new Date().toISOString().slice(0,10),
     tx_ref:intent.provider_reference,
     status:'successful'
