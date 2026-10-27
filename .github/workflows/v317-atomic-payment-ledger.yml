@@ -1,4 +1,4 @@
-name: V319 Signed Webhook and Atomic Billing Lifecycle Acceptance
+name: V320 Commercial Reconciliation Truth and Atomic Billing Acceptance
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - security/v317-atomic-payment-receipts
       - security/v318-cancellation-consistency
       - security/v319-webhook-runtime-ack-safety
+      - security/v320-reconciliation-truth-audit
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -20,6 +21,8 @@ on:
       - 'tests/v318-cancellation-acceptance.sql'
       - 'tests/v318-cancellation-contract.test.mjs'
       - 'tests/v319-webhook-runtime.test.mjs'
+      - 'tests/v320-reconciliation-runtime.test.mjs'
+      - 'docs/release/V320-REVIEW-ONLY-reconcile-flutterwave-payments.ts'
 
 permissions:
   contents: read
@@ -52,7 +55,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs
       - name: Install PostgreSQL client when absent
         shell: bash
         run: |
