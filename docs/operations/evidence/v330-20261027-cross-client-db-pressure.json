@@ -1,0 +1,42 @@
+{
+  "schema": "TFA-DB-PRESSURE-V330-READONLY-OBSERVATION",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "region": "eu-west-1",
+  "source": "Supabase unified logs ClickHouse, aggregated read-only, 2026-10-27",
+  "window_start": "2026-10-27T08:45:00Z",
+  "window_end": "2026-10-27T09:25:00Z",
+  "observed_counts": {
+    "postgres_logs": {
+      "total": 190,
+      "sqlstate_57014": 12,
+      "sqlstate_08006": 27,
+      "sqlstate_08P01": 11
+    },
+    "postgrest_logs": {
+      "total": 18,
+      "warp_timeout": 18
+    },
+    "supavisor_logs": null
+  },
+  "postgres_57014_application_distribution": {
+    "postgres_exporter": 10,
+    "mgmt-api": 1,
+    "pg_cron": 1
+  },
+  "observed_messages_categorized": {
+    "ssl_reset_by_peer": 18,
+    "ssl_eof": 11,
+    "management_api_client_connection_errors": 8,
+    "postgres_exporter_statement_cancellations": 10
+  },
+  "earlier_management_sql_check": "CONNECTION_TIMEOUT",
+  "control_plane_status": "ACTIVE_HEALTHY",
+  "attribution_caveat": "Aggregate log classes can overlap; these are not counts of unique customers or proven root cause. SSL EOF/reset may be client behavior or infrastructure effects. No confirmed memory, connection-capacity, CPU, disk, long-transaction or pool saturation metrics. Supavisor logs missing in this time window are UNVERIFIED, not healthy.",
+  "no_raw_logs": true,
+  "no_customer_or_broker_data": true,
+  "no_credentials": true,
+  "production_mutations": 0,
+  "payments_enabled": false,
+  "automated_trading_enabled": false,
+  "capital_permission": "0R"
+}
