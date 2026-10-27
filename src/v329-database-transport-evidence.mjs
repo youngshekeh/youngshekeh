@@ -61,7 +61,12 @@ export function assessDatabaseTransportV329({
   input.redacted===true&&coverage&&
   errors!==null;
  if(!windowValid)blockers.push('TRANSPORT_LOG_WINDOW_NOT_VERIFIED');
- if(errors!==null&&ALLOWED_METRICS.some(k=>errors[k]>0))
+ // Incomplete log coverage must remain a separate blocker, but known
+ // positive error counts cannot disappear merely because *another* source
+ // or category is unknown (e.g., absent Supavisor logs).
+ const reported=input.metrics&&typeof input.metrics==='object'&&
+  !Array.isArray(input.metrics)?input.metrics:{};
+ if(ALLOWED_METRICS.some(k=>count(reported[k])!==null&&count(reported[k])>0))
   blockers.push('TRANSPORT_ERRORS_IN_WINDOW');
  if(!twoStableSqlReads(management_sql_samples,now))
   blockers.push('TWO_SPACED_MANAGEMENT_SQL_READS_REQUIRED');
