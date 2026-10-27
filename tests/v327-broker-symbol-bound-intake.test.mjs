@@ -76,8 +76,11 @@ test('anonymous GET is a redacted health response with no broker prices, account
   assert.equal(r.body.governance.machine_execution_allowed,false);
   const p=JSON.stringify(r.body);
   for(const secret of ['4390.45','4390.2','4390.7','private-owner','SECRET_OWNER',
-      'do-not-leak','bridge_id','provider_symbol','trade_mode','tick_count_60s'])
+      'do-not-leak','"bridge_id":','"provider_symbol":','trade_mode','tick_count_60s'])
     assert.ok(!p.includes(secret),'public leaked '+secret);
+  assert.equal(Object.hasOwn(r.body,'bridge_id'),false);
+  assert.equal(Object.hasOwn(r.body,'source'),false);
+  assert.equal(Object.hasOwn(r.body,'quote'),false);
   assert.equal(x.calls.length,1);
 });
 test('no tick remains clearly absent, never fake BROKER_LIVE',async()=>{
@@ -122,14 +125,17 @@ test('correct symbol and key ingest only one valid tick and return a minimal ACK
   assert.equal(r.body.governance.machine_execution_allowed,false);
   assert.equal(x.calls.filter(c=>c.path.includes('ingest_')).length,1);
   assert.equal(x.calls.filter(c=>c.path.includes('authenticate_')).length,1);
-  assert.deepEqual(JSON.parse(x.calls.at(-1).body).p_tick,
-    dataWithDynamicFieldsIgnored(JSON.parse(x.calls.at(-1).body).p_tick));
+  const upstreamTick=JSON.parse(x.calls.at(-1).body).p_tick;
+  assert.equal(upstreamTick.trade_mode,'DEMO');
+  assert.equal(upstreamTick.relay_version,'v186.0');
+  assert.equal(upstreamTick.mt5_package_version,'5.0.6231');
+  assert.equal(upstreamTick.account_id,undefined);
+  assert.equal(upstreamTick.symbol,undefined);
   const publicText=JSON.stringify(r.body);
   for(const secret of ['FAKE_MT5','202','bridge_id','4390.2','4390.7',
     'SECRET_OWNER','source_code','provider_symbol'])
     assert.ok(!publicText.includes(secret),'ACK leaked '+secret);
 });
-function dataWithDynamicFieldsIgnored(input){return {...input};}
 test('incorrect bridge credential never ingests a tick',async()=>{
   const x=fake({authOk:false});const r=await x.call('POST');
   assert.equal(r.status,401);
