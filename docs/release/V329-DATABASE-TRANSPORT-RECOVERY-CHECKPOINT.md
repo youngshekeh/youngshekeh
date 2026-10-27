@@ -20,6 +20,15 @@ The read-only **Supabase Log Explorer / ClickHouse** path still worked. The foll
 No raw SQL query strings, customer IDs, access tokens, server-generated request details or private IPs are retained in the evidence snapshot:
 `docs/operations/evidence/v329-20261027-redacted-sql-transport.json`.
 
+
+## Follow-up: 09:03 UTC single successful SQL, then three failures
+
+A read-only `SELECT now()` succeeded at **2026-10-27 09:03:46.448238 UTC**, the first observed response after multiple management connection timeouts. This is **not recovery certification**: three subsequent separate read-only SQL queries (`pg_stat_activity` aggregate, connection counts, and kernel/tick counts) immediately failed with `Connection terminated due to connection timeout`. None of these statements performed database writes.
+
+In an independent historical **08:35–09:05 UTC** ClickHouse window: `postgres_logs` contained 167 events, including **11** SQLSTATE `57014` cancellations, **17** `08006` connection failures, and **12** `08P01` protocol events; `postgrest_logs` contained 16 events, **all 16** with timeout text. There were no `supavisor_logs` rows returned in this particular filtered window. Its state is **UNKNOWN**, not zero failures. Counts can overlap by event and should not be summed as distinct end-user requests.
+
+Redacted follow-up: `docs/operations/evidence/v329-20261027-sql-flapping-followup.json`. This 30-minute/incomplete-source log window fails the V329 current clean 5–15-minute criteria, and the one good SQL sample fails the existing two-distinct-probe requirement. **Commercial HOLD unchanged.**
+
 ## V329 staged safety code
 
 - `src/db-incident-acceptance.mjs`: extend the pre-existing V217/V270 error classifier to recognize `POSTGREST_WARP_TIMEOUT`, `08006` and `08P01`. These errors must count as **recent database errors** when present in the checked evaluation window.
