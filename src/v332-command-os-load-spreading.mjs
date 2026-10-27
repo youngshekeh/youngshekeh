@@ -68,7 +68,9 @@ export function v332CreateScheduler({
   },offset));
  };
  schedule('machine',machineTask,V332_MACHINE_MS,V332_MACHINE_MS);
- tasks.forEach((fn,i)=>schedule('sync-'+i,fn,V332_PHASE_START_MS+i*V332_PHASE_GAP_MS,V332_RECUR_MS));
+ // Startup already fetches these sources with bounded fanout. Wait one full
+ // interval before the first phase to avoid immediately duplicating that work.
+ tasks.forEach((fn,i)=>schedule('sync-'+i,fn,V332_RECUR_MS+V332_PHASE_START_MS+i*V332_PHASE_GAP_MS,V332_RECUR_MS));
  return Object.freeze({
   state:()=>Object.freeze({active,disposed,
    staggered:true,max_parallel:V332_STARTUP_CONCURRENCY,
