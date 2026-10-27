@@ -18,8 +18,8 @@
     "postgres_connection_08006": 4,
     "postgres_protocol_08P01": 4,
     "postgrest_timeout_events": 272,
-    "postgrest_pooler_errors": 0,
-    "supavisor_auth_timeouts": 0,
+    "postgrest_pooler_errors": null,
+    "supavisor_auth_timeouts": null,
     "management_sql_connect_timeouts": 3
   },
   "metric_semantics": {
@@ -27,8 +27,8 @@
     "postgres_connection_08006": "4 PostgreSQL 08006 LOG entries in 08:30 five-minute bucket",
     "postgres_protocol_08P01": "4 PostgreSQL 08P01 LOG entries",
     "postgrest_timeout_events": "272 classified postgrest_logs timeout messages, includes Warp server error: Thread killed by timeout manager",
-    "postgrest_pooler_errors": "Not independently classified in window; 0 is NOT proof of no pool saturation",
-    "supavisor_auth_timeouts": "Not independently classified; 76 supavisor connection mentions largely include normal authenticated connections and are not errors",
+    "postgrest_pooler_errors": "UNVERIFIED: no independent classification; null blocks recovery certification",
+    "supavisor_auth_timeouts": "UNVERIFIED: no independent classification; 76 Supavisor connection mentions include normal authenticated connections; null blocks recovery certification",
     "management_sql_connect_timeouts": "Minimum confirmed failed execute_sql attempts in session, sampled outside log service; diagnostic not full time-window count"
   },
   "caveat": "Historical diagnostic window over an hour long, NOT eligible to certify current recovery; 0 for unclassified metrics cannot be used as exoneration. Current project ACTIVE_HEALTHY is only a management-plane descriptor; live SELECT 1 and pg_stat_activity were timing out. No DB restart, settings or cron mutation performed.",
