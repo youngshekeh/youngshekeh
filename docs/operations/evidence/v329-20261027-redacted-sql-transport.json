@@ -1,0 +1,38 @@
+{
+  "schema": "TFA-DB-TRANSPORT-V329-OBSERVATION",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "region": "eu-west-1",
+  "origin": "Supabase query_logs, read-only ClickHouse aggregated results, 2026-10-27",
+  "window_start": "2026-10-27T07:15:00Z",
+  "window_end": "2026-10-27T08:35:00Z",
+  "collected_at": "2026-10-27T08:35:00Z",
+  "sources": [
+    "postgres_logs",
+    "postgrest_logs",
+    "supavisor_logs"
+  ],
+  "log_query_complete": true,
+  "redacted": true,
+  "metrics": {
+    "postgres_cancelled_57014": 32,
+    "postgres_connection_08006": 4,
+    "postgres_protocol_08P01": 4,
+    "postgrest_timeout_events": 272,
+    "postgrest_pooler_errors": null,
+    "supavisor_auth_timeouts": null,
+    "management_sql_connect_timeouts": 3
+  },
+  "metric_semantics": {
+    "postgres_cancelled_57014": "32 PostgreSQL 57014 ERROR entries from PostgREST 14.5",
+    "postgres_connection_08006": "4 PostgreSQL 08006 LOG entries in 08:30 five-minute bucket",
+    "postgres_protocol_08P01": "4 PostgreSQL 08P01 LOG entries",
+    "postgrest_timeout_events": "272 classified postgrest_logs timeout messages, includes Warp server error: Thread killed by timeout manager",
+    "postgrest_pooler_errors": "UNVERIFIED: no independent classification; null blocks recovery certification",
+    "supavisor_auth_timeouts": "UNVERIFIED: no independent classification; 76 Supavisor connection mentions include normal authenticated connections; null blocks recovery certification",
+    "management_sql_connect_timeouts": "Minimum confirmed failed execute_sql attempts in session, sampled outside log service; diagnostic not full time-window count"
+  },
+  "caveat": "Historical diagnostic window over an hour long, NOT eligible to certify current recovery; 0 for unclassified metrics cannot be used as exoneration. Current project ACTIVE_HEALTHY is only a management-plane descriptor; live SELECT 1 and pg_stat_activity were timing out. No DB restart, settings or cron mutation performed.",
+  "privacy": "No raw queries, event_message payloads, credentials, user data, account info, IPs or tokens retained.",
+  "commercial_activation_permitted": false,
+  "trading_activation_permitted": false
+}

@@ -1,11 +1,12 @@
 import {assessRecoveryTriage} from '../src/read-only-recovery-triage.mjs';
+import {chooseRecoveryProbeCacheV331,currentCachedTriageV331} from '../src/v331-outage-probe-cache.mjs';
 const PROJECT='https://mpcelmjiycjpdyyflisn.supabase.co';
 const PUBLIC_KEY='sb_publishable_pkeyQh348Kx7ol0AiAMOlw_wCUOnaLb';
 // V265: keep cheap Auth/REST probes bounded; allow incident synthesis to finish
 // under current provider pressure without asserting recovery from a timeout.
 const BUDGET_MS=4700,READINESS_BUDGET_MS=9000,CACHE_MS=90000;
 export const recoveryProbeDeadline=(path)=>path==='/functions/v1/public-final-readiness'?READINESS_BUDGET_MS:BUDGET_MS;
-let cache=null,lastAt=0,pending=null;
+let cache=null,lastAt=0,pending=null,cachePolicy=null;
 async function getStatus(path,{accept='application/json',readiness=false}={}){
  try{
   const response=await fetch(PROJECT+path,{
@@ -58,9 +59,9 @@ export default async function handler(req,res){
     live_order_submission_enabled:false}});
  }
  try{
-  if(!cache||Date.now()-lastAt>=CACHE_MS){
+  if(!currentCachedTriageV331({cached:cache,stored_at:lastAt,policy:cachePolicy})){
    if(!pending)pending=collectRecoveryTriage().then(v=>{
-    cache=v;lastAt=Date.now();return v;
+    cache=v;lastAt=Date.now();cachePolicy=chooseRecoveryProbeCacheV331(v);return v;
    }).finally(()=>{pending=null});
    await pending;
   }

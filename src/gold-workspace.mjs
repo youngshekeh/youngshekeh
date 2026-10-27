@@ -1,5 +1,6 @@
 import './gold-workspace.css';
 import {researchConnection} from './research-connection.mjs';
+import {mountBrokerCommissioning} from './gold-commissioning-v328.mjs';
 
 export function workspaceCategory(value){
  const code=String(value).match(/\bV(\d{2,3})(?:[.\s·–-]|$)/i)?.[1];
@@ -63,6 +64,9 @@ function setup(){
   }
   panels.get(category).append(section);counts.set(category,counts.get(category)+1);
  }
+ // Mount a no-secret, read-only connection desk before historical broker
+ // sections. A legacy backend response never qualifies as a received tick.
+ mountBrokerCommissioning(panels.get('broker'));
  let selected='overview';
  const activate=(key,focus=false)=>{
   if(!panels.has(key))return;selected=key;
