@@ -116,7 +116,7 @@ function harness(){
  const FastDate=class extends Date{static now(){return time.t;}};
  const ctx={
   Date:FastDate,Number,String,Object,Array,Math,Set,Promise,AbortSignal,
-  Response,JSON,
+  Response,JSON,process:{env:{CRON_SECRET:'correct'}},
   console:{log(){},warn(){},error(){}},
   getVercelOidcToken:async()=>'test-oidc-token',
   classifyV231KernelIncident:()=>({state:'TEST_INCIDENT'}),
