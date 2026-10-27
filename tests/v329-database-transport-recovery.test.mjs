@@ -193,3 +193,31 @@ test('legacy enterprise recovery gate still recognizes its old schema and cannot
   assert.equal(r.governance.automatic_checkout_unlock,false);
   assert.equal(r.governance.real_orders,false);
 });
+
+test('V329 second real-time follow-up proves database is flapping and still must HOLD',()=>{
+ const followUp=JSON.parse(readFileSync(new URL(
+  '../docs/operations/evidence/v329-20261027-sql-flapping-followup.json',
+  import.meta.url),'utf8'));
+ assert.equal(followUp.source_event_counts.postgres_logs,167);
+ assert.equal(followUp.source_event_counts.postgrest_logs,16);
+ assert.equal(followUp.metrics.postgres_cancelled_57014,11);
+ assert.equal(followUp.metrics.postgres_connection_08006,17);
+ assert.equal(followUp.metrics.postgres_protocol_08P01,12);
+ assert.equal(followUp.metrics.postgrest_timeout_events,16);
+ assert.equal(followUp.metrics.supavisor_auth_timeouts,null);
+ assert.equal(followUp.management_sql_observations.filter(x=>x.result==='SUCCESS').length,1);
+ assert.equal(followUp.management_sql_observations.filter(x=>x.result==='CONNECTION_TIMEOUT').length,3);
+ const r=judge({...clean(),snapshot:followUp});
+ assert.equal(r.state,'DATABASE_RECOVERY_HOLD');
+ assert.ok(r.blockers.includes('TRANSPORT_LOG_WINDOW_NOT_VERIFIED'));
+ assert.ok(r.blockers.includes('TRANSPORT_ERRORS_IN_WINDOW'));
+});
+test('one good management SQL sample followed by three timeouts fails immutable recovery',()=>{
+ const samples=[sqlProbe('actual-success',170),...['timeout-a','timeout-b','timeout-c']
+  .map((id,i)=>({...sqlProbe(id,90-i),ok:false,
+     error:'Connection terminated due to connection timeout'}))];
+ const x=clean();x.management_sql_samples=samples;
+ assert.equal(judge(x).transport_ready_for_independent_review,false);
+ assert.ok(judge(x).blockers.includes('TWO_SPACED_MANAGEMENT_SQL_READS_REQUIRED'));
+ assert.equal(judge(x).governance.automatic_release_permitted,false);
+});
