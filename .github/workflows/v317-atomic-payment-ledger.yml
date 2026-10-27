@@ -1,4 +1,4 @@
-name: V322 Billing Transport Diagnostics and Atomic Lifecycle Acceptance
+name: V323 Immutable Billing Incident Recovery Evidence and Atomic Lifecycle Acceptance
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - security/v320-reconciliation-truth-audit
       - security/v321-billing-liveness-release-gate
       - security/v322-billing-transport-diagnostics
+      - security/v323-billing-incident-evidence-ledger
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -33,6 +34,8 @@ on:
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
+      - 'docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql'
+      - 'tests/v323-billing-incident-acceptance.sql'
 
 permissions:
   contents: read
@@ -95,3 +98,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v322-pgnet-transport-schema.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v322-pgnet-transport-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v323-billing-incident-acceptance.sql
