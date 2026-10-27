@@ -126,7 +126,7 @@ export default async function handler(req,res){
   // heartbeat. The V180 Edge function can return ok=true with only overlap or
   // backoff notices; those must never clear an incident or launch hold.
   const proof=kernel.ok?certifyKernelReceipt(kernel.body):null;
-  backendUnavailable=!kernel.ok&&(kernel.status===0||kernel.status===503||kernel.status===502||kernel.status===504||kernel.duration_ms>=30000);
+  backendUnavailable=!kernel.ok&&(kernel.status===0||kernel.status>=500||kernel.duration_ms>=30000);
   if(kernel.ok&&!proof?.verified){
     return failClosed(res,503,'KERNEL_UNAVAILABLE_NON_DISRUPTIVE','kernel_receipts_uncertified',
       proof?.reason||'NO_VERIFIED_RUN_RECEIPT',{
