@@ -104,7 +104,9 @@ export function assessDatabaseTransportV329({
 // metrics only, never SQL text, provider secrets, customer identifiers or raw
 // log entries. Safe to attach to an incident ticket after operator review.
 export function makeRedactedTransportSupportV329(snapshot,assessment){
- const metrics=safeAggregate(snapshot)||metricObject();
+ const metrics=Object.fromEntries(ALLOWED_METRICS.map(k=>[
+   k,count(snapshot?.metrics?.[k])??'UNVERIFIED'
+ ]));
  const windowStart=validTime(snapshot?.window_start)
    ?new Date(snapshot.window_start).toISOString():'UNVERIFIED';
  const windowEnd=validTime(snapshot?.window_end)
