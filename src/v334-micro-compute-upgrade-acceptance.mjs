@@ -49,7 +49,7 @@ export function assessNanoMicroPreflightV334({
    !trustedTime(backup?.observed_at,now))
   blockers.push('REAL_PROJECT_BACKUP_AND_RESTORE_IMPACT_NOT_VERIFIED');
  if(operations?.owner_approved_downtime!==true||
-   operations?.incident_reviewed===false||
+   operations?.incident_reviewed!==true||
    operations?.recovery_rollback_owner_assigned!==true||
    !trustedTime(operations?.approved_at,now))
   blockers.push('OPERATOR_DOWNTIME_APPROVAL_MISSING');
@@ -87,7 +87,12 @@ export function assessNanoMicroPostflightV334({
  const good=Array.isArray(cycles)&&cycles.length>=2&&cycles.length<=6&&
    cycles.every(c=>c?.signed_sealed_receipt_verified===true&&
     c?.dead_letter_count===0&&c?.consecutive_failures===0&&
-    trustedTime(c?.completed_at,now,10*60_000));
+    trustedTime(c?.completed_at,now,10*60_000))&&
+   new Set(cycles.map(c=>c.receipt_id)).size===cycles.length&&
+   cycles.every(c=>typeof c.receipt_id==='string'&&
+      /^[A-Za-z0-9_-]{6,80}$/.test(c.receipt_id))&&
+   Math.max(...cycles.map(c=>Date.parse(c.completed_at)))-
+    Math.min(...cycles.map(c=>Date.parse(c.completed_at)))>=4*60_000;
  if(!good)blockers.push('TWO_HEALTHY_SEALED_KERNEL_CYCLES_MISSING');
  return Object.freeze({
   schema:V334_SCHEMA,phase:'POST_RESIZE',
