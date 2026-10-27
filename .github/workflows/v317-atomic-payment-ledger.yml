@@ -1,9 +1,10 @@
-name: V317 Atomic Payment Ledger - Ephemeral Postgres Acceptance
+name: V318 Atomic Billing Lifecycle - Ephemeral Postgres Acceptance
 
 on:
   push:
     branches:
       - security/v317-atomic-payment-receipts
+      - security/v318-cancellation-consistency
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -14,6 +15,9 @@ on:
       - 'tests/fixtures/v317-postgres-schema.sql'
       - 'tests/v317-webhook-source-contract.test.mjs'
       - '.github/workflows/v317-atomic-payment-ledger.yml'
+      - 'docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql'
+      - 'tests/v318-cancellation-acceptance.sql'
+      - 'tests/v318-cancellation-contract.test.mjs'
 
 permissions:
   contents: read
@@ -46,7 +50,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs
       - name: Install PostgreSQL client when absent
         shell: bash
         run: |
@@ -68,3 +72,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v317-postgres-schema.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V317-REVIEW-ONLY-ATOMIC-FLUTTERWAVE.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v317-atomic-payment-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v318-cancellation-acceptance.sql
