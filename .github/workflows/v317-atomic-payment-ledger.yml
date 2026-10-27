@@ -1,4 +1,4 @@
-name: V327 Broker Symbol Binding and Redacted MT5 Telemetry Acceptance
+name: V328 Broker Commissioning Console and Commercial Atomic Lifecycle Acceptance
 
 on:
   push:
@@ -14,6 +14,7 @@ on:
       - security/v325-market-quote-integrity
       - security/v326-mt5-first-tick-commissioning
       - security/v327-broker-symbol-provenance
+      - security/v328-gold-commissioning-console
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -45,6 +46,10 @@ on:
       - 'scripts/v327_mt5_xauusd_symbol_bound_relay.py'
       - 'tests/test_v327_mt5_symbol_bound_relay.py'
       - 'tests/v327-broker-symbol-bound-intake.test.mjs'
+      - 'tests/v328-gold-commissioning-console.test.mjs'
+      - 'src/gold-commissioning-v328.mjs'
+      - 'src/gold-commissioning-v328.css'
+      - 'src/gold-workspace.mjs'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -90,7 +95,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs
       - name: Validate read-only Windows relay logic offline without MT5 or network
         run: |
           python3 --version
