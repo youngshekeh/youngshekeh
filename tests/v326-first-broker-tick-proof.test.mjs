@@ -66,6 +66,9 @@ test('stored stale tick is real first-tick proof, not live quote proof',()=>{
 test('genuinely persisted and recent read-only quote gives BROKER_LIVE only',()=>{
   const x=render({now,bridges:[bridge(true)],live:goodTick});
   assert.equal(x.state,'BROKER_LIVE');
+  assert.equal(x.next_step_code,'VERIFY_BROKER_DATA_DISPLAY_RIGHTS');
+  assert.equal(x.live_market.mid,null);
+  assert.equal(x.diagnostic.quote_redistribution_license_verified,false);
   assert.equal(x.gates.first_tick_received.pass,true);
   assert.equal(x.gates.broker_live.pass,true);
   assert.equal(x.governance.machine_execution_allowed,false);
@@ -96,4 +99,18 @@ test('deployment source disables public stale browser caching',()=>{
   assert.match(code,/first_tick_received:\{pass:firstTickSeen/);
   assert.match(code,/PERSISTED_TICK_NOT_CREDENTIAL_USE/);
   assert.doesNotMatch(code,/firstTickSeen=used\.length>0/);
+});
+
+test('missing broker midpoint cannot qualify as live even with a fresh quality flag',()=>{
+  const noMid={...goodTick,quote:{...goodTick.quote,mid:null}};
+  const x=render({now,bridges:[bridge(true)],live:noMid});
+  assert.equal(x.state,'BROKER_QUOTE_STALE');
+  assert.equal(x.gates.broker_live.pass,false);
+  assert.equal(x.live_market.mid,null);
+  assert.equal(x.governance.capital_permission,'0R');
+});
+test('public staging source never redistributes broker price without licensed rights',()=>{
+  assert.match(code,/quote_redistribution_license_verified:false/);
+  assert.match(code,/mid:null/);
+  assert.doesNotMatch(code,/mid:liveFresh\?n\(live\?\.quote\?\.mid\):null/);
 });
