@@ -1,0 +1,29 @@
+name: V313 Launch Security Contract
+
+on:
+  push:
+    branches:
+      - security/v313-launch-security-contract
+  pull_request:
+    branches:
+      - the-father-analytics-deploy
+    paths:
+      - 'api/ops-heartbeat.js'
+      - 'vercel.json'
+      - 'tests/v313-launch-security-contract.test.mjs'
+      - '.github/workflows/v313-launch-security-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fail-closed-security-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact tested revision without persisted credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Run no-secret launch security tests
+        run: node --test tests/v313-launch-security-contract.test.mjs

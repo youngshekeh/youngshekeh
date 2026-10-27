@@ -1,0 +1,73 @@
+name: V316 Public and Commercial Chromium Launch Acceptance
+
+on:
+  push:
+    branches:
+      - test/v315-browser-acceptance
+      - security/v316-auth-checkout-no-refresh
+  pull_request:
+    branches:
+      - the-father-analytics-deploy
+    paths:
+      - 'tests/v315-public-browser-acceptance.mjs'
+      - '.github/workflows/v315-public-browser-acceptance.yml'
+      - 'src/public-surfaces.ts'
+      - 'src/public-market-reference.mjs'
+      - 'src/live-monitor.mjs'
+      - 'src/v235-reference-integrity.mjs'
+      - 'index.html'
+      - 'live-markets/index.html'
+      - 'api/market-feed.js'
+      - 'src/v314-market-time-truth.mjs'
+      - 'vercel.json'
+      - 'tests/v315-private-entry-headers.test.mjs'
+      - 'tests/v316-auth-payment-browser.mjs'
+      - 'tests/v316-auth-payment-source-contract.test.mjs'
+      - 'src/member.ts'
+      - 'src/owner.ts'
+      - 'src/checkout.ts'
+
+permissions:
+  contents: read
+
+jobs:
+  public-browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact reviewed revision without persisted token
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Install build and pinned browser-test dependencies without postinstall scripts
+        run: npm install --no-package-lock --ignore-scripts --no-audit --no-fund --save=false playwright@1.56.1
+      - name: Verify auth and checkout private caching controls
+        run: node --test tests/v315-private-entry-headers.test.mjs
+      - name: Verify auth token minimization, owner AAL2 and payment-release lock
+        run: node --test tests/v316-auth-payment-source-contract.test.mjs
+      - name: Build exact source revision
+        run: npm run build
+      - name: Install Chromium for isolated rendering
+        run: npx playwright install --with-deps chromium
+      - name: Verify public pages with synthetic data, no provider secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 4173 --strictPort >/tmp/v315-preview.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:4173/; then break; fi
+            sleep 1
+          done
+          curl --fail --silent --output /dev/null http://127.0.0.1:4173/
+          curl --fail --silent --output /dev/null http://127.0.0.1:4173/live-markets/
+          curl --fail --silent --output /dev/null http://127.0.0.1:4173/member/
+          curl --fail --silent --output /dev/null http://127.0.0.1:4173/owner/
+          curl --fail --silent --output /dev/null 'http://127.0.0.1:4173/checkout/?plan=pro'
+          V315_BASE_URL=http://127.0.0.1:4173 node --test tests/v315-public-browser-acceptance.mjs
+          V315_BASE_URL=http://127.0.0.1:4173 node --test tests/v316-auth-payment-browser.mjs

@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const sql=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-ATOMIC-FLUTTERWAVE.sql',import.meta.url),'utf8');
+const webhook=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-flutterwave-webhook.ts',import.meta.url),'utf8');
+const paid=webhook.split("const txId=payload?.data?.id??payload?.id")[1]||'';
+test('paid webhook uses atomic RPC only after remote provider verification',()=>{
+  assert.ok(webhook.includes("/v3/transactions/"));
+  assert.ok(webhook.includes("flutterwave-signature"));
+  assert.ok(webhook.includes("verif-hash"));
+  assert.ok(paid.includes("commit_verified_flutterwave_payment_v317"));
+  assert.ok(paid.includes("V317_ATOMIC_PAYMENT_RPC_RELEASED"));
+  assert.ok(webhook.includes("const V317_ATOMIC_PAYMENT_RPC_RELEASED=false;"));
+  assert.ok(paid.includes("p_checkout_id:intent?.id??null"));
+  assert.ok(paid.includes("p_amount:Number(v.amount)"));
+  assert.doesNotMatch(paid,/await addEvent\(/);
+  assert.doesNotMatch(paid,/await patch\(base,key,'checkout_intents'/);
+  assert.doesNotMatch(paid,/rpc\/activate_subscription_from_payment/);
+});
+test('atomic SQL restricts execution to service_role and locks user payment sequences',()=>{
+  assert.match(sql,/SECURITY DEFINER/);
+  assert.match(sql,/SET search_path = pg_catalog, public/);
+  assert.match(sql,/REVOKE ALL ON FUNCTION/);
+  assert.match(sql,/FROM PUBLIC, anon, authenticated/);
+  assert.match(sql,/GRANT EXECUTE ON FUNCTION/);
+  assert.match(sql,/TO service_role;/);
+  assert.match(sql,/pg_advisory_xact_lock/);
+  assert.match(sql,/ON CONFLICT DO NOTHING/);
+  assert.match(sql,/v317_atomic_commit/);
+  assert.match(sql,/v317_previous_receipt_requires_manual_reconciliation/);
+});
+test('paid event, subscription and checkout writes live in one SQL function body',()=>{
+  assert.match(sql,/INSERT INTO public\.payment_events/);
+  assert.match(sql,/UPDATE public\.checkout_intents/);
+  assert.match(sql,/INSERT INTO public\.subscriptions/);
+  assert.match(sql,/RETURNS jsonb/);
+  assert.match(sql,/v317_recurring_member_binding_unverified/);
+  assert.match(sql,/v317_checkout_intent_evidence_missing/);
+  assert.doesNotMatch(webhook,/V317_ATOMIC_PAYMENT_RPC_RELEASED=true/);
+});
