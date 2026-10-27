@@ -9,9 +9,11 @@ import {createAuthLifecycle, requestAuthJson, isAuthToken, authFailureMessage} f
       function saveSession(data) {
         sessionStorage.setItem(
           'tfa_session',
+          // Keep only the short-lived access token for the handoff to checkout.
+          // Persistent refresh credentials are unnecessary for the guarded
+          // one-tab flow and must never be written into Web Storage.
           JSON.stringify({
             access_token: data.access_token,
-            refresh_token: data.refresh_token || null,
           })
         );
       }
