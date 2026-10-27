@@ -1,4 +1,4 @@
-name: V326 First MT5 Tick Proof and Commercial Atomic Safety Acceptance
+name: V327 Broker Symbol Binding and Redacted MT5 Telemetry Acceptance
 
 on:
   push:
@@ -13,6 +13,7 @@ on:
       - security/v324-mfa-owner-incident-review
       - security/v325-market-quote-integrity
       - security/v326-mt5-first-tick-commissioning
+      - security/v327-broker-symbol-provenance
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -39,6 +40,11 @@ on:
       - 'tests/test_v326_mt5_read_only_relay.py'
       - 'scripts/v326_mt5_xauusd_read_only_relay.py'
       - 'docs/release/V326-REVIEW-ONLY-public-gold-bridge-readiness.ts'
+      - 'docs/release/V327-REVIEW-ONLY-broker-live-market-intake.mjs'
+      - 'docs/release/V327-REVIEW-ONLY-broker-live-market-index.ts'
+      - 'scripts/v327_mt5_xauusd_symbol_bound_relay.py'
+      - 'tests/test_v327_mt5_symbol_bound_relay.py'
+      - 'tests/v327-broker-symbol-bound-intake.test.mjs'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -84,11 +90,12 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs
       - name: Validate read-only Windows relay logic offline without MT5 or network
         run: |
           python3 --version
           python3 -m unittest discover -s tests -p 'test_v326_*.py' -v
+          python3 -m unittest discover -s tests -p 'test_v327_*.py' -v
       - name: Install PostgreSQL client when absent
         shell: bash
         run: |
