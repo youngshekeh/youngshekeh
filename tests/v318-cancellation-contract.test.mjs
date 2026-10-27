@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const sql=readFileSync(new URL('../docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql',import.meta.url),'utf8');
+const webhook=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-flutterwave-webhook.ts',import.meta.url),'utf8');
+const cancel=webhook.split("if(eventType==='subscription.cancelled'){")[1]?.split("// V319: A 200 means either a deliberately ignored event")[0]||'';
+test('cancellation must remain hard-sealed and must not silently acknowledge ambiguous events',()=>{
+  assert.match(webhook,/const V318_ATOMIC_CANCELLATION_RPC_RELEASED=false/);
+  assert.match(cancel,/if\(!V318_ATOMIC_CANCELLATION_RPC_RELEASED\)/);
+  assert.match(cancel,/status:503/);
+  assert.match(cancel,/manual provider reconciliation required/);
+  assert.doesNotMatch(cancel,/return new Response\('ok',\{status:200[\s\S]*await addEvent/);
+});
+test('subscription cancellation is reconciled to provider identity and current provider status',()=>{
+  assert.match(cancel,/data\?\.subscription_id/);
+  assert.match(cancel,/data\?\.customer\?\.id/);
+  assert.match(cancel,/data\?\.plan\?\.id/);
+  assert.match(cancel,/api\.flutterwave\.com\/v3\/subscriptions/);
+  assert.match(cancel,/u\.searchParams\.set\('status','cancelled'\)/);
+  assert.match(cancel,/String\(x\?\.id\?\?''\)===subId/);
+  assert.match(cancel,/String\(x\?\.customer\?\.id\?\?''\)===customerId/);
+  assert.match(cancel,/String\(x\?\.plan\?\?''\)===planId/);
+  assert.match(cancel,/String\(x\?\.status\?\?''\)\.toLowerCase\(\)==='cancelled'/);
+  assert.doesNotMatch(cancel,/findSubscription\(/);
+  assert.doesNotMatch(cancel,/await addEvent\(/);
+  assert.doesNotMatch(cancel,/await patch\(/);
+});
+test('cancellation calls atomic service-role RPC and cannot adjust paid period',()=>{
+  assert.match(cancel,/commit_verified_flutterwave_cancellation_v318/);
+  assert.match(cancel,/p_provider_status:'cancelled'/);
+  assert.match(sql,/SECURITY DEFINER/);
+  assert.match(sql,/pg_advisory_xact_lock/);
+  assert.match(sql,/REVOKE ALL ON FUNCTION/);
+  assert.match(sql,/FROM PUBLIC, anon, authenticated/);
+  assert.match(sql,/TO service_role/);
+  assert.match(sql,/v318_cancellation_replay_inconsistent_manual_hold/);
+  assert.match(sql,/INSERT INTO public\.payment_events/);
+  assert.match(sql,/UPDATE public\.subscriptions SET status='canceled',updated_at=now\(\)/);
+  assert.doesNotMatch(sql,/SET current_period_end\s*=/);
+});

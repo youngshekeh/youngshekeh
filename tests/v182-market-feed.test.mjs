@@ -2,17 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createFeedPressureGate} from '../src/public-feed-pressure.mjs';
+import {enforceQuoteTimeTruth} from '../src/v314-market-time-truth.mjs';
 const source=(await readFile(new URL('../api/market-feed.js',import.meta.url),'utf8'))
   .replace(/^import \{createFeedPressureGate\} from '\.\.\/src\/public-feed-pressure\.mjs';\n/, '')
+  .replace(/^import \{enforceQuoteTimeTruth\} from '\.\.\/src\/v314-market-time-truth\.mjs';\n/, '')
   .replace('export default async function handler','async function handler');
 
-function fixture(fetchImpl = async () => Response.json({ok:true,market_status:'DELAYED_LIVE'})) {
+// V314: exercise the real quote-time guard with deterministic, source-dated synthetic observations.
+const sourceTime=new Date(0).toISOString();
+const sampleQuote=()=>({price:100,market_time:sourceTime});
+function fixture(fetchImpl = async () => Response.json({ok:true,market_status:'DELAYED_LIVE',
+  generated_at:sourceTime,assets:[{key:'gold',...sampleQuote()},
+    {key:'dxy',...sampleQuote()},{key:'brent',...sampleQuote()}]})) {
   let clock=0, calls=0; const timers=new Map(), requests=[];
   const Clock=class extends Date {static now(){return clock;}};
-  const handler=new Function('fetch','Date','setTimeout','clearTimeout','createFeedPressureGate',`${source}\nreturn handler;`)(
+  const handler=new Function('fetch','Date','setTimeout','clearTimeout','createFeedPressureGate','enforceQuoteTimeTruth',`${source}\nreturn handler;`)(
     async (url,options) => {calls++; requests.push({url,options}); return fetchImpl(url,options);},Clock,
     (callback,delay) => {const id=timers.size+1; timers.set(id,{callback,delay}); return id;},id=>timers.delete(id),
-    options=>createFeedPressureGate({...options,now:()=>clock}));
+    options=>createFeedPressureGate({...options,now:()=>clock}),
+    (feed,body)=>enforceQuoteTimeTruth(feed,body,clock));
   async function run(url='/api/market-feed?feed=public-live-markets-api',method='GET',extra={}) {
     const headers=new Map(); let statusCode=200;
     const res={setHeader:(name,value)=>headers.set(name.toLowerCase(),value),
