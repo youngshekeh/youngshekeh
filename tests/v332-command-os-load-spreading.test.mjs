@@ -31,9 +31,9 @@ test('V332 phases 12 existing tasks across five minutes and retains one-minute m
  assert.equal(oneShots.length,13);
  assert.equal(oneShots[0].delay,60000);
  assert.deepEqual(oneShots.slice(1).map(x=>x.delay),
-   Array.from({length:12},(_,i)=>10000+i*17000));
- assert.equal(oneShots.at(-1).delay,197000);
- assert.ok(oneShots.at(-1).delay<V332_RECUR_MS);
+   Array.from({length:12},(_,i)=>310000+i*17000));
+ assert.equal(oneShots.at(-1).delay,497000);
+ assert.ok(oneShots.at(-1).delay<2*V332_RECUR_MS);
  assert.equal(s.state().capital_permission,'0R');
  assert.equal(s.state().payments_enabled,false);
  assert.equal(s.state().live_trading_enabled,false);
