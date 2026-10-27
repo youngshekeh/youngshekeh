@@ -1,4 +1,4 @@
-name: V330 DB Failure Circuit and Commercial Atomic Safety Acceptance
+name: V331 Bounded Outage Telemetry and Commercial Atomic Safety Acceptance
 
 on:
   push:
@@ -17,6 +17,7 @@ on:
       - security/v328-gold-commissioning-console
       - security/v329-db-transport-timeout-recovery
       - security/v330-db-pressure-circuit-breakers
+      - security/v331-bounded-outage-telemetry
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -62,6 +63,9 @@ on:
       - 'api/ops-heartbeat.js'
       - 'src/v330-kernel-pressure-circuit.mjs'
       - 'tests/v330-kernel-pressure-circuit.test.mjs'
+      - 'src/v331-outage-probe-cache.mjs'
+      - 'tests/v331-outage-probe-cache.test.mjs'
+      - 'api/public-recovery-triage.js'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -107,7 +111,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs tests/v329-database-transport-recovery.test.mjs tests/v330-kernel-pressure-circuit.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs tests/v329-database-transport-recovery.test.mjs tests/v330-kernel-pressure-circuit.test.mjs tests/v331-outage-probe-cache.test.mjs
       - name: Assert real redacted V329 incident yields database HOLD
         run: |
           node scripts/v329-db-transport-triage.mjs |
