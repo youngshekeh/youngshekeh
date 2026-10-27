@@ -23,15 +23,18 @@ const op=(gate='HOLD')=>({
 function json(value,status=200){return new Response(JSON.stringify(value),{
   status,headers:{'Content-Type':'application/json'}});
 }
-function sandbox({gate='HOLD',providerDown=false,rpcError=false}={}){
+function sandbox({gate='HOLD',providerDown=false,rpcError=false,
+  transportDown=false,transportError=false}={}){
   const calls=[];let handler;let currentGate=gate;
   const endpoint=async(u)=>{
     if(u.pathname==='/rest/v1/rpc/billing_ops_readiness_v321')
       return rpcError?json({message:'unavailable'},503):json(op(currentGate));
     if(u.pathname==='/rest/v1/rpc/billing_transport_readiness_v322')
-      return json({ok:true,state:'TRANSPORT_OBSERVABLE',transport_available:true,
-        billing_event_attribution_verified:false,
-        commercial_activation_permitted:false});
+      return transportError?json({message:'unavailable'},503):
+        json({ok:true,state:transportDown?'WORKER_UNAVAILABLE':'TRANSPORT_OBSERVABLE',
+          transport_available:!transportDown,
+          billing_event_attribution_verified:false,
+          commercial_activation_permitted:false});
     if(u.pathname==='/rest/v1/plans')return json([{
       id:'pro',name:'Pro',price_monthly_usd:19,is_active:true
     }]);
@@ -148,4 +151,41 @@ test('source and SQL preserve private RPC permissions and immutable commercial H
   assert.match(sql,/TO service_role/);
   assert.match(sql,/'commercial_activation_permitted',false/);
   assert.doesNotMatch(sql,/\bINSERT INTO\b|\bUPDATE public\.agent_runs\b|\bDELETE FROM\b/);
+});
+
+test('V322 missing pg_net worker must block readiness before any merchant call',async()=>{
+  const h=sandbox({gate:'PASS',transportDown:true});
+  const r=await h.request();
+  assert.equal(r.status,200);
+  assert.equal(r.body.state,'BLOCKED_TRANSPORT_EVIDENCE');
+  assert.equal(r.body.transport_gate,'WORKER_UNAVAILABLE');
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(r.body.live_flow_verified,false);
+  assert.equal(r.body.billing_event_attribution_verified,false);
+  assert.equal(h.calls.filter(x=>x.url.includes('payment-plans/')).length,0);
+  assert.ok(h.calls.every(x=>x.method==='GET'));
+  assert.equal(r.headers.get('cache-control'),'private, no-store');
+});
+test('V322 failed transport RPC blocks checkout instead of trusting healthy cron',async()=>{
+  const h=sandbox({gate:'PASS',transportError:true});
+  const r=await h.request();
+  assert.equal(r.body.state,'BLOCKED_TRANSPORT_EVIDENCE');
+  assert.equal(r.body.transport_gate,'TRANSPORT_EVIDENCE_UNAVAILABLE');
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(r.body.commercial_activation_permitted,false);
+  assert.equal(h.calls.filter(x=>x.url.includes('payment-plans/')).length,0);
+});
+test('V322 cron failure short-circuits transport and does not expose transport data',async()=>{
+  const h=sandbox({gate:'HOLD',transportDown:true});
+  const r=await h.request();
+  assert.equal(r.body.state,'BLOCKED_OPS_GATES');
+  assert.equal(h.calls.length,1);
+});
+test('V322 operational and transport PASS still cannot release money flows',async()=>{
+  const h=sandbox({gate:'PASS'});
+  const r=await h.request();
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(r.body.commercial_activation_permitted,false);
+  assert.ok(h.calls.some(x=>x.url.includes('billing_ops_readiness_v321')));
+  assert.ok(h.calls.some(x=>x.url.includes('billing_transport_readiness_v322')));
 });
