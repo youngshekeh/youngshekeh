@@ -42,19 +42,19 @@ async function open(data,width=1280){
   viewport:{width,height:850},reducedMotion:'reduce'
  });
  const page=await context.newPage();
+ // Existing Gold page has many other read-only data fetches; isolate them.
+ await page.route('**/functions/v1/**',async route=>{
+  await route.fulfill({
+    status:503,contentType:'application/json',
+    body:'{"ok":false,"state":"UNAVAILABLE"}'
+  });
+ });
  await page.route(ENDPOINT,async route=>{
   await route.fulfill({
     status:data===null?503:200,
     contentType:'application/json',
     headers:{'Cache-Control':'no-store'},
     body:JSON.stringify(data===null?{ok:false,error:'NO_UPSTREAM'}:data)
-  });
- });
- // Existing Gold page has many other read-only data fetches; isolate them.
- await page.route('**/functions/v1/**',async route=>{
-  await route.fulfill({
-    status:503,contentType:'application/json',
-    body:'{"ok":false,"state":"UNAVAILABLE"}'
   });
  });
  await page.route('**/api/**',async route=>{
