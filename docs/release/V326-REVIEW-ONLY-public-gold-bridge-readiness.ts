@@ -44,7 +44,8 @@ export function buildGoldBridgeReadiness({now=new Date(),bridges=[],live={}}={})
   const used=active.filter(x=>n(x?.use_count)>0||x?.last_used_at);
   const latestUsed=used.map(x=>x?.last_used_at).filter(Boolean).sort().at(-1)??null;
   const lastActivityAge=age(now,latestUsed);
-  const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&n(live?.quote?.mid)!==null;
+  const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&
+    typeof live?.quote?.mid==='number'&&Number.isFinite(live.quote.mid)&&live.quote.mid>0;
   const liveConnected=firstTickSeen&&(live?.source?.connected===true||live?.state==='BROKER_LIVE');
   // Credential authentication increments bridge.use_count BEFORE tick validation.
   // Only a real, persisted quote from get_v186_gold_live_market_status
@@ -58,7 +59,7 @@ export function buildGoldBridgeReadiness({now=new Date(),bridges=[],live={}}={})
   let next='ENROLL_OWNER_AAL2_BRIDGE';
   if(enrolled&&!firstTickSeen){state='BRIDGE_ENROLLED_WAITING_FIRST_TICK';next='RUN_MT5_RELAY_ON_WINDOWS';}
   else if(firstTickSeen&&!liveFresh){state=liveConnected?'BROKER_QUOTE_STALE':'BRIDGE_ACTIVITY_WITHOUT_FRESH_QUOTE';next='RESTORE_FRESH_MT5_TICKS';}
-  else if(liveFresh){state='BROKER_LIVE';next='NONE';}
+  else if(liveFresh){state='BROKER_LIVE';next='VERIFY_BROKER_DATA_DISPLAY_RIGHTS';}
 
   const gates={
     bridge_enrolled:{pass:enrolled,count:active.length},
@@ -78,13 +79,15 @@ export function buildGoldBridgeReadiness({now=new Date(),bridges=[],live={}}={})
     gates,
     next_step_code:next,
     public_counts:{active_bridges:active.length,bridges_with_activity:used.length},
-    diagnostic:{first_tick_counted_from:'PERSISTED_RECEIVER_QUOTE_ONLY',bridge_key_authentication_is_not_tick:true,actual_mt5_relay_tested:false},
+    diagnostic:{first_tick_counted_from:'PERSISTED_RECEIVER_QUOTE_ONLY',bridge_key_authentication_is_not_tick:true,actual_mt5_relay_tested:false,quote_redistribution_license_verified:false},
     live_market:{
       state:live?.state??'UNAVAILABLE',
       connected:liveConnected,
       fresh:liveFresh,
       trade_mode:liveFresh?(live?.quote?.trade_mode??live?.trade_mode??null):null,
-      mid:liveFresh?n(live?.quote?.mid):null
+      // Market data rights are not verified. A public commissioning status
+      // must not redistribute actual broker quote prices by default.
+      mid:null
     },
     privacy:{
       bridge_ids_public:false,
