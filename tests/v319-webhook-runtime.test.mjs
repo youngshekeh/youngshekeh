@@ -65,6 +65,7 @@ function harness({releasePaid=false,releaseCancel=false,route=successRoute}={}){
       return await route(req.url,init);
     },
     crypto:webcrypto,TextEncoder,Request,Response,Headers,URL,AbortSignal,
+    btoa:(raw)=>Buffer.from(raw,'binary').toString('base64'),
     console:{error:()=>{}}
   };
   runInNewContext(stripTypeScriptTypes(code,{mode:'strip'}),ctx,{timeout:5000});
