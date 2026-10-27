@@ -24,8 +24,9 @@ async function create(target,{authentication='valid',memberResult=limited(),seed
   const page=await context.newPage();
   let tokenRequests=0, memberRequests=0, paymentPosts=0;
   if(seedSession){
-    await page.addInitScript(access=>sessionStorage.setItem('tfa_session',
-      JSON.stringify({access_token:access,refresh_token:FAKE_REFRESH})),FAKE_TOKEN);
+    await page.addInitScript(({access,refresh})=>sessionStorage.setItem('tfa_session',
+      JSON.stringify({access_token:access,refresh_token:refresh})),
+      {access:FAKE_TOKEN,refresh:FAKE_REFRESH});
   }
   await page.route('**/*',async route=>{
     const r=route.request(),url=new URL(r.url());
