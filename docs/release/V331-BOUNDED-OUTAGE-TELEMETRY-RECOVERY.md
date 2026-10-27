@@ -4,7 +4,7 @@
 
 ## Root-cause investigation, updated
 
-Supabase control plane still described `mpcelmjiycjpdyyflisn` as `ACTIVE_HEALTHY`, but SQL was inconsistent: one aggregate read at **09:48:24.065073 UTC** showed `20` active database connections out of configured `max_connections=60`, while a larger six-hour `cron.job_run_details` aggregate was canceled with SQLSTATE `57014` and a separate grouped `pg_stat_activity` query failed due to connection timeout. A later metadata-only request also timed out.
+Supabase control plane still described `mpcelmjiycjpdyyflisn` as `ACTIVE_HEALTHY`, but SQL was inconsistent: one aggregate read at **09:48:24.065073 UTC** showed `20` total PostgreSQL sessions against configured `max_connections=60`, while a larger six-hour `cron.job_run_details` aggregate was canceled with SQLSTATE `57014` and a separate grouped `pg_stat_activity` query failed due to connection timeout. A later metadata-only request also timed out.
 
 **Interpretation:** 20/60 from one moment does **not** establish a permanently uncongested pool, and does **not** establish connection exhaustion either. The expensive cron history query is unsafe to repeat during this incident. Existing independent 09:20-09:55 UTC log aggregation showed **81** timeout-containing PostgreSQL entries out of 232, and **20** timeout-containing PostgREST entries out of 21. These are *message totals*, not unique affected end users or proof of the root cause. The provider must verify compute resource pressure, real pool queues and lock/slow-query metrics independently.
 
