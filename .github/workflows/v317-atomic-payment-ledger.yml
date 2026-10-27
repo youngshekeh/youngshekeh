@@ -1,4 +1,4 @@
-name: V324 AAL2 Two-Owner Incident Attestation and Billing Atomic Lifecycle Acceptance
+name: V325 Market Quote Provenance and Commercial Billing Atomicity Acceptance
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
       - security/v322-billing-transport-diagnostics
       - security/v323-billing-incident-evidence-ledger
       - security/v324-mfa-owner-incident-review
+      - security/v325-market-quote-integrity
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -31,7 +32,7 @@ on:
       - 'docs/release/V321-REVIEW-ONLY-public-billing-acceptance.ts'
       - 'tests/fixtures/v321-billing-ops-schema.sql'
       - 'tests/v321-billing-ops-acceptance.sql'
-      - 'tests/v321-public-billing-ops-gate.test.mjs'
+      - 'tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -40,6 +41,11 @@ on:
       - 'docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql'
       - 'tests/fixtures/v324-owner-aal2-incident-schema.sql'
       - 'tests/v324-owner-incident-review-acceptance.sql'
+      - 'docs/release/V325-REVIEW-ONLY-public-live-markets-api.ts'
+      - 'docs/release/V325-REVIEW-ONLY-MARKET-QUOTE-EVIDENCE.sql'
+      - 'tests/v325-market-quote-integrity.test.mjs'
+      - 'tests/fixtures/v325-market-evidence-schema.sql'
+      - 'tests/v325-market-quote-evidence-acceptance.sql'
 
 permissions:
   contents: read
@@ -107,3 +113,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v324-owner-aal2-incident-schema.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v324-owner-incident-review-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v325-market-evidence-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V325-REVIEW-ONLY-MARKET-QUOTE-EVIDENCE.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v325-market-quote-evidence-acceptance.sql
