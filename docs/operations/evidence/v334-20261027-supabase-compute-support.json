@@ -1,0 +1,39 @@
+{
+  "schema": "TFA-V334-SUPABASE-COMPUTE-SUPPORT-OBSERVATION",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "region": "eu-west-1",
+  "recorded_date": "2026-10-27",
+  "provider_support_guidance": {
+    "summary": "Support reports multiple database instance resources exhausted due to load.",
+    "suggested_compute_action": "On Pro, upgrade Nano to Micro at no additional rate, then investigate CPU, RAM, Disk I/O, slow queries and advisors.",
+    "support_recommendation_is_direct_dashboard_proof": false,
+    "project_compute_size_independently_verified": false,
+    "nano_micro_rate_parity_documented": true,
+    "downtime_incurred_on_compute_resize": true
+  },
+  "project_control_plane": "ACTIVE_HEALTHY",
+  "last_successful_sql_utc": "2026-10-27T10:35:52.246648Z",
+  "sampled_backend_sessions": 18,
+  "sampled_configured_max_connections": 60,
+  "log_window": {
+    "start": "2026-10-27T10:15:00Z",
+    "end": "2026-10-27T10:30:00Z",
+    "postgres_total": 90,
+    "postgres_timeout_text_messages": 25,
+    "postgres_sqlstate_57014": 2,
+    "postgres_sqlstate_08006": 19,
+    "postgrest_total": 9,
+    "postgrest_timeout_text_messages": 9,
+    "supavisor_log_events": null
+  },
+  "actual_compute_size": "UNVERIFIED_BY_PROJECT_TOOL",
+  "backup_inventory_verified": false,
+  "isolated_restore_verified": false,
+  "operator_resize_approval_verified": false,
+  "resize_completed_verified": false,
+  "post_resize_sustained_sql_verified": false,
+  "merchant_checkout_enabled": false,
+  "live_order_submission_enabled": false,
+  "capital_permission": "0R",
+  "notes": "Historical log event aggregates, NOT unique clients, provider-specific current-size or global root-cause proof. One 18/60 session sample does not rule out CPU/RAM/disk I/O or transient connection bottlenecks. No resize performed."
+}
