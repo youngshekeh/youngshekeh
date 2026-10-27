@@ -31,7 +31,7 @@ FROM generate_series(1,5);
 -- Different failure categories and unrelated cron jobs MUST NOT be inserted.
 INSERT INTO cron.job_run_details(jobid,status,start_time,end_time,return_message)
 VALUES (26,'failed',now()-interval '20 minutes',now()-interval '19 minutes',
-   'synthetic permission denied, no timeout term');
+   'synthetic permission denied, not a timed-out operation');
 
 DO $$
 DECLARE
