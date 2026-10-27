@@ -5,11 +5,19 @@
 **Project:** `mpcelmjiycjpdyyflisn` (eu-west-1; PostgreSQL 17.6.1)  
 **Public commercial status:** HOLD · **Checkout:** OFF · **Trading:** OFF · **Capital:** WAIT / 0R
 
+## New owner Dashboard screenshots, October 27, 2026
+
+**Nano compute has now been visually verified for this project.** The Supabase Infrastructure view explicitly shows **`eu-west-1 · t4g.nano`**, CPU **98%**, RAM **69%**, connections currently **Unavailable**, and disk use **9%**. The metrics view shows compute **98%**, CPU **98%**, memory **70%**, **disk I/O balance 44%** (this is **remaining balance, not 44% I/O utilization**), database files **425.4 MB**, WAL **128 MB**, and system **171.2 MB**. The provider metrics screenshot spans about October 20–27; the values are screenshots, not streaming measurements.
+
+The same authenticated **Scaling** view explicitly lists **Nano $0.01344/hour**, **Micro $0.01344/hour**, a purple **Free Upgrade** label beside Micro, and Micro **1 GB RAM** compared with Nano **up to 0.5 GB**. The displayed price difference is **$0.00/hour**; existing Pro subscription and any unrelated usage fees are unaffected. Larger Small and Medium options are more expensive and not authorized by this evidence.
+
+**The remaining necessary owner evidence is the actual project backup/recovery point and the final resize confirmation. Neither screenshot shows a backup inventory or successful Micro resize.** There is no reason to collect the owner's screenshots themselves in the repository; only redacted tier/pricing and resource metrics were recorded in the V334 evidence JSON. Do not mistakenly claim the database is already upgraded.
+
 ## 1. What the real provider has established
 
 Supabase support has inspected the project's instance metrics and specifically reported that it was **exhausting multiple resources due to load**. Their recommended remedy includes moving **Nano to Micro**, which they state can be done on Pro **with no additional charge**. They also recommend identifying the limiting CPU, RAM, disk I/O and expensive SQL queries, and consulting the index and performance advisers.
 
-The current official [Supabase Compute and Disk documentation](https://supabase.com/docs/guides/platform/compute-and-disk) independently confirms the paid Nano/Micro **same rate**, Nano up to 0.5 GB RAM, Micro 1 GB RAM and baseline disk throughput / IOPS improvements (5→11 MB/s and 250→500 IOPS). The [Manage Compute usage guide](https://supabase.com/docs/guides/platform/manage-your-usage/compute) explains the Pro compute credit and warns compute changes incur downtime. Neither screenshot nor the connected project metadata verifies what tier the project **currently** is on; only the authenticated project Dashboard does. A sizing recommendation does not establish that resize has happened.
+The current official [Supabase Compute and Disk documentation](https://supabase.com/docs/guides/platform/compute-and-disk) independently confirms the paid Nano/Micro **same rate**, Nano up to 0.5 GB RAM, Micro 1 GB RAM and baseline disk throughput / IOPS improvements (5→11 MB/s and 250→500 IOPS). The [Manage Compute usage guide](https://supabase.com/docs/guides/platform/manage-your-usage/compute) explains the Pro compute credit and warns compute changes incur downtime. The newly provided owner Dashboard screenshots verify the present **Nano** tier, although connected project metadata alone does not expose it. This is not evidence that a resize has happened.
 
 Support asks to look at CPU, memory, disk I/O and slow queries **after** the tier change. Scaling is likely the necessary first infrastructure remediation, **not a guarantee of permanent recovery** if query loops or connection contention persist.
 
@@ -22,7 +30,7 @@ Sanitized reproducible evidence is stored at `docs/operations/evidence/v334-2026
 ## 3. Required project-owner action · without copying credentials
 
 1. Open the exact project's **[Supabase Infrastructure settings](https://supabase.com/dashboard/project/mpcelmjiycjpdyyflisn/settings/infrastructure)**, using the existing authenticated session.
-2. Read the **actual current compute tier**. It may be Nano (as suggested by support); do **not** infer it from project `ACTIVE_HEALTHY`. If already Micro or larger, don't blindly downgrade or duplicate the operation.
+2. Confirm the **current compute tier** remains Nano immediately before taking action. The supplied Dashboard screenshots explicitly showed `t4g.nano`; if the live screen now shows Micro or larger, do not repeat or downgrade.
 3. Open **Database → Backups** at [this project's backup dashboard](https://supabase.com/dashboard/project/mpcelmjiycjpdyyflisn/database/backups/scheduled), verify the latest available backup, the recovery point and restore limitations. Supabase's [backups guide](https://supabase.com/docs/guides/platform/backups) says Pro organizations are normally backed up daily for seven days, but this **does not prove the project's backup inventory is available**. Storage-file objects are not included in database-only restore.
 4. In Infrastructure, select **Micro** **only if** Dashboard currently shows Nano and confirms the support-reported **no additional rate**. Read any pricing, downtime and warnings; do not select Small/Medium (which cost more), and do not create an extra paid Supabase project. Ensure an operator can monitor Auth, PostgREST and live user impacts during the resize.
 5. Confirm there is a recoverable backup, incident owner, accepted downtime and rollback/restore plan before applying the change. Compute resize involves a database restart/downtime and may exceed Supabase's usual short interval. User confirmation in the Supabase UI is required. **There is no connected tool exposing resize** and V334 does **not** call the private management API to perform it.
