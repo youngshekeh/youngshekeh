@@ -1,4 +1,4 @@
-name: V333 Delta-Only Command OS Cloud Sync and Commercial Atomic Safety Acceptance
+name: V334 Supabase Micro Compute Recovery and Commercial Atomic Safety Acceptance
 
 on:
   push:
@@ -20,6 +20,7 @@ on:
       - security/v331-bounded-outage-telemetry
       - security/v332-command-os-load-spreading
       - security/v333-delta-only-command-cloud-sync
+      - security/v334-micro-compute-upgrade-acceptance
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -73,6 +74,11 @@ on:
       - 'tests/v332-command-os-load-spreading.test.mjs'
       - 'src/v333-delta-only-cloud-sync.mjs'
       - 'tests/v333-delta-only-cloud-sync.test.mjs'
+      - 'src/v334-micro-compute-upgrade-acceptance.mjs'
+      - 'tests/v334-micro-compute-resize-acceptance.test.mjs'
+      - 'scripts/v334-compute-support-preflight.mjs'
+      - 'docs/operations/evidence/v334-20261027-supabase-compute-support.json'
+      - 'docs/release/V334-SUPABASE-MICRO-COMPUTE-RECOVERY.md'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -118,12 +124,17 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs tests/v329-database-transport-recovery.test.mjs tests/v330-kernel-pressure-circuit.test.mjs tests/v331-outage-probe-cache.test.mjs tests/v332-command-os-load-spreading.test.mjs tests/v333-delta-only-cloud-sync.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs tests/v327-broker-symbol-bound-intake.test.mjs tests/v328-gold-commissioning-console.test.mjs tests/v329-database-transport-recovery.test.mjs tests/v330-kernel-pressure-circuit.test.mjs tests/v331-outage-probe-cache.test.mjs tests/v332-command-os-load-spreading.test.mjs tests/v333-delta-only-cloud-sync.test.mjs tests/v334-micro-compute-resize-acceptance.test.mjs
       - name: Assert real redacted V329 incident yields database HOLD
         run: |
           node scripts/v329-db-transport-triage.mjs |
             tee /tmp/v329-redacted-incident.txt
           grep -q 'V329_PUBLIC_LAUNCH_DATABASE_HOLD_RECORDED' /tmp/v329-redacted-incident.txt
+      - name: Assert Supabase support compute recovery stays on HOLD until proof
+        run: |
+          node scripts/v334-compute-support-preflight.mjs |
+            tee /tmp/v334-compute-readiness.txt
+          grep -q 'V334_COMPUTE_SUPPORT_RECOVERY_HOLD_RECORDED' /tmp/v334-compute-readiness.txt
       - name: Validate read-only Windows relay logic offline without MT5 or network
         run: |
           python3 --version
