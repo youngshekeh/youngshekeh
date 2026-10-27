@@ -94,6 +94,36 @@ async function build(){
     };
   }
 
+  // V323: absence of an audited, private incident queue is NOT readiness.
+  // Historical orphan billing jobs and cron failures need review, never
+  // status updates merely to make dashboards turn green.
+  const incidentRes=await fetch(
+    base+'/rest/v1/rpc/billing_incident_readiness_v323',{
+      method:'GET',
+      headers:{apikey:key,Authorization:`Bearer ${key}`,Accept:'application/json'},
+      signal:AbortSignal.timeout(3500)
+    });
+  const incident=await incidentRes.json().catch(()=>null);
+  if(!incidentRes.ok||incident?.ok!==true
+     ||incident?.gate!=='NO_RECORDED_INCIDENTS'){
+    return{
+      ok:true,version:'billing-acceptance-v323-incident-hold',
+      generated_at:new Date().toISOString(),provider:'flutterwave',
+      state:'BLOCKED_UNRESOLVED_BILLING_INCIDENTS',
+      ready_for_checkout:false,live_flow_verified:false,
+      commercial_activation_permitted:false,
+      incident_gate:incidentRes.ok&&incident?.gate==='HOLD'
+        ?'HOLD':'EVIDENCE_UNAVAILABLE',
+      open_incident_count:incidentRes.ok&&incident?.ok===true
+        ?incident.open_incident_count??null:null,
+      stale_agent_run_count:incidentRes.ok&&incident?.ok===true
+        ?incident.stale_agent_run_count??null:null,
+      governance:{creates_charges:false,mutates_subscriptions:false,
+        mutations_permitted:false},
+      truth_label:'INCIDENT_REVIEW_REQUIRED_BEFORE_COMMERCIAL_ACCEPTANCE'
+    };
+  }
+
   const [plans,mappings,payments,paidCheckouts,validSubs]=await Promise.all([
     rows(base,key,"plans",{select:"id,name,price_monthly_usd,is_active",is_active:"eq.true"}),
     rows(base,key,"billing_plan_mappings",{select:"plan_id,provider_plan_id,currency,recurring,is_active",provider:"eq.flutterwave",is_active:"eq.true"}),
