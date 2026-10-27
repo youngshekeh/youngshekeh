@@ -63,6 +63,8 @@ function enforceQuoteTruth(body:any,g:any){
       ...asset,
       // No fake LIVE badge or direction from missing/stale data.
       price:nonFresh?null:asset.price,
+      change_pct:nonFresh?null:asset.change_pct,
+      drivers:nonFresh?[]:asset.drivers,
       last_observed_price:nonFresh&&typeof asset.price==='number'
         &&Number.isFinite(asset.price)?asset.price:null,
       state:nonFresh?'DATA_GATED':asset.state,
@@ -77,6 +79,10 @@ function enforceQuoteTruth(body:any,g:any){
       ?.quote_quality?.quote_status||'UNVERIFIED'
   }));
   const goldData=items.find((a:any)=>a.key==='gold')||null;
+  const futuresQuality=quoteQuality(feed.gold_futures||feed.gold||null,nowMs);
+  const spotQuality=quoteQuality(feed.gold_spot||null,nowMs);
+  const futuresUsable=futuresQuality.quote_status==='FRESH_INDICATIVE';
+  const spotUsable=spotQuality.quote_status==='FRESH_INDICATIVE';
   const brokerTick=g?.live_broker;
   const brokerValid=brokerTick?.state==='BROKER_LIVE'&&
     Number.isFinite(Number(g?.engine?.broker_quote_age_seconds))&&
@@ -92,6 +98,7 @@ function enforceQuoteTruth(body:any,g:any){
     market_status:blocked?'DATA_GATED':body.market_status,
     upstream_market_status:g?.market_status||'UNAVAILABLE',
     assets:items,
+    regime:blocked?{state:'DATA_GATED',score:0,drivers:[]}:body.regime,
     // Public quotes remain research-only regardless of their timestamp.
     decision:{
       ...(body.decision||{}),action:'WAIT',capital_permission:'0R',
@@ -117,6 +124,13 @@ function enforceQuoteTruth(body:any,g:any){
     },
     gold_context:{
       ...(body.gold_context||{}),
+      // Secondary context fields are also consumed by UI components.
+      // Never leave a stale spot/futures quote here as an apparent live price.
+      spot_price:spotUsable?body.gold_context?.spot_price??null:null,
+      futures_price:futuresUsable?body.gold_context?.futures_price??null:null,
+      basis_usd:(spotUsable&&futuresUsable)?body.gold_context?.basis_usd??null:null,
+      last_observed_spot_price:!spotUsable?body.gold_context?.spot_price??null:null,
+      last_observed_futures_price:!futuresUsable?body.gold_context?.futures_price??null:null,
       display_basis:feed.gold_spot?'Indicative XAUUSD spot; see quote status':'Gold futures fallback; NOT spot'
     }
   };
