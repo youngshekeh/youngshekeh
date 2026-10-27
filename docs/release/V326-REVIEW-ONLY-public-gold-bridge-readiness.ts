@@ -46,13 +46,13 @@ export function buildGoldBridgeReadiness({now=new Date(),bridges=[],live={}}={})
   const lastActivityAge=age(now,latestUsed);
   const liveFresh=live?.ok===true&&live?.state==='BROKER_LIVE'&&live?.quality?.fresh===true&&
     typeof live?.quote?.mid==='number'&&Number.isFinite(live.quote.mid)&&live.quote.mid>0;
-  const liveConnected=firstTickSeen&&(live?.source?.connected===true||live?.state==='BROKER_LIVE');
   // Credential authentication increments bridge.use_count BEFORE tick validation.
   // Only a real, persisted quote from get_v186_gold_live_market_status
   // can prove first-tick arrival. Authentication is a separate milestone.
   const firstTickSeen=!!live?.quote?.observed_at&&
     live?.source?.connected===true&&
     Number.isFinite(Date.parse(String(live.quote.observed_at)));
+  const liveConnected=firstTickSeen&&(live?.source?.connected===true||live?.state==='BROKER_LIVE');
   const enrolled=active.length>0;
 
   let state='NO_BRIDGE_ENROLLED';
