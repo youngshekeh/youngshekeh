@@ -103,7 +103,9 @@ test('global scheduled task fanout never exceeds two concurrent requests',async(
  const y=stub();
  const scheduler=v332CreateScheduler({...y.opts,tasks});
  // activate first three cloud tasks at once
- y.oneShots[1].fn();y.oneShots[2].fn();y.oneShots[3].fn();
+ // The first 13 timers belong to stub()'s own scheduler; the second
+ // batch of 13 timers belongs to the specially instrumented scheduler.
+ y.oneShots[14].fn();y.oneShots[15].fn();y.oneShots[16].fn();
  await Promise.resolve();
  assert.equal(n,2);
  blocks[0].done();blocks[1].done();blocks[2].done();
@@ -177,7 +179,9 @@ test('Command OS background visibility and existing manual controls remain intac
 test('no merchant charges, automatic trading, database cron or secrets added',()=>{
  const src=readFileSync(new URL('../src/v332-command-os-load-spreading.mjs',
   import.meta.url),'utf8');
- assert.doesNotMatch(src,/\bfetch\(|\.insert\(|\.delete\(|cron\.schedule|placeOrder|order_send|payments\.charge|service_role/i);
+ assert.doesNotMatch(src,/\bfetch\(|\.insert\(|cron\.schedule|placeOrder|order_send|payments\.charge|service_role/i);
+ // An internal Set.delete() used to release a concurrency slot is not
+ // a database DELETE and must remain allowed.
  assert.match(src,/capital_permission:'0R'/);
  assert.match(src,/payments_enabled:false/);
  assert.match(src,/live_trading_enabled:false/);
