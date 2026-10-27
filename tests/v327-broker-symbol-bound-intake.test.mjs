@@ -101,6 +101,26 @@ test('stale recorded broker tick is not a fresh quote',async()=>{
   assert.equal(r.body.quote_fresh,false);
   assert.equal(r.body.quote_price,null);
 });
+test('stale observed timestamp overrides an erroneous upstream BROKER_LIVE flag',async()=>{
+  const staleAt=new Date(Date.now()-60_000).toISOString();
+  const x=fake({status:{...detailedStatus,
+    state:'BROKER_LIVE',quality:{fresh:true},
+    quote:{...detailedStatus.quote,observed_at:staleAt,age_seconds:0}}});
+  const r=await x.call();
+  assert.equal(r.body.first_tick_received,true);
+  assert.equal(r.body.quote_fresh,false);
+  assert.equal(r.body.state,'BROKER_STALE');
+  assert.equal(r.body.quote_price,null);
+});
+test('future clock skew cannot pass read-only broker quote freshness',async()=>{
+  const futureAt=new Date(Date.now()+15_000).toISOString();
+  const x=fake({status:{...detailedStatus,
+    quote:{...detailedStatus.quote,observed_at:futureAt}}});
+  const r=await x.call();
+  assert.equal(r.body.state,'BROKER_STALE');
+  assert.equal(r.body.quote_fresh,false);
+  assert.equal(r.body.governance.capital_permission,'0R');
+});
 test('authenticated writer must declare broker symbol before credentials are checked',async()=>{
   const x=fake();const r=await x.call('POST',{symbol:''});
   assert.equal(r.status,422);
