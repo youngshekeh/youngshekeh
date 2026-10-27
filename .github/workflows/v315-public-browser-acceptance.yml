@@ -51,8 +51,10 @@ jobs:
         run: node --test tests/v316-auth-payment-source-contract.test.mjs
       - name: Build exact source revision
         run: npm run build
-      - name: Install Chromium for isolated rendering
-        run: npx playwright install --with-deps chromium
+      - name: Install headless Chromium shell only for isolated rendering
+        # All V315/V316 browser cases launch with headless:true and no channel.
+        # Avoid repeated full-Chromium and apt package installation in CI.
+        run: npx playwright install --only-shell chromium
       - name: Verify public pages with synthetic data, no provider secrets
         shell: bash
         run: |
