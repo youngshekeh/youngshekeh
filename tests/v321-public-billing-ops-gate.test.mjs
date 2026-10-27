@@ -24,7 +24,8 @@ function json(value,status=200){return new Response(JSON.stringify(value),{
   status,headers:{'Content-Type':'application/json'}});
 }
 function sandbox({gate='HOLD',providerDown=false,rpcError=false,
-  transportDown=false,transportError=false}={}){
+  transportDown=false,transportError=false,
+  incidentHold=false,incidentError=false}={}){
   const calls=[];let handler;let currentGate=gate;
   const endpoint=async(u)=>{
     if(u.pathname==='/rest/v1/rpc/billing_ops_readiness_v321')
@@ -35,6 +36,13 @@ function sandbox({gate='HOLD',providerDown=false,rpcError=false,
           transport_available:!transportDown,
           billing_event_attribution_verified:false,
           commercial_activation_permitted:false});
+    if(u.pathname==='/rest/v1/rpc/billing_incident_readiness_v323')
+      return incidentError?json({message:'unavailable'},503):json({
+        ok:true,gate:incidentHold?'HOLD':'NO_RECORDED_INCIDENTS',
+        open_incident_count:incidentHold?48:0,
+        stale_agent_run_count:incidentHold?8:0,
+        commercial_activation_permitted:false
+      });
     if(u.pathname==='/rest/v1/plans')return json([{
       id:'pro',name:'Pro',price_monthly_usd:19,is_active:true
     }]);
@@ -188,4 +196,34 @@ test('V322 operational and transport PASS still cannot release money flows',asyn
   assert.equal(r.body.commercial_activation_permitted,false);
   assert.ok(h.calls.some(x=>x.url.includes('billing_ops_readiness_v321')));
   assert.ok(h.calls.some(x=>x.url.includes('billing_transport_readiness_v322')));
+});
+
+test('V323 48 immutable orphan and cron timeout incidents block checkout before merchant',async()=>{
+  const h=sandbox({gate:'PASS',incidentHold:true});
+  const r=await h.request();
+  assert.equal(r.status,200);
+  assert.equal(r.body.state,'BLOCKED_UNRESOLVED_BILLING_INCIDENTS');
+  assert.equal(r.body.open_incident_count,48);
+  assert.equal(r.body.stale_agent_run_count,8);
+  assert.equal(r.body.incident_gate,'HOLD');
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(r.body.commercial_activation_permitted,false);
+  assert.equal(h.calls.filter(x=>x.url.includes('payment-plans/')).length,0);
+  assert.equal(r.headers.get('cache-control'),'private, no-store');
+});
+test('V323 absent incident RPC is a commercial HOLD, never a green fallback',async()=>{
+  const h=sandbox({gate:'PASS',incidentError:true});
+  const r=await h.request();
+  assert.equal(r.body.state,'BLOCKED_UNRESOLVED_BILLING_INCIDENTS');
+  assert.equal(r.body.incident_gate,'EVIDENCE_UNAVAILABLE');
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(h.calls.filter(x=>x.url.includes('payment-plans/')).length,0);
+});
+test('V323 all private evidence clear still cannot lift the independent checkout lock',async()=>{
+  const h=sandbox({gate:'PASS'});
+  const r=await h.request();
+  assert.equal(r.body.ready_for_checkout,false);
+  assert.equal(r.body.commercial_activation_permitted,false);
+  assert.ok(h.calls.some(x=>x.url.includes('billing_incident_readiness_v323')));
+  assert.ok(h.calls.every(x=>x.method==='GET'));
 });
