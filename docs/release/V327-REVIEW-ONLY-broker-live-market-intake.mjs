@@ -72,7 +72,24 @@ export function createLiveMarketIntakeHandler({base,serverKey,fetchImpl=fetch}){
     const out=await rpc('ingest_v186_gold_live_tick',{p_bridge_id:bridgeId,p_tick:body});
     if(!out.ok||!out.body)return deny(503,'live_tick_intake_unavailable');
     const status=out.body.ok===true?200:out.body.error==='conflicting_tick_replay'||out.body.error==='out_of_order_tick'?409:422;
-    return reply(status,{...out.body,bridge:{symbol_binding_verified:true,market_data_only:true},governance:GOVERNANCE});
+    // Authenticated writers need only an insertion acknowledgement;
+    // never echo the private RPC's tick_id/bridge_id, payload, price or
+    // mutable provider metadata, even to the caller.
+    const state=out.body.state==='LIVE_XAUUSD_TICK_RECORDED'||
+       out.body.state==='DUPLICATE_TICK_ALREADY_RECORDED'
+       ?out.body.state:'TICK_VALIDATION_REJECTED';
+    const knownErrors=new Set([
+      'conflicting_tick_replay','out_of_order_tick','live_tick_rejected'
+    ]);
+    return reply(status,{
+      ok:out.body.ok===true,
+      state,
+      inserted:out.body.inserted===true,
+      error:knownErrors.has(out.body.error)?out.body.error:(
+        out.body.ok===true?null:'tick_validation_rejected'),
+      symbol_binding_verified:true,
+      governance:GOVERNANCE
+    });
   }catch{return deny(503,'live_tick_intake_unavailable');}
  };
 }
