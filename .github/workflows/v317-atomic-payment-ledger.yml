@@ -1,4 +1,4 @@
-name: V320 Commercial Reconciliation Truth and Atomic Billing Acceptance
+name: V321 Commercial Billing Operations and Atomic Lifecycle Acceptance
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - security/v318-cancellation-consistency
       - security/v319-webhook-runtime-ack-safety
       - security/v320-reconciliation-truth-audit
+      - security/v321-billing-liveness-release-gate
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -23,6 +24,11 @@ on:
       - 'tests/v319-webhook-runtime.test.mjs'
       - 'tests/v320-reconciliation-runtime.test.mjs'
       - 'docs/release/V320-REVIEW-ONLY-reconcile-flutterwave-payments.ts'
+      - 'docs/release/V321-REVIEW-ONLY-BILLING-OPS-READINESS.sql'
+      - 'docs/release/V321-REVIEW-ONLY-public-billing-acceptance.ts'
+      - 'tests/fixtures/v321-billing-ops-schema.sql'
+      - 'tests/v321-billing-ops-acceptance.sql'
+      - 'tests/v321-public-billing-ops-gate.test.mjs'
 
 permissions:
   contents: read
@@ -55,7 +61,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs
       - name: Install PostgreSQL client when absent
         shell: bash
         run: |
@@ -79,3 +85,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/v317-atomic-payment-acceptance.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V318-REVIEW-ONLY-ATOMIC-CANCELLATIONS.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v318-cancellation-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v321-billing-ops-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V321-REVIEW-ONLY-BILLING-OPS-READINESS.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v321-billing-ops-acceptance.sql
