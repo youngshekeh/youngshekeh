@@ -84,6 +84,11 @@ test('stale 45-minute Gold quote never displays as current price or trade signal
  assert.equal(body.market_status,'DATA_GATED');
  assert.equal(body.quote_integrity.status,'BLOCKED');
  assert.equal(body.decision.action,'WAIT');
+ assert.equal(body.gold_context.futures_price,null);
+ assert.equal(body.gold_context.last_observed_futures_price,4500);
+ assert.equal(body.regime.state,'DATA_GATED');
+ assert.equal(body.regime.score,0);
+ assert.deepEqual(body.regime.drivers,[]);
 });
 test('missing Brent quote market_time blocks all portfolio capital permission',async()=>{
  const br=mk(85,1);delete br.market_time;
@@ -111,6 +116,9 @@ test('stale XAUUSD spot is not silently disguised by a fresh COMEX futures price
  assert.equal(body.quote_integrity.gold_spot_basis,'SPOT_INDICATIVE');
  assert.equal(body.gold_context.display_basis,
    'Indicative XAUUSD spot; see quote status');
+ assert.equal(body.gold_context.spot_price,null);
+ assert.equal(body.gold_context.last_observed_spot_price,4350);
+ assert.equal(body.gold_context.basis_usd,null);
 });
 test('delayed 17-minute Brent quote remains historical, not labelled live',async()=>{
  const {body}=await app(spine({feed:{brent:mk(87,17)}})).request();
@@ -119,6 +127,9 @@ test('delayed 17-minute Brent quote remains historical, not labelled live',async
  assert.equal(a.price,null);
  assert.equal(a.last_observed_price,87);
  assert.equal(a.state,'DATA_GATED');
+ assert.equal(a.change_pct,null);
+ assert.deepEqual(a.drivers,[]);
+ assert.equal(body.regime.state,'DATA_GATED');
 });
 test('old BTC data is independently gated even if critical FX and oil quotes are recent',async()=>{
  const {body}=await app(spine({feed:{bitcoin:mk(92000,120)}})).request();
@@ -177,4 +188,29 @@ test('HTTP method denial creates no provider request',async()=>{
  const res=await h.request('POST');
  assert.equal(res.status,405);
  assert.equal(h.calls.length,0);
+});
+
+test('stale DXY cannot influence risk regime or leak directional drivers',async()=>{
+ const {body}=await app(spine({feed:{dxy:mk(105,61)}})).request();
+ assert.equal(body.market_status,'DATA_GATED');
+ assert.equal(body.regime.state,'DATA_GATED');
+ assert.equal(body.regime.score,0);
+ assert.deepEqual(body.regime.drivers,[]);
+ const dxy=getAsset(body,'dxy');
+ assert.equal(dxy.state,'DATA_GATED');
+ assert.equal(dxy.price,null);
+ assert.equal(dxy.change_pct,null);
+ assert.deepEqual(dxy.drivers,[]);
+ assert.equal(dxy.capital_permission,'0R');
+});
+test('stale indicative Gold spot never leaks into secondary basis when futures fresh',async()=>{
+ const {body}=await app(spine({feed:{gold_spot:{
+   ...mk(4390,80),quote_type:'spot_indicative'
+ }}})).request();
+ assert.equal(body.gold_context.spot_price,null);
+ assert.equal(body.gold_context.futures_price,4400);
+ assert.equal(body.gold_context.basis_usd,null);
+ assert.equal(body.gold_context.last_observed_spot_price,4390);
+ assert.equal(getAsset(body,'gold').price,null);
+ assert.equal(body.decision.capital_permission,'0R');
 });
