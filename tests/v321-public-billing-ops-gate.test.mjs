@@ -28,6 +28,10 @@ function sandbox({gate='HOLD',providerDown=false,rpcError=false}={}){
   const endpoint=async(u)=>{
     if(u.pathname==='/rest/v1/rpc/billing_ops_readiness_v321')
       return rpcError?json({message:'unavailable'},503):json(op(currentGate));
+    if(u.pathname==='/rest/v1/rpc/billing_transport_readiness_v322')
+      return json({ok:true,state:'TRANSPORT_OBSERVABLE',transport_available:true,
+        billing_event_attribution_verified:false,
+        commercial_activation_permitted:false});
     if(u.pathname==='/rest/v1/plans')return json([{
       id:'pro',name:'Pro',price_monthly_usd:19,is_active:true
     }]);
