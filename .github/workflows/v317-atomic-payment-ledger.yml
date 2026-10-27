@@ -1,4 +1,4 @@
-name: V325 Market Quote Provenance and Commercial Billing Atomicity Acceptance
+name: V326 First MT5 Tick Proof and Commercial Atomic Safety Acceptance
 
 on:
   push:
@@ -12,6 +12,7 @@ on:
       - security/v323-billing-incident-evidence-ledger
       - security/v324-mfa-owner-incident-review
       - security/v325-market-quote-integrity
+      - security/v326-mt5-first-tick-commissioning
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -32,7 +33,12 @@ on:
       - 'docs/release/V321-REVIEW-ONLY-public-billing-acceptance.ts'
       - 'tests/fixtures/v321-billing-ops-schema.sql'
       - 'tests/v321-billing-ops-acceptance.sql'
-      - 'tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs'
+      - 'tests/v321-public-billing-ops-gate.test.mjs'
+      - 'tests/v325-market-quote-integrity.test.mjs'
+      - 'tests/v326-first-broker-tick-proof.test.mjs'
+      - 'tests/test_v326_mt5_read_only_relay.py'
+      - 'scripts/v326_mt5_xauusd_read_only_relay.py'
+      - 'docs/release/V326-REVIEW-ONLY-public-gold-bridge-readiness.ts'
       - 'docs/release/V322-REVIEW-ONLY-BILLING-TRANSPORT.sql'
       - 'tests/fixtures/v322-pgnet-transport-schema.sql'
       - 'tests/v322-pgnet-transport-acceptance.sql'
@@ -78,7 +84,11 @@ jobs:
         with:
           node-version: '24'
       - name: Verify source is fail-closed and atomic-only for successful payments
-        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs
+        run: node --test tests/v317-webhook-source-contract.test.mjs tests/v318-cancellation-contract.test.mjs tests/v319-webhook-runtime.test.mjs tests/v320-reconciliation-runtime.test.mjs tests/v321-public-billing-ops-gate.test.mjs tests/v325-market-quote-integrity.test.mjs tests/v326-first-broker-tick-proof.test.mjs
+      - name: Validate read-only Windows relay logic offline without MT5 or network
+        run: |
+          python3 --version
+          python3 -m unittest discover -s tests -p 'test_v326_*.py' -v
       - name: Install PostgreSQL client when absent
         shell: bash
         run: |
