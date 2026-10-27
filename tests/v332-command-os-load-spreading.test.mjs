@@ -109,7 +109,9 @@ test('global scheduled task fanout never exceeds two concurrent requests',async(
  await Promise.resolve();
  assert.equal(n,2);
  blocks[0].done();blocks[1].done();blocks[2].done();
- await Promise.resolve();
+ // The scheduler releases each async slot in a finally continuation.
+ // Flush all queued promise jobs, not merely the first microtask.
+ await new Promise(resolve=>setImmediate(resolve));
  assert.equal(scheduler.state().active,0);
  scheduler.dispose();
 });
