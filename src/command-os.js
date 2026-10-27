@@ -1,5 +1,6 @@
 import './styles.css';
 import {v332BoundedSettled,v332BoundedMap,v332CreateScheduler,V332_STARTUP_CONCURRENCY,V332_SOURCE_CONCURRENCY} from './v332-command-os-load-spreading.mjs';
+import {v333PendingLocalChanges} from './v333-delta-only-cloud-sync.mjs';
 
 const LEDGER_KEY='tfa.v168.command.decisions.v1';
 const ORG_KEY='tfa.v169.organization.v1';
@@ -143,6 +144,7 @@ async function syncCloudMemory(){
   if(!await verifyCloudSession())return;
   try{
     const remote=(await cloudRows()).map(fromCloudRow);
+    const pending=v333PendingLocalChanges(state.ledger,remote).pending;
     const merged=new Map();
     for(const item of state.ledger)merged.set(item.id,item);
     for(const item of remote){
@@ -151,7 +153,7 @@ async function syncCloudMemory(){
     }
     state.ledger=[...merged.values()].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
     saveLedger();
-    await upsertCloud(state.ledger);
+    await upsertCloud(pending);
     state.cloud.state='CLOUD_SYNCED';state.cloud.lastError=null;state.cloud.lastSync=new Date().toISOString();
     renderAll();renderCloudState();
   }catch(error){
@@ -189,14 +191,17 @@ async function syncOrganization(){
   if(!await verifyCloudSession()){state.orgCloud.state='LOCAL_ONLY';renderOrgCloudState();return}
   try{
     const [ro,rp]=await Promise.all([restRows('command_objectives'),restRows('command_projects')]);
+    const remoteObjectives=ro.map(objectiveFromCloud),remoteProjects=rp.map(projectFromCloud);
+    const pendingObjectives=v333PendingLocalChanges(state.org.objectives,remoteObjectives).pending;
+    const pendingProjects=v333PendingLocalChanges(state.org.projects,remoteProjects).pending;
     const om=new Map(state.org.objectives.map(x=>[x.id,x]));
-    for(const x of ro.map(objectiveFromCloud)){const local=om.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))om.set(x.id,x)}
+    for(const x of remoteObjectives){const local=om.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))om.set(x.id,x)}
     const pm=new Map(state.org.projects.map(x=>[x.id,x]));
-    for(const x of rp.map(projectFromCloud)){const local=pm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))pm.set(x.id,x)}
+    for(const x of remoteProjects){const local=pm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))pm.set(x.id,x)}
     state.org={objectives:[...om.values()],projects:[...pm.values()]};saveOrg();
     await Promise.all([
-      upsertOrgRows('command_objectives','user_id,client_objective_id',state.org.objectives.map(objectiveToCloud)),
-      upsertOrgRows('command_projects','user_id,client_project_id',state.org.projects.map(projectToCloud))
+      upsertOrgRows('command_objectives','user_id,client_objective_id',pendingObjectives.map(objectiveToCloud)),
+      upsertOrgRows('command_projects','user_id,client_project_id',pendingProjects.map(projectToCloud))
     ]);
     state.orgCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderOrgCloudState();
   }catch(error){state.orgCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.orgCloud.lastSync};renderOrgCloudState();renderAll()}
@@ -333,14 +338,18 @@ async function syncBusinessBrain(){
   if(!await verifyCloudSession()){state.bizCloud.state='LOCAL_ONLY';renderBizCloudState();return}
   try{
     const [bu,pr,ch]=await Promise.all([restRows('command_business_units'),restRows('command_products'),restRows('command_distribution_channels')]);
-    const um=new Map(state.biz.units.map(x=>[x.id,x]));for(const x of bu.map(fromBizRow)){const local=um.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))um.set(x.id,x)}
-    const pm=new Map(state.biz.products.map(x=>[x.id,x]));for(const x of pr.map(fromProductRow)){const local=pm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))pm.set(x.id,x)}
-    const cm=new Map(state.biz.channels.map(x=>[x.id,x]));for(const x of ch.map(fromChannelRow)){const local=cm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))cm.set(x.id,x)}
+    const remoteUnits=bu.map(fromBizRow),remoteProducts=pr.map(fromProductRow),remoteChannels=ch.map(fromChannelRow);
+    const pendingUnits=v333PendingLocalChanges(state.biz.units,remoteUnits).pending;
+    const pendingProducts=v333PendingLocalChanges(state.biz.products,remoteProducts).pending;
+    const pendingChannels=v333PendingLocalChanges(state.biz.channels,remoteChannels).pending;
+    const um=new Map(state.biz.units.map(x=>[x.id,x]));for(const x of remoteUnits){const local=um.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))um.set(x.id,x)}
+    const pm=new Map(state.biz.products.map(x=>[x.id,x]));for(const x of remoteProducts){const local=pm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))pm.set(x.id,x)}
+    const cm=new Map(state.biz.channels.map(x=>[x.id,x]));for(const x of remoteChannels){const local=cm.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))cm.set(x.id,x)}
     state.biz={units:[...um.values()],products:[...pm.values()],channels:[...cm.values()]};saveBiz();
     await Promise.all([
-      upsertOrgRows('command_business_units','user_id,client_business_id',state.biz.units.map(toBizRow)),
-      upsertOrgRows('command_products','user_id,client_product_id',state.biz.products.map(toProductRow)),
-      upsertOrgRows('command_distribution_channels','user_id,client_channel_id',state.biz.channels.map(toChannelRow))
+      upsertOrgRows('command_business_units','user_id,client_business_id',pendingUnits.map(toBizRow)),
+      upsertOrgRows('command_products','user_id,client_product_id',pendingProducts.map(toProductRow)),
+      upsertOrgRows('command_distribution_channels','user_id,client_channel_id',pendingChannels.map(toChannelRow))
     ]);
     state.bizCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderBizCloudState();
   }catch(error){state.bizCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.bizCloud.lastSync};renderBizCloudState();renderAll()}
@@ -449,10 +458,12 @@ async function syncAllocationBrain(){
   state.allocCloud.state='SYNCING';renderAllocCloudState();
   if(!await verifyCloudSession()){state.allocCloud.state='LOCAL_ONLY';renderAllocCloudState();return}
   try{
-    const rows=(await restRows('command_resource_allocations')).map(allocationFromCloud),map=new Map(state.allocations.map(x=>[x.id,x]));
+    const rows=(await restRows('command_resource_allocations')).map(allocationFromCloud);
+    const pendingAllocations=v333PendingLocalChanges(state.allocations,rows).pending;
+    const map=new Map(state.allocations.map(x=>[x.id,x]));
     for(const x of rows){const local=map.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))map.set(x.id,x)}
     state.allocations=[...map.values()];saveAllocations();
-    await upsertOrgRows('command_resource_allocations','user_id,client_allocation_id',state.allocations.map(allocationToCloud));
+    await upsertOrgRows('command_resource_allocations','user_id,client_allocation_id',pendingAllocations.map(allocationToCloud));
     state.allocCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderAllocCloudState();
   }catch(error){state.allocCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.allocCloud.lastSync};renderAllocCloudState();renderAll()}
 }
@@ -523,10 +534,12 @@ async function syncOutcomeBrain(){
   state.outcomeCloud.state='SYNCING';renderOutcomeCloudState();
   if(!await verifyCloudSession()){state.outcomeCloud.state='LOCAL_ONLY';renderOutcomeCloudState();return}
   try{
-    const remote=(await restRows('command_outcomes')).map(outcomeFromCloud),map=new Map(state.outcomes.map(x=>[x.id,x]));
+    const remote=(await restRows('command_outcomes')).map(outcomeFromCloud);
+    const pendingOutcomes=v333PendingLocalChanges(state.outcomes,remote).pending;
+    const map=new Map(state.outcomes.map(x=>[x.id,x]));
     for(const x of remote){const local=map.get(x.id);if(!local||cloudTimestamp(x)>=cloudTimestamp(local))map.set(x.id,x)}
     state.outcomes=[...map.values()];saveOutcomes();
-    await upsertOrgRows('command_outcomes','user_id,client_outcome_id',state.outcomes.map(outcomeToCloud));
+    await upsertOrgRows('command_outcomes','user_id,client_outcome_id',pendingOutcomes.map(outcomeToCloud));
     state.outcomeCloud={state:'CLOUD_SYNCED',lastError:null,lastSync:new Date().toISOString()};renderAll();renderOutcomeCloudState();
   }catch(error){state.outcomeCloud={state:'CLOUD_ERROR',lastError:String(error),lastSync:state.outcomeCloud.lastSync};renderOutcomeCloudState();renderAll()}
 }
