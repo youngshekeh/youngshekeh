@@ -1,4 +1,4 @@
-name: V323 Immutable Billing Incident Recovery Evidence and Atomic Lifecycle Acceptance
+name: V324 AAL2 Two-Owner Incident Attestation and Billing Atomic Lifecycle Acceptance
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
       - security/v321-billing-liveness-release-gate
       - security/v322-billing-transport-diagnostics
       - security/v323-billing-incident-evidence-ledger
+      - security/v324-mfa-owner-incident-review
   pull_request:
     branches:
       - the-father-analytics-deploy
@@ -36,6 +37,9 @@ on:
       - 'tests/v322-pgnet-transport-acceptance.sql'
       - 'docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql'
       - 'tests/v323-billing-incident-acceptance.sql'
+      - 'docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql'
+      - 'tests/fixtures/v324-owner-aal2-incident-schema.sql'
+      - 'tests/v324-owner-incident-review-acceptance.sql'
 
 permissions:
   contents: read
@@ -100,3 +104,6 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tests/v322-pgnet-transport-acceptance.sql
           psql -X -v ON_ERROR_STOP=1 -f docs/release/V323-REVIEW-ONLY-BILLING-INCIDENT-LEDGER.sql
           psql -X -v ON_ERROR_STOP=1 -f tests/v323-billing-incident-acceptance.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/v324-owner-aal2-incident-schema.sql
+          psql -X -v ON_ERROR_STOP=1 -f docs/release/V324-REVIEW-ONLY-OWNER-INCIDENT-ATTESTATION.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/v324-owner-incident-review-acceptance.sql
