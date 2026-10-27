@@ -31,7 +31,8 @@ function spine(overrides={}){
 }
 function app(data,{upstreamError=false}={}){
  let handler;const calls=[];
- runInNewContext(stripTypeScriptTypes(source,{mode:'strip'}),{
+ runInNewContext(stripTypeScriptTypes(
+  source.replace(/^import\s+["']jsr:[^"']+["'];?\s*/gm,''),{mode:'strip'}),{
   Deno:{serve:cb=>handler=cb},
   fetch:async(url,options={})=>{
     calls.push({url:String(url),method:options.method||'GET'});
