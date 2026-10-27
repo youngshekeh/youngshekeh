@@ -66,9 +66,10 @@ async function open(data,width=1280){
  const response=await page.goto(ORIGIN+'/gold-live/',{
   waitUntil:'domcontentloaded',timeout:35000});
  assert.equal(response?.status(),200);
- await page.waitForSelector('#v328-broker-commissioning',{timeout:20000});
+ await page.waitForSelector('#v328-broker-commissioning',{state:'attached',timeout:20000});
  const tab=page.getByRole('tab',{name:/Broker data/i});
  await tab.click();
+ await page.locator('#v328-broker-commissioning').waitFor({state:'visible',timeout:10000});
  return {page,context};
 }
 test('legacy v195 backend cannot fake accepted tick or leak broker identity',async()=>{
