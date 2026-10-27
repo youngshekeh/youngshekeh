@@ -2,8 +2,11 @@ import { getVercelOidcToken } from '@vercel/oidc';
 import { certifyKernelReceipt } from '../src/kernel-receipt-gate.mjs';
 import { classifyV231KernelIncident } from '../src/v231-kernel-admission.mjs';
 import { checkHeartbeatIncident } from '../src/v307-heartbeat-incident-admission.mjs';
+import { createKernelPressureCircuit } from '../src/v330-kernel-pressure-circuit.mjs';
 
 const KERNEL='https://mpcelmjiycjpdyyflisn.supabase.co/functions/v1/runtime-v180-continuous-kernel';
+// Warm-isolate guard; does not alter schedules, provider timeouts or database.
+const pressureCircuit=createKernelPressureCircuit();
 
 export const config={maxDuration:90};
 
@@ -97,6 +100,17 @@ export default async function handler(req,res){
     });
   }
 
+  const admission=pressureCircuit.acquire();
+  if(!admission.permitted){
+    return failClosed(res,503,'PRIVATE_KERNEL_PRESSURE_COOLDOWN',
+      admission.reason,'warm_isolate_private_database_work_deferred',{
+        kernel:{attempted:false,verified:false},
+        circuit:{retry_after_seconds:admission.retry_after_seconds,per_isolate_only:true},
+        database_scheduler:{changed:false,reason:'preserve_all_pg_cron_jobs'}
+      });
+  }
+  let privateVerified=false,backendUnavailable=false;
+  try{
   let oidc='';
   try{oidc=await getVercelOidcToken();}catch(error){
     return failClosed(res,503,'FAIL_CLOSED','vercel_workload_identity_unavailable',error);
@@ -112,6 +126,7 @@ export default async function handler(req,res){
   // heartbeat. The V180 Edge function can return ok=true with only overlap or
   // backoff notices; those must never clear an incident or launch hold.
   const proof=kernel.ok?certifyKernelReceipt(kernel.body):null;
+  backendUnavailable=!kernel.ok&&(kernel.status===0||kernel.status>=500||kernel.duration_ms>=30000);
   if(kernel.ok&&!proof?.verified){
     return failClosed(res,503,'KERNEL_UNAVAILABLE_NON_DISRUPTIVE','kernel_receipts_uncertified',
       proof?.reason||'NO_VERIFIED_RUN_RECEIPT',{
@@ -122,6 +137,7 @@ export default async function handler(req,res){
       });
   }
   if(kernel.ok&&proof?.verified){
+    privateVerified=true;
     const runs=Array.isArray(kernel.body?.runs)?kernel.body.runs.map(({user_id,...safe})=>safe):[];
     console.log('V180_KERNEL_HEARTBEAT_SUCCEEDED',{
       owners_processed:proof.counts.owners,
@@ -168,4 +184,9 @@ export default async function handler(req,res){
       resume:{skipped:true}
     }
   );
+  }finally{
+    // Exactly one receipt can reset the circuit; HTTP 200 alone cannot.
+    // Failed private DB/Edge transports open a bounded per-isolate cooldown.
+    pressureCircuit.release({verified:privateVerified,backend_unavailable:backendUnavailable});
+  }
 }

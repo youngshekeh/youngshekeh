@@ -1,0 +1,59 @@
+{
+  "schema": "TFA-DB-TRANSPORT-V329-OBSERVATION",
+  "project_ref": "mpcelmjiycjpdyyflisn",
+  "region": "eu-west-1",
+  "origin": "2026-10-27 read-only Supabase query_logs ClickHouse and execute_sql",
+  "window_start": "2026-10-27T08:35:00Z",
+  "window_end": "2026-10-27T09:05:00Z",
+  "collected_at": "2026-10-27T09:05:00Z",
+  "sources": [
+    "postgres_logs",
+    "postgrest_logs"
+  ],
+  "missing_log_sources": [
+    "supavisor_logs"
+  ],
+  "log_query_complete": false,
+  "redacted": true,
+  "source_event_counts": {
+    "postgres_logs": 167,
+    "postgrest_logs": 16,
+    "supavisor_logs": null
+  },
+  "metrics": {
+    "postgres_cancelled_57014": 11,
+    "postgres_connection_08006": 17,
+    "postgres_protocol_08P01": 12,
+    "postgrest_timeout_events": 16,
+    "postgrest_pooler_errors": null,
+    "supavisor_auth_timeouts": null,
+    "management_sql_connect_timeouts": 3
+  },
+  "management_sql_observations": [
+    {
+      "probe": "SELECT_NOW",
+      "result": "SUCCESS",
+      "database_time": "2026-10-27T09:03:46.448238Z",
+      "statement": "no user data"
+    },
+    {
+      "probe": "PG_STAT_ACTIVITY_AGGREGATE",
+      "result": "CONNECTION_TIMEOUT",
+      "after_success": true
+    },
+    {
+      "probe": "MAX_CONNECTIONS_AND_LOCKS",
+      "result": "CONNECTION_TIMEOUT",
+      "after_success": true
+    },
+    {
+      "probe": "KERNEL_AND_MT5_COUNTS",
+      "result": "CONNECTION_TIMEOUT",
+      "after_success": true
+    }
+  ],
+  "caveat": "Historical aggregate with 30-minute window, incomplete supavisor source, and subsequent SQL failures. Not eligible as 5-15 minute clean recovery window. PostgreSQL 57014/08006/08P01 categories may overlap log events; do not sum as distinct requests. Control-plane ACTIVE_HEALTHY remains informational. One successful SQL read was followed by three failures; database recovery NOT verified.",
+  "privacy": "No raw event text, SQL query bodies, account IDs, IPs, customer data, provider secrets or credentials included.",
+  "commercial_activation_permitted": false,
+  "trading_activation_permitted": false
+}
