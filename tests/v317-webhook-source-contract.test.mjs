@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const sql=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-ATOMIC-FLUTTERWAVE.sql',import.meta.url),'utf8');
 const webhook=readFileSync(new URL('../docs/release/V317-REVIEW-ONLY-flutterwave-webhook.ts',import.meta.url),'utf8');
-const paid=webhook.split("const txId=payload?.data?.id??payload?.id")[1]||'';
+const paid=webhook.split("const txId=payload?.data?.id;")[1]||'';
 test('paid webhook uses atomic RPC only after remote provider verification',()=>{
   assert.ok(webhook.includes("/v3/transactions/"));
   assert.ok(webhook.includes("flutterwave-signature"));
